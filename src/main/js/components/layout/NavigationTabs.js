@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Tabs, Tab, Box } from '@mui/material';
+import { Tabs, Tab } from '@mui/material';
 import { NAVIGATION_ITEMS } from '../../../resources/config/constants';
 
 const NavigationTabs = () => {

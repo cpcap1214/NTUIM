@@ -14,6 +14,7 @@ import {
   ListItemText,
   useTheme,
   useMediaQuery,
+  Button,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -99,6 +100,31 @@ const Header = () => {
           );
         })}
       </List>
+      
+      <Box sx={{ p: 2 }}>
+        <Button
+          variant="contained"
+          fullWidth
+          size="medium"
+          onClick={() => {
+            window.open('https://google.com', '_blank');
+            setMobileOpen(false);
+          }}
+          sx={{
+            backgroundColor: 'primary.main',
+            color: 'white',
+            fontWeight: 600,
+            py: 1,
+            borderRadius: 2,
+            textTransform: 'none',
+            '&:hover': {
+              backgroundColor: 'primary.dark',
+            },
+          }}
+        >
+          註冊資管系 google space  
+        </Button>
+      </Box>
     </Box>
   );
 
@@ -149,8 +175,28 @@ const Header = () => {
           </Box>
 
           {!isMobile && (
-            <Box sx={{ ml: 'auto' }}>
+            <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 2 }}>
               <NavigationTabs />
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => window.open('https://google.com', '_blank')}
+                sx={{
+                  backgroundColor: 'primary.main',
+                  color: 'white',
+                  fontWeight: 600,
+                  px: 2,
+                  py: 0.5,
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontSize: '0.875rem',
+                  '&:hover': {
+                    backgroundColor: 'primary.dark',
+                  },
+                }}
+              >
+                註冊資管系 google space
+              </Button>
             </Box>
           )}
         </Toolbar>
