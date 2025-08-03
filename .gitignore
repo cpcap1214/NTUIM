@@ -31,7 +31,6 @@ logs/
 
 # Output files (use output/ directory instead)
 *.csv
-*.json
 *.xlsx
 output/
 
