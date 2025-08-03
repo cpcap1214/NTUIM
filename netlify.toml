@@ -1,0 +1,50 @@
+# Netlify 建置與部署設定
+[build]
+  # 建置輸出目錄
+  publish = "build"
+  
+  # 建置指令
+  command = "npm run build"
+
+# 生產環境設定
+[build.environment]
+  NODE_VERSION = "18"
+  NPM_VERSION = "9"
+
+# 重定向規則 (SPA 路由支援)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  conditions = {Role = ["admin"]}
+
+# 頭部設定 (安全性與效能)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    
+# 靜態資源快取
+[[headers]]
+  for = "/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# HTML 檔案設定
+[[headers]]
+  for = "*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# 開發環境預覽設定
+[context.deploy-preview]
+  command = "npm run build"
+
+# 本地開發設定
+[dev]
+  command = "npm start"
+  port = 3000
+  publish = "build"
