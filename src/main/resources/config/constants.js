@@ -2,7 +2,7 @@ export const APP_CONFIG = {
   name: '台大資管系學會',
   fullName: '國立台灣大學資訊管理學系學會',
   englishName: 'NTU IM Student Association',
-  description: '提供考古題下載、課程評價瀏覽、學會資訊公告、分享學習資源',
+  description: '',
   version: '1.0.0',
 };
 
