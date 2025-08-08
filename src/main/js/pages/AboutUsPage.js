@@ -63,10 +63,6 @@ const AboutUsPage = () => {
           {/* Tab 0: 幹部團隊 */}
           {activeTab === 0 && (
             <Box>
-              <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 4, textAlign: 'center' }}>
-                第 {new Date().getFullYear() - aboutSummary.establishedYear + 1} 屆幹部團隊
-              </Typography>
-              
               {/* 會長與副會長 */}
               <Typography variant="h5" sx={{ fontWeight: 600, mb: 3, textAlign: 'center', color: 'primary.main' }}>
                 核心幹部
@@ -220,7 +216,7 @@ const AboutUsPage = () => {
                       電子郵件
                     </Typography>
                     <Typography variant="body1" color="text.secondary">
-                      contact@ntuim.org
+                      imsa@ntu.im
                     </Typography>
                   </Box>
                 </Box>

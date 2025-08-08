@@ -195,7 +195,7 @@ const Header = () => {
                   },
                 }}
               >
-                註冊資管系 google space
+                註冊資管系 Google space
               </Button>
             </Box>
           )}

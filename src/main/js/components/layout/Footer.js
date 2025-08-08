@@ -43,12 +43,12 @@ const Footer = () => {
             </Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               <Link
-                href="mailto:contact@ntuim.org"
+                href="mailto:imsa@ntu.im"
                 color="text.secondary"
                 underline="hover"
                 variant="body2"
               >
-                contact@ntuim.org
+                imsa@ntu.im
               </Link>
               <Link
                 href="https://www.facebook.com/NTUIMSA"
