@@ -13,7 +13,7 @@ const courseReviewRoutes = require('./routes/courseReviews');
 
 // 引入中間件
 const { authenticateToken } = require('./middleware/auth');
-const errorHandler = require('./middleware/errorHandler');
+const { errorHandler } = require('./middleware/errorHandler');
 
 // 初始化 Express
 const app = express();

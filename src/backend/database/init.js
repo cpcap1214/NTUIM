@@ -22,22 +22,42 @@ function initDatabase() {
         // 讀取 schema.sql
         const schema = fs.readFileSync(SCHEMA_PATH, 'utf8');
         
-        // 執行 schema
-        db.exec(schema, (err) => {
+        // 檢查是否已有 users 表
+        db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='users'", (err, row) => {
             if (err) {
-                console.error('執行 schema 失敗:', err);
+                console.error('檢查資料表失敗:', err);
                 reject(err);
                 return;
             }
-            console.log('資料庫架構建立成功');
             
-            // 插入測試資料
-            insertTestData(db)
-                .then(() => {
-                    db.close();
-                    resolve();
-                })
-                .catch(reject);
+            if (row) {
+                console.log('資料庫已存在，跳過架構建立');
+                insertTestData(db)
+                    .then(() => {
+                        db.close();
+                        resolve();
+                    })
+                    .catch(reject);
+                return;
+            }
+            
+            // 執行 schema
+            db.exec(schema, (err) => {
+                if (err) {
+                    console.error('執行 schema 失敗:', err);
+                    reject(err);
+                    return;
+                }
+                console.log('資料庫架構建立成功');
+                
+                // 插入測試資料
+                insertTestData(db)
+                    .then(() => {
+                        db.close();
+                        resolve();
+                    })
+                    .catch(reject);
+            });
         });
     });
 }
