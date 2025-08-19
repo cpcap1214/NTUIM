@@ -107,7 +107,7 @@ const Header = () => {
           fullWidth
           size="medium"
           onClick={() => {
-            window.open('https://google.com', '_blank');
+            window.open('https://forms.gle/YyiGagNMcS1NBn899', '_blank');
             setMobileOpen(false);
           }}
           sx={{
@@ -180,7 +180,7 @@ const Header = () => {
               <Button
                 variant="contained"
                 size="small"
-                onClick={() => window.open('https://google.com', '_blank')}
+                onClick={() => window.open('https://forms.gle/YyiGagNMcS1NBn899', '_blank')}
                 sx={{
                   backgroundColor: 'primary.main',
                   color: 'white',
