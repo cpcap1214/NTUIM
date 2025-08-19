@@ -15,6 +15,9 @@ import {
   useTheme,
   useMediaQuery,
   Button,
+  Menu,
+  MenuItem,
+  Avatar,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -23,9 +26,13 @@ import {
   Quiz as QuizIcon,
   Description as DescriptionIcon,
   Info as InfoIcon,
+  Person as PersonIcon,
+  Login as LoginIcon,
+  Logout as LogoutIcon,
 } from '@mui/icons-material';
 import NavigationTabs from './NavigationTabs';
 import { APP_CONFIG, NAVIGATION_ITEMS } from '../../../resources/config/constants';
+import { useAuth } from '../../contexts/AuthContext';
 
 const iconMap = {
   home: HomeIcon,
@@ -37,10 +44,12 @@ const iconMap = {
 
 const Header = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, logout, isAuthenticated } = useAuth();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -49,6 +58,20 @@ const Header = () => {
   const handleMobileNavigation = (path) => {
     navigate(path);
     setMobileOpen(false);
+  };
+
+  const handleUserMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleUserMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleLogout = () => {
+    logout();
+    handleUserMenuClose();
+    navigate('/');
   };
 
   const drawer = (
@@ -177,26 +200,71 @@ const Header = () => {
           {!isMobile && (
             <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 2 }}>
               <NavigationTabs />
-              <Button
-                variant="contained"
-                size="small"
-                onClick={() => window.open('https://forms.gle/YyiGagNMcS1NBn899', '_blank')}
-                sx={{
-                  backgroundColor: 'primary.main',
-                  color: 'white',
-                  fontWeight: 600,
-                  px: 2,
-                  py: 0.5,
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  fontSize: '0.875rem',
-                  '&:hover': {
-                    backgroundColor: 'primary.dark',
-                  },
-                }}
-              >
-                註冊資管系 Google space
-              </Button>
+              
+              {isAuthenticated ? (
+                <>
+                  <IconButton
+                    onClick={handleUserMenuOpen}
+                    sx={{ p: 0.5 }}
+                  >
+                    <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
+                      {user?.username?.charAt(0).toUpperCase()}
+                    </Avatar>
+                  </IconButton>
+                  <Menu
+                    anchorEl={anchorEl}
+                    open={Boolean(anchorEl)}
+                    onClose={handleUserMenuClose}
+                    anchorOrigin={{
+                      vertical: 'bottom',
+                      horizontal: 'right',
+                    }}
+                    transformOrigin={{
+                      vertical: 'top',
+                      horizontal: 'right',
+                    }}
+                  >
+                    <MenuItem disabled>
+                      <Typography variant="body2">
+                        {user?.fullName || user?.username}
+                      </Typography>
+                    </MenuItem>
+                    <MenuItem disabled>
+                      <Typography variant="caption" color="textSecondary">
+                        {user?.hasPaidFee ? '已繳會費' : '未繳會費'}
+                      </Typography>
+                    </MenuItem>
+                    <MenuItem onClick={handleLogout}>
+                      <ListItemIcon>
+                        <LogoutIcon fontSize="small" />
+                      </ListItemIcon>
+                      登出
+                    </MenuItem>
+                  </Menu>
+                </>
+              ) : (
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<LoginIcon />}
+                  onClick={() => navigate('/login')}
+                  sx={{
+                    backgroundColor: 'primary.main',
+                    color: 'white',
+                    fontWeight: 600,
+                    px: 2,
+                    py: 0.5,
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontSize: '0.875rem',
+                    '&:hover': {
+                      backgroundColor: 'primary.dark',
+                    },
+                  }}
+                >
+                  登入/註冊
+                </Button>
+              )}
             </Box>
           )}
         </Toolbar>
