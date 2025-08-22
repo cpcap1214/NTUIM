@@ -129,7 +129,7 @@ const Header = () => {
           fullWidth
           size="medium"
           onClick={() => {
-            window.open('https://forms.gle/YyiGagNMcS1NBn899', '_blank');
+            window.open('https://forms.gle/5ckpNSH74FhXBugM8', '_blank');
             setMobileOpen(false);
           }}
           sx={{
@@ -199,6 +199,27 @@ const Header = () => {
           {!isMobile && (
             <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 2 }}>
               <NavigationTabs />
+              
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => window.open('https://forms.gle/5ckpNSH74FhXBugM8', '_blank')}
+                sx={{
+                  backgroundColor: 'primary.main',
+                  color: 'white',
+                  fontWeight: 600,
+                  px: 2,
+                  py: 0.5,
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontSize: '0.875rem',
+                  '&:hover': {
+                    backgroundColor: 'primary.dark',
+                  },
+                }}
+              >
+                註冊資管系 Google space
+              </Button>
               
               {isAuthenticated ? (
                 <>
