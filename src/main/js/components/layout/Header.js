@@ -26,7 +26,6 @@ import {
   Quiz as QuizIcon,
   Description as DescriptionIcon,
   Info as InfoIcon,
-  Person as PersonIcon,
   Login as LoginIcon,
   Logout as LogoutIcon,
 } from '@mui/icons-material';
