@@ -30,8 +30,11 @@ import {
   School as SchoolIcon,
 } from '@mui/icons-material';
 import { cheatSheets } from '../../resources/data/mockData';
+import { useAuth } from '../contexts/AuthContext';
+import PaymentWall from '../components/PaymentWall';
 
 const CheatSheetPage = () => {
+  const { user, hasPaidFee } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [courseFilter, setCourseFilter] = useState('all');
   const [tagFilter, setTagFilter] = useState('all');
@@ -64,10 +67,18 @@ const CheatSheetPage = () => {
     });
 
   const handleDownload = (fileUrl, title) => {
+    if (!hasPaidFee) {
+      alert('請先繳交系學會費才能下載大抄');
+      return;
+    }
     console.log(`Downloading: ${title} from ${fileUrl}`);
   };
 
   const handlePreview = (fileUrl) => {
+    if (!hasPaidFee) {
+      alert('請先繳交系學會費才能預覽大抄');
+      return;
+    }
     console.log(`Previewing: ${fileUrl}`);
   };
 
@@ -84,6 +95,11 @@ const CheatSheetPage = () => {
     };
     return colors[tag] || 'default';
   };
+
+  // 如果沒有繳費，顯示付費牆
+  if (!hasPaidFee) {
+    return <PaymentWall feature="學習大抄" />;
+  }
 
   return (
     <Container maxWidth="lg">

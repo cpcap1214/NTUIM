@@ -35,8 +35,11 @@ import {
   DateRange as DateIcon,
 } from '@mui/icons-material';
 import { examFiles } from '../../resources/data/mockData';
+import { useAuth } from '../contexts/AuthContext';
+import PaymentWall from '../components/PaymentWall';
 
 const ExamArchivePage = () => {
+  const { user, hasPaidFee } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [examTypeFilter, setExamTypeFilter] = useState('all');
   const [yearFilter, setYearFilter] = useState('all');
@@ -56,14 +59,27 @@ const ExamArchivePage = () => {
   const examTypes = [...new Set(examFiles.map(exam => exam.examType))];
 
   const handleDownload = (fileUrl, filename) => {
+    if (!hasPaidFee) {
+      alert('請先繳交系學會費才能下載考古題');
+      return;
+    }
     // 模擬下載功能
     console.log(`Downloading: ${filename} from ${fileUrl}`);
   };
 
   const handlePreview = (fileUrl) => {
+    if (!hasPaidFee) {
+      alert('請先繳交系學會費才能預覽考古題');
+      return;
+    }
     // 模擬預覽功能
     console.log(`Previewing: ${fileUrl}`);
   };
+
+  // 如果沒有繳費，顯示付費牆
+  if (!hasPaidFee) {
+    return <PaymentWall feature="考古題庫" />;
+  }
 
   return (
     <Container maxWidth="lg">
