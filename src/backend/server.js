@@ -20,7 +20,7 @@ const { errorHandler } = require('./middleware/errorHandler');
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// 中間件設定 - 最簡單的 CORS，允許一切
+// 最寬鬆的 CORS - 允許所有來源和方法
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -54,6 +54,7 @@ app.use('/api/admin', adminRoutes);
 app.get('/api/health', (req, res) => {
     res.json({ 
         status: 'OK', 
+        cors: 'ALLOW_ALL',
         timestamp: new Date().toISOString(),
         environment: process.env.NODE_ENV || 'development'
     });
@@ -66,6 +67,7 @@ app.use(errorHandler);
 const server = app.listen(PORT, () => {
     console.log(`伺服器運行於 http://localhost:${PORT}`);
     console.log(`環境: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`CORS: 允許所有來源 (*)`);
 });
 
 // 優雅關閉
