@@ -131,8 +131,9 @@ const CheatSheetPage = () => {
       alert('請先登入才能預覽大抄');
       return;
     }
-    // 在新視窗中開啟預覽
-    window.open(`${UPLOAD_BASE_URL}/uploads/cheat_sheets/${cheatSheetId}/preview`, '_blank');
+    // 帶 token 開啟預覽
+    const token = localStorage.getItem('token');
+    window.open(`${API_BASE_URL}/cheat-sheets/${cheatSheetId}/preview?token=${token}`, '_blank');
   };
 
   const getTagColor = (tag) => {

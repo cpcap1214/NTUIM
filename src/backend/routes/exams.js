@@ -137,6 +137,43 @@ router.post('/upload',
 );
 
 // 下載考古題（需登入且繳費）
+// 預覽考古題（需要繳費）
+router.get('/:id/preview', (req, res, next) => {
+    // 支援 query parameter 的 token
+    if (req.query.token && !req.headers.authorization) {
+        req.headers.authorization = `Bearer ${req.query.token}`;
+    }
+    next();
+}, authenticateToken, requirePaidMember, async (req, res) => {
+    try {
+        const exam = await Exam.findByPk(req.params.id);
+        
+        if (!exam) {
+            return res.status(404).json({ error: '考古題不存在' });
+        }
+
+        const filePath = path.resolve(exam.filePath);
+        
+        // 檢查檔案是否存在
+        if (!fs.existsSync(filePath)) {
+            console.error('考古題檔案不存在:', filePath);
+            return res.status(404).json({ error: '考古題檔案不存在' });
+        }
+
+        // 設定為在線預覽（而非下載）
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(exam.fileName)}"`);
+        
+        // 傳送檔案
+        const fileStream = fs.createReadStream(filePath);
+        fileStream.pipe(res);
+        
+    } catch (error) {
+        console.error('預覽考古題錯誤:', error);
+        res.status(500).json({ error: '預覽失敗，請稍後再試' });
+    }
+});
+
 router.get('/:id/download', authenticateToken, requirePaidMember, async (req, res) => {
     try {
         const exam = await Exam.findByPk(req.params.id);

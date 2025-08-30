@@ -123,8 +123,9 @@ const ExamArchivePage = () => {
       alert('請先繳交系學會費才能預覽考古題');
       return;
     }
-    // 在新視窗中開啟預覽
-    window.open(`${UPLOAD_BASE_URL}/uploads/exams/${examId}/preview`, '_blank');
+    // 帶 token 開啟預覽
+    const token = localStorage.getItem('token');
+    window.open(`${API_BASE_URL}/exams/${examId}/preview?token=${token}`, '_blank');
   };
 
   // 如果沒有繳費，顯示付費牆

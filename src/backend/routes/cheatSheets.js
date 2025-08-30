@@ -159,6 +159,43 @@ router.post('/upload',
     }
 );
 
+// 預覽大抄（只需登入）
+router.get('/:id/preview', (req, res, next) => {
+    // 支援 query parameter 的 token
+    if (req.query.token && !req.headers.authorization) {
+        req.headers.authorization = `Bearer ${req.query.token}`;
+    }
+    next();
+}, authenticateToken, async (req, res) => {
+    try {
+        const cheatSheet = await CheatSheet.findByPk(req.params.id);
+        
+        if (!cheatSheet) {
+            return res.status(404).json({ error: '大抄不存在' });
+        }
+
+        const filePath = path.resolve(cheatSheet.filePath);
+        
+        // 檢查檔案是否存在
+        if (!fs.existsSync(filePath)) {
+            console.error('大抄檔案不存在:', filePath);
+            return res.status(404).json({ error: '大抄檔案不存在' });
+        }
+
+        // 設定為在線預覽（而非下載）
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(cheatSheet.fileName)}"`);
+        
+        // 傳送檔案
+        const fileStream = fs.createReadStream(filePath);
+        fileStream.pipe(res);
+        
+    } catch (error) {
+        console.error('預覽大抄錯誤:', error);
+        res.status(500).json({ error: '預覽失敗，請稍後再試' });
+    }
+});
+
 // 下載大抄（只需登入）
 router.get('/:id/download', authenticateToken, async (req, res) => {
     try {
