@@ -78,6 +78,7 @@ router.post('/upload',
         body('year').isInt({ min: 2000, max: 2100 }).withMessage('請輸入有效年份'),
         body('semester').isIn(['1', '2', 'summer']).withMessage('請選擇學期'),
         body('examType').isIn(['midterm', 'final', 'quiz']).withMessage('請選擇考試類型'),
+        body('examAttempt').optional().isInt({ min: 1, max: 3 }).withMessage('考試次數須為 1-3'),
         body('professor').optional().isString()
     ],
     async (req, res) => {
@@ -101,6 +102,7 @@ router.post('/upload',
                 year,
                 semester,
                 examType,
+                examAttempt = 1,
                 professor
             } = req.body;
 
@@ -112,6 +114,7 @@ router.post('/upload',
                 year: parseInt(year),
                 semester,
                 examType,
+                examAttempt: parseInt(examAttempt),
                 filePath: req.file.path,
                 fileName: req.file.originalname,
                 fileSize: req.file.size,

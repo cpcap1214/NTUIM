@@ -306,7 +306,7 @@ const ExamArchivePage = () => {
                           size="small"
                         />
                         <Chip 
-                          label={`${exam.year}-${exam.semester}`} 
+                          label={`${exam.year - 1911}-${exam.semester}`} 
                           color="secondary"
                           size="small"
                         />
@@ -340,7 +340,7 @@ const ExamArchivePage = () => {
                         variant="contained" 
                         size="small" 
                         startIcon={<GetAppIcon />}
-                        onClick={() => handleDownload(exam.id, exam.fileName || `${exam.courseName}_${exam.examType}_${exam.year}-${exam.semester}.pdf`)}
+                        onClick={() => handleDownload(exam.id, exam.fileName || `${exam.courseName}_${exam.examType}_${exam.year - 1911}-${exam.semester}.pdf`)}
                         sx={{ flex: 1 }}
                       >
                         下載
@@ -381,7 +381,7 @@ const ExamArchivePage = () => {
                     <TableCell>
                       <Chip label={exam.examType} color="primary" size="small" />
                     </TableCell>
-                    <TableCell>{exam.year}-{exam.semester}</TableCell>
+                    <TableCell>{exam.year - 1911}-{exam.semester}</TableCell>
                     <TableCell>{exam.created_at ? new Date(exam.created_at).toLocaleDateString('zh-TW') : '未知'}</TableCell>
                     <TableCell align="right">{exam.downloadCount || 0}</TableCell>
                     <TableCell align="center">
@@ -398,7 +398,7 @@ const ExamArchivePage = () => {
                           <IconButton 
                             size="small" 
                             color="primary"
-                            onClick={() => handleDownload(exam.id, exam.fileName || `${exam.courseName}_${exam.examType}_${exam.year}-${exam.semester}.pdf`)}
+                            onClick={() => handleDownload(exam.id, exam.fileName || `${exam.courseName}_${exam.examType}_${exam.year - 1911}-${exam.semester}.pdf`)}
                           >
                             <GetAppIcon fontSize="small" />
                           </IconButton>

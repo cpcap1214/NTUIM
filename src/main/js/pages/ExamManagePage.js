@@ -254,7 +254,7 @@ const ExamManagePage = () => {
                           size="small" 
                         />
                         <Chip 
-                          label={`${exam.year}-${exam.semester}`} 
+                          label={`${exam.year - 1911}-${exam.semester}`} 
                           color="secondary" 
                           size="small" 
                         />

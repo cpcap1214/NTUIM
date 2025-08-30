@@ -159,8 +159,8 @@ router.post('/upload',
     }
 );
 
-// 下載大抄（需登入且繳費）
-router.get('/:id/download', authenticateToken, requirePaidMember, async (req, res) => {
+// 下載大抄（只需登入）
+router.get('/:id/download', authenticateToken, async (req, res) => {
     try {
         const cheatSheet = await CheatSheet.findByPk(req.params.id);
 

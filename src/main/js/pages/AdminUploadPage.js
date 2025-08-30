@@ -49,9 +49,10 @@ const AdminUploadPage = () => {
     courseCode: '',
     courseName: '',
     professor: '',
-    year: new Date().getFullYear(),
+    year: new Date().getFullYear() - 1911, // 民國紀年
     semester: '1',
     examType: 'midterm',
+    examAttempt: 1,
     file: null,
   });
 
@@ -188,9 +189,10 @@ const AdminUploadPage = () => {
     formData.append('courseCode', examForm.courseCode);
     formData.append('courseName', examForm.courseName);
     formData.append('professor', examForm.professor);
-    formData.append('year', examForm.year);
+    formData.append('year', examForm.year + 1911); // 轉換為西元
     formData.append('semester', examForm.semester);
     formData.append('examType', examForm.examType);
+    formData.append('examAttempt', examForm.examAttempt);
 
     try {
       const response = await fetch('http://localhost:5001/api/exams/upload', {
@@ -343,12 +345,12 @@ const AdminUploadPage = () => {
                 <TextField
                   fullWidth
                   type="number"
-                  label="學年度"
+                  label="學年度 (民國)"
                   value={examForm.year}
                   onChange={(e) => handleExamChange('year', parseInt(e.target.value))}
                   error={!!errors.year}
-                  helperText={errors.year}
-                  inputProps={{ min: 2000, max: 2100 }}
+                  helperText={errors.year || `例如：${new Date().getFullYear() - 1911} 學年度`}
+                  inputProps={{ min: 80, max: 200 }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -365,7 +367,7 @@ const AdminUploadPage = () => {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} sm={4}>
                 <FormControl fullWidth>
                   <InputLabel>考試類型</InputLabel>
                   <Select
@@ -376,6 +378,20 @@ const AdminUploadPage = () => {
                     <MenuItem value="midterm">期中考</MenuItem>
                     <MenuItem value="final">期末考</MenuItem>
                     <MenuItem value="quiz">小考</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={2}>
+                <FormControl fullWidth>
+                  <InputLabel>考試次數</InputLabel>
+                  <Select
+                    value={examForm.examAttempt}
+                    label="考試次數"
+                    onChange={(e) => handleExamChange('examAttempt', e.target.value)}
+                  >
+                    <MenuItem value={1}>第一次</MenuItem>
+                    <MenuItem value={2}>第二次</MenuItem>
+                    <MenuItem value={3}>第三次</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>

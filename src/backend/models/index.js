@@ -93,6 +93,15 @@ const Exam = sequelize.define('Exam', {
         allowNull: false,
         field: 'exam_type'
     },
+    examAttempt: {
+        type: DataTypes.INTEGER,
+        defaultValue: 1,
+        field: 'exam_attempt',
+        validate: {
+            min: 1,
+            max: 3
+        }
+    },
     filePath: {
         type: DataTypes.STRING(500),
         allowNull: false,

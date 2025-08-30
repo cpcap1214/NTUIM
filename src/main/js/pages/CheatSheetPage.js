@@ -94,8 +94,8 @@ const CheatSheetPage = () => {
     });
 
   const handleDownload = async (cheatSheetId, filename) => {
-    if (!hasPaidFee) {
-      alert('請先繳交系學會費才能下載大抄');
+    if (!user) {
+      alert('請先登入才能下載大抄');
       return;
     }
     
@@ -126,8 +126,8 @@ const CheatSheetPage = () => {
   };
 
   const handlePreview = (cheatSheetId) => {
-    if (!hasPaidFee) {
-      alert('請先繳交系學會費才能預覽大抄');
+    if (!user) {
+      alert('請先登入才能預覽大抄');
       return;
     }
     // 在新視窗中開啟預覽
@@ -148,9 +148,20 @@ const CheatSheetPage = () => {
     return colors[tag] || 'default';
   };
 
-  // 如果沒有繳費，顯示付費牆
-  if (!hasPaidFee) {
-    return <PaymentWall feature="學習大抄" />;
+  // 大抄不需要付費限制，只需要登入
+  if (!user) {
+    return (
+      <Container maxWidth="lg">
+        <Box sx={{ py: 4, textAlign: 'center' }}>
+          <Typography variant="h5" color="text.secondary" gutterBottom>
+            請先登入
+          </Typography>
+          <Typography variant="body1" color="text.disabled">
+            請登入後即可瀏覽學習大抄
+          </Typography>
+        </Box>
+      </Container>
+    );
   }
 
   return (
