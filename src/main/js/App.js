@@ -13,6 +13,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import AdminPage from './pages/AdminPage';
 import AdminUploadPage from './pages/AdminUploadPage';
+import ExamManagePage from './pages/ExamManagePage';
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
               <Route path="/about" element={<AboutUsPage />} />
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/admin/upload" element={<AdminUploadPage />} />
+              <Route path="/admin/exam-manage" element={<ExamManagePage />} />
             </Routes>
           </Layout>
         </Box>

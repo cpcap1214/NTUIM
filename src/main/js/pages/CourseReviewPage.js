@@ -275,18 +275,6 @@ const CourseReviewPage = () => {
           </Box>
         )}
 
-        {/* Add Course Review CTA */}
-        <Paper sx={{ p: 4, mt: 4, backgroundColor: 'primary.light', textAlign: 'center' }}>
-          <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, color: 'primary.dark' }}>
-            分享你的課程經驗
-          </Typography>
-          <Typography variant="body1" color="primary.dark" sx={{ mb: 3 }}>
-            幫助學弟妹選課，分享你對課程的真實評價和建議
-          </Typography>
-          <Button variant="contained" size="large" color="primary">
-            新增課程評價
-          </Button>
-        </Paper>
       </Box>
     </Container>
   );

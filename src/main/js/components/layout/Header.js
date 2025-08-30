@@ -66,6 +66,12 @@ const Header = () => {
       path: '/admin/upload',
       icon: UploadIcon,
     },
+    {
+      id: 'admin-exam-manage',
+      label: '考古題管理',
+      path: '/admin/exam-manage',
+      icon: SchoolIcon,
+    },
   ];
 
   const handleDrawerToggle = () => {

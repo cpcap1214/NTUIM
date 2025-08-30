@@ -425,18 +425,6 @@ const ExamArchivePage = () => {
           </Box>
         )}
 
-        {/* Upload CTA */}
-        <Paper sx={{ p: 4, mt: 4, backgroundColor: 'success.light', textAlign: 'center' }}>
-          <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, color: 'success.dark' }}>
-            分享考古題
-          </Typography>
-          <Typography variant="body1" color="success.dark" sx={{ mb: 3 }}>
-            將你的考古題分享給學弟妹，建立互助學習的社群環境
-          </Typography>
-          <Button variant="contained" size="large" color="success">
-            上傳考古題
-          </Button>
-        </Paper>
       </Box>
     </Container>
   );

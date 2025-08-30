@@ -420,18 +420,6 @@ const CheatSheetPage = () => {
           </Box>
         )}
 
-        {/* Upload CTA */}
-        <Paper sx={{ p: 4, mt: 4, backgroundColor: 'info.light', textAlign: 'center' }}>
-          <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, color: 'info.dark' }}>
-            分享學習筆記
-          </Typography>
-          <Typography variant="body1" color="info.dark" sx={{ mb: 3 }}>
-            將你的課程重點整理分享給同學，一起建立學習資源庫
-          </Typography>
-          <Button variant="contained" size="large" color="info">
-            上傳大抄
-          </Button>
-        </Paper>
       </Box>
     </Container>
   );
