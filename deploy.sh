@@ -39,6 +39,22 @@ fi
 echo "🔨 建置前端..."
 if npm run build 2>/dev/null; then
     echo "✅ 前端建置成功"
+    
+    # 建立部署目錄
+    echo "📁 建立前端部署目錄..."
+    sudo mkdir -p /var/www/ntuim
+    
+    # 複製建置檔案到部署目錄
+    echo "📋 複製前端檔案到部署目錄..."
+    sudo cp -r build /var/www/ntuim/
+    sudo chown -R www-data:www-data /var/www/ntuim
+    sudo chmod -R 755 /var/www/ntuim
+    
+    # 重新載入 nginx
+    echo "🔄 重新載入 nginx..."
+    sudo systemctl reload nginx
+    
+    echo "✅ 前端檔案部署完成"
 else
     echo "⚠️ 前端建置命令不存在，跳過建置步驟"
 fi
