@@ -73,6 +73,12 @@ const Header = () => {
       path: '/admin/exam-manage',
       icon: SchoolIcon,
     },
+    {
+      id: 'admin-cheatsheet-manage',
+      label: '大抄管理',
+      path: '/admin/cheatsheet-manage',
+      icon: DescriptionIcon,
+    },
   ];
 
   const handleDrawerToggle = () => {
