@@ -86,14 +86,14 @@ const ExamArchivePage = () => {
   const availableYears = [...new Set(exams.map(exam => exam.year))].sort((a, b) => b - a);
   const examTypes = [...new Set(exams.map(exam => exam.examType))];
 
-  const handleDownload = async (examId, filename) => {
+  const handleDownload = async (examId, filename, fileType = 'question') => {
     if (!hasPaidFee) {
       alert('請先繳交系學會費才能下載考古題');
       return;
     }
     
     try {
-      const response = await fetch(`${API_BASE_URL}/exams/${examId}/download`, {
+      const response = await fetch(`${API_BASE_URL}/exams/${examId}/download/${fileType}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -118,14 +118,14 @@ const ExamArchivePage = () => {
     }
   };
 
-  const handlePreview = (examId) => {
+  const handlePreview = (examId, fileType = 'question') => {
     if (!hasPaidFee) {
       alert('請先繳交系學會費才能預覽考古題');
       return;
     }
     // 帶 token 開啟預覽
     const token = localStorage.getItem('token');
-    window.open(`${API_BASE_URL}/exams/${examId}/preview?token=${token}`, '_blank');
+    window.open(`${API_BASE_URL}/exams/${examId}/preview/${fileType}?token=${token}`, '_blank');
   };
 
   // 如果沒有繳費，顯示付費牆
@@ -328,25 +328,54 @@ const ExamArchivePage = () => {
                     </Box>
 
                     {/* Action Buttons */}
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      <Button 
-                        variant="outlined" 
-                        size="small" 
-                        startIcon={<ViewIcon />}
-                        onClick={() => handlePreview(exam.id)}
-                        sx={{ flex: 1 }}
-                      >
-                        預覽
-                      </Button>
-                      <Button 
-                        variant="contained" 
-                        size="small" 
-                        startIcon={<GetAppIcon />}
-                        onClick={() => handleDownload(exam.id, exam.fileName || `${exam.courseName}_${exam.examType}_${exam.year - 1911}-${exam.semester}.pdf`)}
-                        sx={{ flex: 1 }}
-                      >
-                        下載
-                      </Button>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      {/* 題目操作 */}
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button 
+                          variant="outlined" 
+                          size="small" 
+                          startIcon={<ViewIcon />}
+                          onClick={() => handlePreview(exam.id, 'question')}
+                          sx={{ flex: 1 }}
+                        >
+                          預覽題目
+                        </Button>
+                        <Button 
+                          variant="contained" 
+                          size="small" 
+                          startIcon={<GetAppIcon />}
+                          onClick={() => handleDownload(exam.id, exam.questionFileName || `${exam.courseName}_${exam.examType}_題目_${exam.year - 1911}-${exam.semester}.pdf`, 'question')}
+                          sx={{ flex: 1 }}
+                        >
+                          下載題目
+                        </Button>
+                      </Box>
+                      
+                      {/* 答案操作（如果有答案） */}
+                      {exam.answerFileName && (
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          <Button 
+                            variant="outlined" 
+                            size="small" 
+                            startIcon={<ViewIcon />}
+                            onClick={() => handlePreview(exam.id, 'answer')}
+                            sx={{ flex: 1 }}
+                            color="success"
+                          >
+                            預覽答案
+                          </Button>
+                          <Button 
+                            variant="contained" 
+                            size="small" 
+                            startIcon={<GetAppIcon />}
+                            onClick={() => handleDownload(exam.id, exam.answerFileName || `${exam.courseName}_${exam.examType}_答案_${exam.year - 1911}-${exam.semester}.pdf`, 'answer')}
+                            sx={{ flex: 1 }}
+                            color="success"
+                          >
+                            下載答案
+                          </Button>
+                        </Box>
+                      )}
                     </Box>
                   </CardContent>
                 </Card>
@@ -387,24 +416,51 @@ const ExamArchivePage = () => {
                     <TableCell>{exam.created_at ? new Date(exam.created_at).toLocaleDateString('zh-TW') : '未知'}</TableCell>
                     <TableCell align="right">{exam.downloadCount || 0}</TableCell>
                     <TableCell align="center">
-                      <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                        <Tooltip title="預覽">
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handlePreview(exam.id)}
-                          >
-                            <ViewIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="下載">
-                          <IconButton 
-                            size="small" 
-                            color="primary"
-                            onClick={() => handleDownload(exam.id, exam.fileName || `${exam.courseName}_${exam.examType}_${exam.year - 1911}-${exam.semester}.pdf`)}
-                          >
-                            <GetAppIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center' }}>
+                        {/* 題目操作 */}
+                        <Box sx={{ display: 'flex', gap: 0.5 }}>
+                          <Tooltip title="預覽題目">
+                            <IconButton 
+                              size="small" 
+                              onClick={() => handlePreview(exam.id, 'question')}
+                            >
+                              <ViewIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="下載題目">
+                            <IconButton 
+                              size="small" 
+                              color="primary"
+                              onClick={() => handleDownload(exam.id, exam.questionFileName || `${exam.courseName}_${exam.examType}_題目_${exam.year - 1911}-${exam.semester}.pdf`, 'question')}
+                            >
+                              <GetAppIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                        
+                        {/* 答案操作（如果有答案） */}
+                        {exam.answerFileName && (
+                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                            <Tooltip title="預覽答案">
+                              <IconButton 
+                                size="small" 
+                                color="success"
+                                onClick={() => handlePreview(exam.id, 'answer')}
+                              >
+                                <ViewIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="下載答案">
+                              <IconButton 
+                                size="small" 
+                                color="success"
+                                onClick={() => handleDownload(exam.id, exam.answerFileName || `${exam.courseName}_${exam.examType}_答案_${exam.year - 1911}-${exam.semester}.pdf`, 'answer')}
+                              >
+                                <GetAppIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        )}
                       </Box>
                     </TableCell>
                   </TableRow>

@@ -70,7 +70,10 @@ router.get('/', [
 router.post('/upload', 
     authenticateToken,
     requireAdmin,
-    adminUpload.single('file'),
+    adminUpload.fields([
+        { name: 'questionFile', maxCount: 1 },
+        { name: 'answerFile', maxCount: 1 }
+    ]),
     handleUploadError,
     [
         body('courseCode').notEmpty().withMessage('課程代碼為必填'),
@@ -85,14 +88,19 @@ router.post('/upload',
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             // 刪除已上傳的檔案
-            if (req.file) {
-                fs.unlinkSync(req.file.path);
+            if (req.files) {
+                if (req.files.questionFile) {
+                    fs.unlinkSync(req.files.questionFile[0].path);
+                }
+                if (req.files.answerFile) {
+                    fs.unlinkSync(req.files.answerFile[0].path);
+                }
             }
             return res.status(400).json({ errors: errors.array() });
         }
 
-        if (!req.file) {
-            return res.status(400).json({ error: '請選擇要上傳的檔案' });
+        if (!req.files || !req.files.questionFile) {
+            return res.status(400).json({ error: '請選擇要上傳的題目檔案' });
         }
 
         try {
@@ -106,6 +114,9 @@ router.post('/upload',
                 professor
             } = req.body;
 
+            const questionFile = req.files.questionFile[0];
+            const answerFile = req.files.answerFile ? req.files.answerFile[0] : null;
+
             // 建立考古題記錄
             const exam = await Exam.create({
                 courseCode,
@@ -115,9 +126,12 @@ router.post('/upload',
                 semester,
                 examType,
                 examAttempt: parseInt(examAttempt),
-                filePath: req.file.path,
-                fileName: req.file.originalname,
-                fileSize: req.file.size,
+                questionFilePath: questionFile.path,
+                questionFileName: questionFile.originalname,
+                questionFileSize: questionFile.size,
+                answerFilePath: answerFile ? answerFile.path : null,
+                answerFileName: answerFile ? answerFile.originalname : null,
+                answerFileSize: answerFile ? answerFile.size : null,
                 uploadedBy: req.user.id
             });
 
@@ -127,8 +141,13 @@ router.post('/upload',
             });
         } catch (error) {
             // 刪除已上傳的檔案
-            if (req.file) {
-                fs.unlinkSync(req.file.path);
+            if (req.files) {
+                if (req.files.questionFile) {
+                    fs.unlinkSync(req.files.questionFile[0].path);
+                }
+                if (req.files.answerFile) {
+                    fs.unlinkSync(req.files.answerFile[0].path);
+                }
             }
             console.error('上傳考古題錯誤:', error);
             res.status(500).json({ error: '上傳失敗' });
@@ -137,8 +156,8 @@ router.post('/upload',
 );
 
 // 下載考古題（需登入且繳費）
-// 預覽考古題（需要繳費）
-router.get('/:id/preview', (req, res, next) => {
+// 預覽考古題題目（需要繳費）
+router.get('/:id/preview/question', (req, res, next) => {
     // 支援 query parameter 的 token
     if (req.query.token && !req.headers.authorization) {
         req.headers.authorization = `Bearer ${req.query.token}`;
@@ -152,7 +171,7 @@ router.get('/:id/preview', (req, res, next) => {
             return res.status(404).json({ error: '考古題不存在' });
         }
 
-        const filePath = path.resolve(exam.filePath);
+        const filePath = path.resolve(exam.questionFilePath);
         
         // 檢查檔案是否存在
         if (!fs.existsSync(filePath)) {
@@ -162,7 +181,7 @@ router.get('/:id/preview', (req, res, next) => {
 
         // 設定為在線預覽（而非下載）
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(exam.fileName)}"`);
+        res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(exam.questionFileName)}"`);
         
         // 傳送檔案
         const fileStream = fs.createReadStream(filePath);
@@ -174,7 +193,49 @@ router.get('/:id/preview', (req, res, next) => {
     }
 });
 
-router.get('/:id/download', authenticateToken, requirePaidMember, async (req, res) => {
+// 預覽考古題答案（需要繳費）
+router.get('/:id/preview/answer', (req, res, next) => {
+    // 支援 query parameter 的 token
+    if (req.query.token && !req.headers.authorization) {
+        req.headers.authorization = `Bearer ${req.query.token}`;
+    }
+    next();
+}, authenticateToken, requirePaidMember, async (req, res) => {
+    try {
+        const exam = await Exam.findByPk(req.params.id);
+        
+        if (!exam) {
+            return res.status(404).json({ error: '考古題不存在' });
+        }
+
+        if (!exam.answerFilePath) {
+            return res.status(404).json({ error: '此考古題沒有答案檔案' });
+        }
+
+        const filePath = path.resolve(exam.answerFilePath);
+        
+        // 檢查檔案是否存在
+        if (!fs.existsSync(filePath)) {
+            console.error('答案檔案不存在:', filePath);
+            return res.status(404).json({ error: '答案檔案不存在' });
+        }
+
+        // 設定為在線預覽（而非下載）
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(exam.answerFileName)}"`);
+        
+        // 傳送檔案
+        const fileStream = fs.createReadStream(filePath);
+        fileStream.pipe(res);
+        
+    } catch (error) {
+        console.error('預覽答案錯誤:', error);
+        res.status(500).json({ error: '預覽失敗，請稍後再試' });
+    }
+});
+
+// 下載考古題題目
+router.get('/:id/download/question', authenticateToken, requirePaidMember, async (req, res) => {
     try {
         const exam = await Exam.findByPk(req.params.id);
 
@@ -183,8 +244,8 @@ router.get('/:id/download', authenticateToken, requirePaidMember, async (req, re
         }
 
         // 檢查檔案是否存在
-        if (!fs.existsSync(exam.filePath)) {
-            return res.status(404).json({ error: '檔案不存在' });
+        if (!fs.existsSync(exam.questionFilePath)) {
+            return res.status(404).json({ error: '題目檔案不存在' });
         }
 
         // 更新下載次數
@@ -193,12 +254,46 @@ router.get('/:id/download', authenticateToken, requirePaidMember, async (req, re
 
         // 設定下載標頭
         res.setHeader('Content-Type', 'application/octet-stream');
-        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(exam.fileName)}"`);
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(exam.questionFileName)}"`);
 
         // 傳送檔案
-        res.sendFile(path.resolve(exam.filePath));
+        res.sendFile(path.resolve(exam.questionFilePath));
     } catch (error) {
-        console.error('下載考古題錯誤:', error);
+        console.error('下載考古題題目錯誤:', error);
+        res.status(500).json({ error: '下載失敗' });
+    }
+});
+
+// 下載考古題答案
+router.get('/:id/download/answer', authenticateToken, requirePaidMember, async (req, res) => {
+    try {
+        const exam = await Exam.findByPk(req.params.id);
+
+        if (!exam) {
+            return res.status(404).json({ error: '考古題不存在' });
+        }
+
+        if (!exam.answerFilePath) {
+            return res.status(404).json({ error: '此考古題沒有答案檔案' });
+        }
+
+        // 檢查檔案是否存在
+        if (!fs.existsSync(exam.answerFilePath)) {
+            return res.status(404).json({ error: '答案檔案不存在' });
+        }
+
+        // 更新下載次數
+        exam.downloadCount += 1;
+        await exam.save();
+
+        // 設定下載標頭
+        res.setHeader('Content-Type', 'application/octet-stream');
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(exam.answerFileName)}"`);
+
+        // 傳送檔案
+        res.sendFile(path.resolve(exam.answerFilePath));
+    } catch (error) {
+        console.error('下載考古題答案錯誤:', error);
         res.status(500).json({ error: '下載失敗' });
     }
 });
@@ -218,8 +313,11 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         }
 
         // 刪除檔案
-        if (fs.existsSync(exam.filePath)) {
-            fs.unlinkSync(exam.filePath);
+        if (fs.existsSync(exam.questionFilePath)) {
+            fs.unlinkSync(exam.questionFilePath);
+        }
+        if (exam.answerFilePath && fs.existsSync(exam.answerFilePath)) {
+            fs.unlinkSync(exam.answerFilePath);
         }
 
         // 刪除資料庫記錄

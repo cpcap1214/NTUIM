@@ -102,19 +102,36 @@ const Exam = sequelize.define('Exam', {
             max: 3
         }
     },
-    filePath: {
+    // 題目檔案（必要）
+    questionFilePath: {
         type: DataTypes.STRING(500),
         allowNull: false,
-        field: 'file_path'
+        field: 'question_file_path'
     },
-    fileName: {
+    questionFileName: {
         type: DataTypes.STRING(255),
         allowNull: false,
-        field: 'file_name'
+        field: 'question_file_name'
     },
-    fileSize: {
+    questionFileSize: {
         type: DataTypes.INTEGER,
-        field: 'file_size'
+        field: 'question_file_size'
+    },
+    // 答案檔案（可選）
+    answerFilePath: {
+        type: DataTypes.STRING(500),
+        allowNull: true,
+        field: 'answer_file_path'
+    },
+    answerFileName: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+        field: 'answer_file_name'
+    },
+    answerFileSize: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        field: 'answer_file_size'
     },
     uploadedBy: {
         type: DataTypes.INTEGER,

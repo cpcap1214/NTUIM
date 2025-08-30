@@ -99,7 +99,8 @@ const AdminPage = () => {
     semester: '1',
     examType: 'midterm',
     examAttempt: 1,
-    file: null,
+    questionFile: null,
+    answerFile: null,
   });
 
   // 大抄表單狀態
@@ -365,7 +366,7 @@ const AdminPage = () => {
     }));
   };
 
-  const handleFileSelect = (file) => {
+  const handleFileSelect = (file, fileType = 'question') => {
     if (!file) return;
 
     if (file.type !== 'application/pdf') {
@@ -379,7 +380,11 @@ const AdminPage = () => {
     }
 
     if (activeTab === 1) {
-      handleExamChange('file', file);
+      if (fileType === 'question') {
+        handleExamChange('questionFile', file);
+      } else if (fileType === 'answer') {
+        handleExamChange('answerFile', file);
+      }
     } else if (activeTab === 2) {
       handleCheatSheetChange('file', file);
     }
@@ -392,7 +397,7 @@ const AdminPage = () => {
     if (!examForm.courseName) newErrors.courseName = '請輸入課程名稱';
     if (!examForm.professor) newErrors.professor = '請輸入教授姓名';
     if (!examForm.year) newErrors.year = '請選擇年份';
-    if (!examForm.file) newErrors.file = '請選擇要上傳的 PDF 檔案';
+    if (!examForm.questionFile) newErrors.questionFile = '請選擇要上傳的題目 PDF 檔案';
 
     setUploadErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -419,7 +424,10 @@ const AdminPage = () => {
     setUploadProgress(0);
 
     const formData = new FormData();
-    formData.append('file', examForm.file);
+    formData.append('questionFile', examForm.questionFile);
+    if (examForm.answerFile) {
+      formData.append('answerFile', examForm.answerFile);
+    }
     formData.append('courseCode', examForm.courseCode);
     formData.append('courseName', examForm.courseName);
     formData.append('professor', examForm.professor);
@@ -451,7 +459,8 @@ const AdminPage = () => {
         semester: '1',
         examType: 'midterm',
         examAttempt: 1,
-        file: null,
+        questionFile: null,
+        answerFile: null,
       });
       
       setUploadProgress(100);
@@ -543,14 +552,14 @@ const AdminPage = () => {
     }
   };
 
-  const handleExamPreview = (examId) => {
+  const handleExamPreview = (examId, fileType = 'question') => {
     const token = localStorage.getItem('token');
-    window.open(`${API_BASE_URL}/exams/${examId}/preview?token=${token}`, '_blank');
+    window.open(`${API_BASE_URL}/exams/${examId}/preview/${fileType}?token=${token}`, '_blank');
   };
 
-  const handleExamDownload = async (examId, filename) => {
+  const handleExamDownload = async (examId, filename, fileType = 'question') => {
     try {
-      const response = await fetch(`${API_BASE_URL}/exams/${examId}/download`, {
+      const response = await fetch(`${API_BASE_URL}/exams/${examId}/download/${fileType}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -968,35 +977,74 @@ const AdminPage = () => {
                 inputProps={{ min: 1, max: 10 }}
               />
             </Grid>
-            <Grid item xs={12}>
+            {/* 題目檔案上傳 */}
+            <Grid item xs={12} md={6}>
+              <Typography variant="h6" gutterBottom>
+                題目檔案 <span style={{ color: 'red' }}>*</span>
+              </Typography>
               <Box sx={{ border: '1px dashed #ccc', p: 2, textAlign: 'center' }}>
                 <input
                   accept="application/pdf"
                   style={{ display: 'none' }}
-                  id="exam-file-upload"
+                  id="exam-question-file-upload"
                   type="file"
-                  onChange={(e) => handleFileSelect(e.target.files[0])}
+                  onChange={(e) => handleFileSelect(e.target.files[0], 'question')}
                 />
-                <label htmlFor="exam-file-upload">
+                <label htmlFor="exam-question-file-upload">
                   <Button
                     variant="outlined"
                     component="span"
                     startIcon={<CloudUploadIcon />}
                     sx={{ mb: 1 }}
                   >
-                    選擇 PDF 檔案
+                    選擇題目 PDF
                   </Button>
                 </label>
-                {examForm.file && (
+                {examForm.questionFile && (
                   <Typography variant="body2" color="success.main">
-                    已選擇：{examForm.file.name}
+                    已選擇：{examForm.questionFile.name}
                   </Typography>
                 )}
-                {uploadErrors.file && (
+                {uploadErrors.questionFile && (
                   <Typography variant="body2" color="error">
-                    {uploadErrors.file}
+                    {uploadErrors.questionFile}
                   </Typography>
                 )}
+              </Box>
+            </Grid>
+
+            {/* 答案檔案上傳 */}
+            <Grid item xs={12} md={6}>
+              <Typography variant="h6" gutterBottom>
+                答案檔案 <span style={{ color: 'gray' }}>(可選)</span>
+              </Typography>
+              <Box sx={{ border: '1px dashed #ccc', p: 2, textAlign: 'center' }}>
+                <input
+                  accept="application/pdf"
+                  style={{ display: 'none' }}
+                  id="exam-answer-file-upload"
+                  type="file"
+                  onChange={(e) => handleFileSelect(e.target.files[0], 'answer')}
+                />
+                <label htmlFor="exam-answer-file-upload">
+                  <Button
+                    variant="outlined"
+                    component="span"
+                    startIcon={<CloudUploadIcon />}
+                    sx={{ mb: 1 }}
+                    color="secondary"
+                  >
+                    選擇答案 PDF
+                  </Button>
+                </label>
+                {examForm.answerFile && (
+                  <Typography variant="body2" color="success.main">
+                    已選擇：{examForm.answerFile.name}
+                  </Typography>
+                )}
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+                  不是每個考古題都有答案，可以不上傳
+                </Typography>
               </Box>
             </Grid>
           </Grid>
@@ -1254,16 +1302,31 @@ const AdminPage = () => {
                         </Box>
                       </TableCell>
                       <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <PictureAsPdfIcon sx={{ fontSize: 16, color: 'error.main' }} />
-                          <Box>
-                            <Typography variant="caption" display="block">
-                              {exam.fileName}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {(exam.fileSize / 1024 / 1024).toFixed(2)} MB
-                            </Typography>
+                        <Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                            <PictureAsPdfIcon sx={{ fontSize: 16, color: 'error.main' }} />
+                            <Box>
+                              <Typography variant="caption" display="block" sx={{ fontWeight: 500 }}>
+                                題目: {exam.questionFileName}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {(exam.questionFileSize / 1024 / 1024).toFixed(2)} MB
+                              </Typography>
+                            </Box>
                           </Box>
+                          {exam.answerFileName && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <PictureAsPdfIcon sx={{ fontSize: 16, color: 'success.main' }} />
+                              <Box>
+                                <Typography variant="caption" display="block" sx={{ fontWeight: 500 }}>
+                                  答案: {exam.answerFileName}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {(exam.answerFileSize / 1024 / 1024).toFixed(2)} MB
+                                </Typography>
+                              </Box>
+                            </Box>
+                          )}
                         </Box>
                       </TableCell>
                       <TableCell>{exam.uploader?.fullName || '未知'}</TableCell>
@@ -1272,24 +1335,53 @@ const AdminPage = () => {
                       </TableCell>
                       <TableCell align="right">{exam.downloadCount || 0}</TableCell>
                       <TableCell align="center">
-                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                          <Tooltip title="預覽">
-                            <IconButton 
-                              size="small" 
-                              onClick={() => handleExamPreview(exam.id)}
-                            >
-                              <ViewIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="下載">
-                            <IconButton 
-                              size="small" 
-                              color="primary"
-                              onClick={() => handleExamDownload(exam.id, exam.fileName)}
-                            >
-                              <DownloadIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center' }}>
+                          {/* 題目操作 */}
+                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                            <Tooltip title="預覽題目">
+                              <IconButton 
+                                size="small" 
+                                onClick={() => handleExamPreview(exam.id, 'question')}
+                              >
+                                <ViewIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="下載題目">
+                              <IconButton 
+                                size="small" 
+                                color="primary"
+                                onClick={() => handleExamDownload(exam.id, exam.questionFileName, 'question')}
+                              >
+                                <DownloadIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                          
+                          {/* 答案操作（如果有答案） */}
+                          {exam.answerFileName && (
+                            <Box sx={{ display: 'flex', gap: 0.5 }}>
+                              <Tooltip title="預覽答案">
+                                <IconButton 
+                                  size="small" 
+                                  color="success"
+                                  onClick={() => handleExamPreview(exam.id, 'answer')}
+                                >
+                                  <ViewIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="下載答案">
+                                <IconButton 
+                                  size="small" 
+                                  color="success"
+                                  onClick={() => handleExamDownload(exam.id, exam.answerFileName, 'answer')}
+                                >
+                                  <DownloadIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </Box>
+                          )}
+                          
+                          {/* 刪除操作 */}
                           <Tooltip title="刪除">
                             <IconButton 
                               size="small" 
