@@ -248,7 +248,7 @@ export const staffMembers = [
     id: 4,
     name: '鍾心哲',
     position: '資訊部長',
-    avatar: '/images/members/test.png',
+    avatar: '/images/members/justin.jpg',
   },
   {
     id: 5,
@@ -272,6 +272,6 @@ export const staffMembers = [
     id: 8,
     name: '陳允直',
     position: '文宣部長',
-    avatar: '/images/members/test.png',
+    avatar: '/images/members/notStraight.jpg',
   },
 ];
