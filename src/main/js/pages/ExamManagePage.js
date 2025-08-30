@@ -32,6 +32,7 @@ import {
   PictureAsPdf as PdfIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL, UPLOAD_BASE_URL } from '../services/api';
 
 const ExamManagePage = () => {
   const { user } = useAuth();
@@ -51,7 +52,7 @@ const ExamManagePage = () => {
   const fetchExams = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5001/api/exams');
+      const response = await fetch(`${API_BASE_URL}/exams`);
       
       if (!response.ok) {
         throw new Error('獲取考古題失敗');
@@ -76,7 +77,7 @@ const ExamManagePage = () => {
     if (!examToDelete) return;
 
     try {
-      const response = await fetch(`http://localhost:5001/api/exams/${examToDelete.id}`, {
+      const response = await fetch(`${API_BASE_URL}/exams/${examToDelete.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -114,12 +115,12 @@ const ExamManagePage = () => {
   };
 
   const handlePreview = (examId) => {
-    window.open(`http://localhost:5001/uploads/exams/${examId}/preview`, '_blank');
+    window.open(`${UPLOAD_BASE_URL}/uploads/exams/${examId}/preview`, '_blank');
   };
 
   const handleDownload = async (examId, filename) => {
     try {
-      const response = await fetch(`http://localhost:5001/api/exams/${examId}/download`, {
+      const response = await fetch(`${API_BASE_URL}/exams/${examId}/download`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

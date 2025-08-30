@@ -32,6 +32,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import PaymentWall from '../components/PaymentWall';
+import { API_BASE_URL, UPLOAD_BASE_URL } from '../services/api';
 
 const CheatSheetPage = () => {
   const { user, hasPaidFee } = useAuth();
@@ -51,7 +52,7 @@ const CheatSheetPage = () => {
   const fetchCheatSheets = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5001/api/cheat-sheets');
+      const response = await fetch(`${API_BASE_URL}/cheat-sheets`);
       
       if (!response.ok) {
         throw new Error('獲取大抄失敗');
@@ -100,7 +101,7 @@ const CheatSheetPage = () => {
     }
     
     try {
-      const response = await fetch(`http://localhost:5001/api/cheat-sheets/${cheatSheetId}/download`, {
+      const response = await fetch(`${API_BASE_URL}/cheat-sheets/${cheatSheetId}/download`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -131,7 +132,7 @@ const CheatSheetPage = () => {
       return;
     }
     // 在新視窗中開啟預覽
-    window.open(`http://localhost:5001/uploads/cheat_sheets/${cheatSheetId}/preview`, '_blank');
+    window.open(`${UPLOAD_BASE_URL}/uploads/cheat_sheets/${cheatSheetId}/preview`, '_blank');
   };
 
   const getTagColor = (tag) => {

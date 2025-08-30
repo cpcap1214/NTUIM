@@ -35,6 +35,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL } from '../services/api';
 
 const AdminUploadPage = () => {
   const navigate = useNavigate();
@@ -195,7 +196,7 @@ const AdminUploadPage = () => {
     formData.append('examAttempt', examForm.examAttempt);
 
     try {
-      const response = await fetch('http://localhost:5001/api/exams/upload', {
+      const response = await fetch(`${API_BASE_URL}/exams/upload`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -247,7 +248,7 @@ const AdminUploadPage = () => {
     formData.append('tags', JSON.stringify(cheatSheetForm.tags));
 
     try {
-      const response = await fetch('http://localhost:5001/api/cheat-sheets/upload', {
+      const response = await fetch(`${API_BASE_URL}/cheat-sheets/upload`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,

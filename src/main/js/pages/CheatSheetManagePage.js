@@ -35,6 +35,7 @@ import {
   Tag as TagIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL, UPLOAD_BASE_URL } from '../services/api';
 
 const CheatSheetManagePage = () => {
   const { user } = useAuth();
@@ -54,7 +55,7 @@ const CheatSheetManagePage = () => {
   const fetchCheatSheets = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5001/api/cheat-sheets');
+      const response = await fetch(`${API_BASE_URL}/cheat-sheets`);
       
       if (!response.ok) {
         throw new Error('獲取大抄失敗');
@@ -79,7 +80,7 @@ const CheatSheetManagePage = () => {
     if (!cheatSheetToDelete) return;
 
     try {
-      const response = await fetch(`http://localhost:5001/api/cheat-sheets/${cheatSheetToDelete.id}`, {
+      const response = await fetch(`${API_BASE_URL}/cheat-sheets/${cheatSheetToDelete.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -117,12 +118,12 @@ const CheatSheetManagePage = () => {
   };
 
   const handlePreview = (cheatSheetId) => {
-    window.open(`http://localhost:5001/uploads/cheat_sheets/${cheatSheetId}/preview`, '_blank');
+    window.open(`${UPLOAD_BASE_URL}/uploads/cheat_sheets/${cheatSheetId}/preview`, '_blank');
   };
 
   const handleDownload = async (cheatSheetId, filename) => {
     try {
-      const response = await fetch(`http://localhost:5001/api/cheat-sheets/${cheatSheetId}/download`, {
+      const response = await fetch(`${API_BASE_URL}/cheat-sheets/${cheatSheetId}/download`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

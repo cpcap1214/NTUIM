@@ -19,6 +19,7 @@ import {
 } from '@mui/icons-material';
 import { announcements } from '../../resources/data/mockData';
 import { APP_CONFIG } from '../../resources/config/constants';
+import { API_BASE_URL } from '../services/api';
 
 const iconMap = {
   rate_review: ReviewIcon,
@@ -58,8 +59,8 @@ const HomePage = () => {
       
       // 並行獲取三種資源的數量
       const [examResponse, cheatSheetResponse] = await Promise.all([
-        fetch('http://localhost:5001/api/exams'),
-        fetch('http://localhost:5001/api/cheat-sheets')
+        fetch(`${API_BASE_URL}/exams`),
+        fetch(`${API_BASE_URL}/cheat-sheets`)
       ]);
 
       const examResult = await examResponse.json();
