@@ -75,9 +75,13 @@ const AdminPage = () => {
 
   const fetchUsers = async () => {
     try {
+      const token = localStorage.getItem('token');
+      console.log('AdminPage - fetchUsers token:', token ? '存在' : '不存在');
+      console.log('AdminPage - API URL:', `${API_BASE_URL}/admin/users`);
+      
       const response = await fetch(`${API_BASE_URL}/admin/users`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
       
@@ -126,7 +130,7 @@ const AdminPage = () => {
         throw new Error('更新失敗');
       }
 
-      const result = await response.json();
+      await response.json();
       
       setSuccess('用戶資料已更新');
       setEditingId(null);
