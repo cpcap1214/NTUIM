@@ -28,6 +28,7 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
 const AdminPage = () => {
@@ -74,7 +75,7 @@ const AdminPage = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('http://localhost:5001/api/admin/users', {
+      const response = await fetch(`${API_BASE_URL}/admin/users`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -112,7 +113,7 @@ const AdminPage = () => {
 
   const handleSave = async (userId) => {
     try {
-      const response = await fetch(`http://localhost:5001/api/admin/users/${userId}`, {
+      const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -155,7 +156,7 @@ const AdminPage = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:5001/api/admin/users/${selectedUserId}/password`, {
+      const response = await fetch(`${API_BASE_URL}/admin/users/${selectedUserId}/password`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
