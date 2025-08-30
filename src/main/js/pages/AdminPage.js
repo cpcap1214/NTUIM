@@ -40,6 +40,7 @@ import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
+import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../services/api';
 import { useNavigate } from 'react-router-dom';
@@ -58,6 +59,8 @@ const AdminPage = () => {
   const [newPasswordDialog, setNewPasswordDialog] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [selectedUserId, setSelectedUserId] = useState(null);
+  const [deleteUserDialog, setDeleteUserDialog] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
 
   // 上傳相關狀態
   const [uploading, setUploading] = useState(false);
@@ -222,6 +225,30 @@ const AdminPage = () => {
       setNewPasswordDialog(false);
       setNewPassword('');
       setSelectedUserId(null);
+      fetchUsers();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/users/${userToDelete.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('刪除用戶失敗');
+      }
+
+      setSuccess(`用戶 ${userToDelete.username} 已刪除`);
+      setDeleteUserDialog(false);
+      setUserToDelete(null);
       fetchUsers();
     } catch (err) {
       setError(err.message);
@@ -590,9 +617,29 @@ const AdminPage = () => {
                         </IconButton>
                       </>
                     ) : (
-                      <IconButton onClick={() => handleEdit(user)}>
-                        <EditIcon />
-                      </IconButton>
+                      <>
+                        <IconButton onClick={() => handleEdit(user)} title="編輯">
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton 
+                          onClick={() => openPasswordDialog(user.id)}
+                          color="info"
+                          title="更改密碼"
+                        >
+                          <VisibilityIcon />
+                        </IconButton>
+                        <IconButton 
+                          onClick={() => {
+                            setUserToDelete(user);
+                            setDeleteUserDialog(true);
+                          }}
+                          color="error"
+                          title="刪除用戶"
+                          disabled={user.username === 'cpcap'}
+                        >
+                          <PersonRemoveIcon />
+                        </IconButton>
+                      </>
                     )}
                   </TableCell>
                 </TableRow>
@@ -934,6 +981,30 @@ const AdminPage = () => {
           </Button>
           <Button onClick={handlePasswordChange} variant="contained">
             確認更改
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 刪除用戶對話框 */}
+      <Dialog open={deleteUserDialog} onClose={() => setDeleteUserDialog(false)}>
+        <DialogTitle>確認刪除用戶</DialogTitle>
+        <DialogContent>
+          <Typography>
+            確定要刪除用戶「{userToDelete?.username}」嗎？
+          </Typography>
+          <Typography variant="body2" color="warning.main" sx={{ mt: 2 }}>
+            此操作無法復原，用戶的所有資料將被永久刪除。
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setDeleteUserDialog(false);
+            setUserToDelete(null);
+          }}>
+            取消
+          </Button>
+          <Button onClick={handleDeleteUser} color="error" variant="contained">
+            確認刪除
           </Button>
         </DialogActions>
       </Dialog>

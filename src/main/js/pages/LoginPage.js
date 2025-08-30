@@ -105,20 +105,6 @@ const LoginPage = () => {
                         </Box>
                     </form>
 
-                    <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
-                        <Typography variant="body2" color="textSecondary">
-                            測試帳號：
-                        </Typography>
-                        <Typography variant="caption" component="div">
-                            管理員：admin / admin123
-                        </Typography>
-                        <Typography variant="caption" component="div">
-                            會員：test_user / test123
-                        </Typography>
-                        <Typography variant="caption" component="div">
-                            訪客：guest / guest123
-                        </Typography>
-                    </Box>
                 </Paper>
             </Box>
         </Container>
