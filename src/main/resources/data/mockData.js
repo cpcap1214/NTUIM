@@ -230,7 +230,7 @@ export const staffMembers = [
     id: 1,
     name: '游輝毅',
     position: '會長',
-    avatar: '/images/members/test.png',
+    avatar: '/images/members/joe.jpg',
   },
   {
     id: 2,
@@ -242,7 +242,7 @@ export const staffMembers = [
     id: 3,
     name: '周建凱',
     position: '學術部長',
-    avatar: '/images/members/test.png',
+    avatar: '/images/members/chou.jpg',
   },
   {
     id: 4,
@@ -260,7 +260,7 @@ export const staffMembers = [
     id: 6,
     name: '林采穎',
     position: '庶務部長',
-    avatar: '/images/members/test.png',
+    avatar: '/images/members/lin.jpg',
   },
   {
     id: 7,
