@@ -30,6 +30,7 @@ import {
   Logout as LogoutIcon,
   AdminPanelSettings as AdminIcon,
   CloudUpload as UploadIcon,
+  School as SchoolIcon,
 } from '@mui/icons-material';
 import NavigationTabs from './NavigationTabs';
 import { APP_CONFIG, NAVIGATION_ITEMS } from '../../../resources/config/constants';
