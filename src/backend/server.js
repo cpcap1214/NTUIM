@@ -20,16 +20,8 @@ const { errorHandler } = require('./middleware/errorHandler');
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// 中間件設定
-// 最寬鬆的 CORS 設定 - 允許任何來源
-const corsOptions = {
-    origin: '*',  // 允許所有來源
-    credentials: false,  // 關閉 credentials 以相容 origin: '*'
-    methods: '*',  // 允許所有方法
-    allowedHeaders: '*'  // 允許所有標頭
-};
-
-app.use(cors(corsOptions));
+// 中間件設定 - 最簡單的 CORS，允許一切
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
