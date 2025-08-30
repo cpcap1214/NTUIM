@@ -21,11 +21,12 @@ const app = express();
 const PORT = process.env.PORT || 5001;
 
 // 中間件設定
+// 最寬鬆的 CORS 設定 - 允許任何來源
 const corsOptions = {
-    origin: true, // 允許所有來源
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    origin: '*',  // 允許所有來源
+    credentials: false,  // 關閉 credentials 以相容 origin: '*'
+    methods: '*',  // 允許所有方法
+    allowedHeaders: '*'  // 允許所有標頭
 };
 
 app.use(cors(corsOptions));
