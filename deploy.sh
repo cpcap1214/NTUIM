@@ -17,9 +17,13 @@ fi
 echo "📦 安裝前端依賴..."
 npm install
 
+# 複製生產環境設定
+echo "⚙️ 設定前端生產環境變數..."
+cp .env.production .env.local
+
 # 建置前端
 echo "🔨 建置前端..."
-npm run build
+npm run build:production
 
 # 進入後端目錄
 cd src/backend
