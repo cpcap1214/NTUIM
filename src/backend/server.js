@@ -10,6 +10,7 @@ const userRoutes = require('./routes/users');
 const examRoutes = require('./routes/exams');
 const cheatSheetRoutes = require('./routes/cheatSheets');
 const courseReviewRoutes = require('./routes/courseReviews');
+const adminRoutes = require('./routes/admin');
 
 // 引入中間件
 const { authenticateToken } = require('./middleware/auth');
@@ -17,12 +18,14 @@ const { errorHandler } = require('./middleware/errorHandler');
 
 // 初始化 Express
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 // 中間件設定
 app.use(cors({
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -50,6 +53,7 @@ app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/exams', examRoutes);
 app.use('/api/cheat-sheets', cheatSheetRoutes);
 app.use('/api/course-reviews', courseReviewRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 健康檢查端點
 app.get('/api/health', (req, res) => {

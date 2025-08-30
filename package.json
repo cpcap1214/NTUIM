@@ -4,16 +4,17 @@
   "description": "國立台灣大學資訊管理學系學會官方網站",
   "private": true,
   "dependencies": {
-    "@mui/material": "^5.15.15",
-    "@mui/icons-material": "^5.15.15",
     "@emotion/react": "^11.11.4",
     "@emotion/styled": "^11.11.0",
+    "@mui/icons-material": "^5.15.15",
+    "@mui/material": "^5.15.15",
+    "axios": "^1.6.8",
+    "bcryptjs": "^3.0.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-hook-form": "^7.51.2",
     "react-router-dom": "^6.22.3",
-    "react-scripts": "5.0.1",
-    "axios": "^1.6.8",
-    "react-hook-form": "^7.51.2"
+    "react-scripts": "5.0.1"
   },
   "scripts": {
     "start": "react-scripts start",

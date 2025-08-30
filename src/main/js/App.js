@@ -11,6 +11,7 @@ import CheatSheetPage from './pages/CheatSheetPage';
 import AboutUsPage from './pages/AboutUsPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import AdminPage from './pages/AdminPage';
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
               <Route path="/exam-archive" element={<ExamArchivePage />} />
               <Route path="/cheat-sheets" element={<CheatSheetPage />} />
               <Route path="/about" element={<AboutUsPage />} />
+              <Route path="/admin" element={<AdminPage />} />
             </Routes>
           </Layout>
         </Box>
