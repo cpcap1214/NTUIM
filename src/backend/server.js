@@ -21,12 +21,29 @@ const app = express();
 const PORT = process.env.PORT || 5001;
 
 // 中間件設定
-app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+const corsOptions = {
+    origin: function (origin, callback) {
+        const allowedOrigins = [
+            'http://localhost:3000',
+            'https://ntu.im',
+            process.env.FRONTEND_URL || 'http://localhost:3000'
+        ];
+        
+        // 允許沒有 origin 的請求（例如 mobile apps）
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        } else {
+            return callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
-}));
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
