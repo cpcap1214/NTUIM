@@ -14,11 +14,9 @@ import {
 } from '@mui/material';
 import {
   Lock as LockIcon,
-  CheckCircle as CheckIcon,
-  School as SchoolIcon,
-  Description as DescriptionIcon,
-  CloudDownload as DownloadIcon,
-  Star as StarIcon,
+  LocalFireDepartment as FireIcon,
+  MenuBook as BookIcon,
+  Web as WebIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -28,11 +26,9 @@ const PaymentWall = ({ feature = '此功能' }) => {
   const { user } = useAuth();
 
   const benefits = [
-    { icon: <DescriptionIcon />, text: '無限制瀏覽及下載考古題' },
-    { icon: <SchoolIcon />, text: '存取所有課程評價與心得' },
-    { icon: <DownloadIcon />, text: '下載大抄及學習資源' },
-    { icon: <StarIcon />, text: '優先參與系學會活動' },
-    { icon: <CheckIcon />, text: '支持系學會持續運作' },
+    { icon: <FireIcon sx={{ color: '#ff6b35' }} />, text: '參加系上活動有打折（比如真的超級好玩的系烤）' },
+    { icon: <BookIcon sx={{ color: '#4a90e2' }} />, text: '學術部考古題網站的權限（卷哥卷姐必備）' },
+    { icon: <WebIcon sx={{ color: '#5cb85c' }} />, text: '系學會網站的完整功能' },
   ];
 
   const handleLogin = () => {
@@ -85,17 +81,20 @@ const PaymentWall = ({ feature = '此功能' }) => {
           {/* Benefits Section */}
           <Box sx={{ mb: 4 }}>
             <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
-              繳交系學會費即可享有：
+              繳系學會費可擁有的特權
             </Typography>
-            <List sx={{ maxWidth: 400, mx: 'auto', textAlign: 'left' }}>
+            <List sx={{ maxWidth: 600, mx: 'auto', textAlign: 'left' }}>
               {benefits.map((benefit, index) => (
-                <ListItem key={index} sx={{ py: 0.5 }}>
-                  <ListItemIcon sx={{ minWidth: 40, color: 'success.main' }}>
+                <ListItem key={index} sx={{ py: 1, px: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 50 }}>
                     {benefit.icon}
                   </ListItemIcon>
                   <ListItemText 
-                    primary={benefit.text}
-                    primaryTypographyProps={{ variant: 'body2' }}
+                    primary={
+                      <Typography variant="body1" sx={{ fontWeight: 500, lineHeight: 1.5 }}>
+                        📌{benefit.text}
+                      </Typography>
+                    }
                   />
                 </ListItem>
               ))}
