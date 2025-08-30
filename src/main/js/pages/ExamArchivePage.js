@@ -34,7 +34,6 @@ import {
   Person as PersonIcon,
   DateRange as DateIcon,
 } from '@mui/icons-material';
-import { examFiles } from '../../resources/data/mockData';
 import { useAuth } from '../contexts/AuthContext';
 import PaymentWall from '../components/PaymentWall';
 
@@ -44,36 +43,86 @@ const ExamArchivePage = () => {
   const [examTypeFilter, setExamTypeFilter] = useState('all');
   const [yearFilter, setYearFilter] = useState('all');
   const [viewMode, setViewMode] = useState('card'); // 'card' or 'table'
+  const [exams, setExams] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const filteredExams = examFiles
+  // 從 API 獲取考古題資料
+  useEffect(() => {
+    fetchExams();
+  }, []);
+
+  const fetchExams = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:5001/api/exams');
+      
+      if (!response.ok) {
+        throw new Error('獲取考古題失敗');
+      }
+      
+      const result = await response.json();
+      setExams(result.data || []);
+    } catch (err) {
+      console.error('獲取考古題錯誤:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredExams = exams
     .filter(exam => {
       const matchesSearch = exam.courseName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           exam.professor.toLowerCase().includes(searchTerm.toLowerCase());
+                           (exam.professor && exam.professor.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchesType = examTypeFilter === 'all' || exam.examType === examTypeFilter;
-      const matchesYear = yearFilter === 'all' || exam.year === yearFilter;
+      const matchesYear = yearFilter === 'all' || exam.year === parseInt(yearFilter);
       return matchesSearch && matchesType && matchesYear;
     })
-    .sort((a, b) => new Date(b.uploadDate) - new Date(a.uploadDate));
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-  const availableYears = [...new Set(examFiles.map(exam => exam.year))].sort((a, b) => b - a);
-  const examTypes = [...new Set(examFiles.map(exam => exam.examType))];
+  const availableYears = [...new Set(exams.map(exam => exam.year))].sort((a, b) => b - a);
+  const examTypes = [...new Set(exams.map(exam => exam.examType))];
 
-  const handleDownload = (fileUrl, filename) => {
+  const handleDownload = async (examId, filename) => {
     if (!hasPaidFee) {
       alert('請先繳交系學會費才能下載考古題');
       return;
     }
-    // 模擬下載功能
-    console.log(`Downloading: ${filename} from ${fileUrl}`);
+    
+    try {
+      const response = await fetch(`http://localhost:5001/api/exams/${examId}/download`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('下載失敗');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('下載錯誤:', error);
+      alert('下載失敗，請稍後再試');
+    }
   };
 
-  const handlePreview = (fileUrl) => {
+  const handlePreview = (examId) => {
     if (!hasPaidFee) {
       alert('請先繳交系學會費才能預覽考古題');
       return;
     }
-    // 模擬預覽功能
-    console.log(`Previewing: ${fileUrl}`);
+    // 在新視窗中開啟預覽
+    window.open(`http://localhost:5001/uploads/exams/${examId}/preview`, '_blank');
   };
 
   // 如果沒有繳費，顯示付費牆
@@ -168,7 +217,7 @@ const ExamArchivePage = () => {
             <Grid item xs={12} sm={4}>
               <Paper sx={{ p: 2, textAlign: 'center' }}>
                 <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                  {examFiles.length}
+                  {loading ? '...' : exams.length}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   份考古題
@@ -178,7 +227,7 @@ const ExamArchivePage = () => {
             <Grid item xs={12} sm={4}>
               <Paper sx={{ p: 2, textAlign: 'center' }}>
                 <Typography variant="h4" sx={{ fontWeight: 700, color: 'success.main' }}>
-                  {examFiles.reduce((sum, exam) => sum + exam.downloads, 0)}
+                  {loading ? '...' : exams.reduce((sum, exam) => sum + (exam.downloadCount || 0), 0)}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   總下載次數
@@ -188,7 +237,7 @@ const ExamArchivePage = () => {
             <Grid item xs={12} sm={4}>
               <Paper sx={{ p: 2, textAlign: 'center' }}>
                 <Typography variant="h4" sx={{ fontWeight: 700, color: 'info.main' }}>
-                  {availableYears.length}
+                  {loading ? '...' : availableYears.length}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   個學年度
@@ -197,6 +246,22 @@ const ExamArchivePage = () => {
             </Grid>
           </Grid>
         </Box>
+
+        {/* 錯誤提示 */}
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        )}
+
+        {/* 載入中 */}
+        {loading && (
+          <Box sx={{ textAlign: 'center', py: 8 }}>
+            <Typography variant="h6" color="text.secondary">
+              載入考古題中...
+            </Typography>
+          </Box>
+        )}
 
         {/* Content Display */}
         {viewMode === 'card' ? (
@@ -248,13 +313,13 @@ const ExamArchivePage = () => {
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
                         <DateIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
                         <Typography variant="body2" color="text.secondary">
-                          上傳日期: {exam.uploadDate}
+                          上傳日期: {exam.created_at ? new Date(exam.created_at).toLocaleDateString('zh-TW') : '未知'}
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
                         <DownloadIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
                         <Typography variant="body2" color="text.secondary">
-                          下載次數: {exam.downloads}
+                          下載次數: {exam.downloadCount || 0}
                         </Typography>
                       </Box>
                     </Box>
@@ -265,7 +330,7 @@ const ExamArchivePage = () => {
                         variant="outlined" 
                         size="small" 
                         startIcon={<ViewIcon />}
-                        onClick={() => handlePreview(exam.fileUrl)}
+                        onClick={() => handlePreview(exam.id)}
                         sx={{ flex: 1 }}
                       >
                         預覽
@@ -274,7 +339,7 @@ const ExamArchivePage = () => {
                         variant="contained" 
                         size="small" 
                         startIcon={<GetAppIcon />}
-                        onClick={() => handleDownload(exam.fileUrl, `${exam.courseName}_${exam.examType}_${exam.year}-${exam.semester}.pdf`)}
+                        onClick={() => handleDownload(exam.id, exam.fileName || `${exam.courseName}_${exam.examType}_${exam.year}-${exam.semester}.pdf`)}
                         sx={{ flex: 1 }}
                       >
                         下載
@@ -316,14 +381,14 @@ const ExamArchivePage = () => {
                       <Chip label={exam.examType} color="primary" size="small" />
                     </TableCell>
                     <TableCell>{exam.year}-{exam.semester}</TableCell>
-                    <TableCell>{exam.uploadDate}</TableCell>
-                    <TableCell align="right">{exam.downloads}</TableCell>
+                    <TableCell>{exam.created_at ? new Date(exam.created_at).toLocaleDateString('zh-TW') : '未知'}</TableCell>
+                    <TableCell align="right">{exam.downloadCount || 0}</TableCell>
                     <TableCell align="center">
                       <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
                         <Tooltip title="預覽">
                           <IconButton 
                             size="small" 
-                            onClick={() => handlePreview(exam.fileUrl)}
+                            onClick={() => handlePreview(exam.id)}
                           >
                             <ViewIcon fontSize="small" />
                           </IconButton>
@@ -332,7 +397,7 @@ const ExamArchivePage = () => {
                           <IconButton 
                             size="small" 
                             color="primary"
-                            onClick={() => handleDownload(exam.fileUrl, `${exam.courseName}_${exam.examType}_${exam.year}-${exam.semester}.pdf`)}
+                            onClick={() => handleDownload(exam.id, exam.fileName || `${exam.courseName}_${exam.examType}_${exam.year}-${exam.semester}.pdf`)}
                           >
                             <GetAppIcon fontSize="small" />
                           </IconButton>
@@ -347,14 +412,14 @@ const ExamArchivePage = () => {
         )}
 
         {/* No Results */}
-        {filteredExams.length === 0 && (
+        {!loading && filteredExams.length === 0 && (
           <Box sx={{ textAlign: 'center', py: 8 }}>
             <SchoolIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
             <Typography variant="h6" color="text.secondary" gutterBottom>
-              沒有找到符合條件的考古題
+              {exams.length === 0 ? '目前沒有考古題' : '沒有找到符合條件的考古題'}
             </Typography>
             <Typography variant="body2" color="text.disabled">
-              請嘗試調整搜尋條件或篩選器
+              {exams.length === 0 ? '請聯繫管理員上傳考古題' : '請嘗試調整搜尋條件或篩選器'}
             </Typography>
           </Box>
         )}

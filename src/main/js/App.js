@@ -12,6 +12,7 @@ import AboutUsPage from './pages/AboutUsPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import AdminPage from './pages/AdminPage';
+import AdminUploadPage from './pages/AdminUploadPage';
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
               <Route path="/cheat-sheets" element={<CheatSheetPage />} />
               <Route path="/about" element={<AboutUsPage />} />
               <Route path="/admin" element={<AdminPage />} />
+              <Route path="/admin/upload" element={<AdminUploadPage />} />
             </Routes>
           </Layout>
         </Box>

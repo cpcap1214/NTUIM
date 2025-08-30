@@ -28,6 +28,8 @@ import {
   Info as InfoIcon,
   Login as LoginIcon,
   Logout as LogoutIcon,
+  AdminPanelSettings as AdminIcon,
+  CloudUpload as UploadIcon,
 } from '@mui/icons-material';
 import NavigationTabs from './NavigationTabs';
 import { APP_CONFIG, NAVIGATION_ITEMS } from '../../../resources/config/constants';
@@ -48,7 +50,23 @@ const Header = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated, isAdmin } = useAuth();
+
+  // 管理員導航項目
+  const adminNavItems = [
+    {
+      id: 'admin-panel',
+      label: '用戶管理',
+      path: '/admin',
+      icon: AdminIcon,
+    },
+    {
+      id: 'admin-upload',
+      label: '上傳資源',
+      path: '/admin/upload',
+      icon: UploadIcon,
+    },
+  ];
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -121,6 +139,55 @@ const Header = () => {
             </ListItem>
           );
         })}
+        
+        {/* 管理員選項 */}
+        {isAdmin && (
+          <>
+            <Box sx={{ my: 1, mx: 2 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                管理員功能
+              </Typography>
+            </Box>
+            {adminNavItems.map((item) => {
+              const IconComponent = item.icon;
+              const isActive = location.pathname === item.path;
+              
+              return (
+                <ListItem key={item.id} disablePadding>
+                  <ListItemButton
+                    onClick={() => handleMobileNavigation(item.path)}
+                    selected={isActive}
+                    sx={{
+                      mx: 1,
+                      borderRadius: 1,
+                      backgroundColor: isActive ? 'secondary.light' : 'transparent',
+                      '&.Mui-selected': {
+                        backgroundColor: 'secondary.light',
+                        '&:hover': {
+                          backgroundColor: 'secondary.light',
+                        },
+                      },
+                    }}
+                  >
+                    <ListItemIcon>
+                      <IconComponent 
+                        color={isActive ? 'secondary' : 'inherit'} 
+                        sx={{ fontSize: 20 }}
+                      />
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary={item.label}
+                      primaryTypographyProps={{
+                        fontWeight: isActive ? 600 : 400,
+                        color: isActive ? 'secondary.main' : 'text.primary',
+                      }}
+                    />
+                  </ListItemButton>
+                </ListItem>
+              );
+            })}
+          </>
+        )}
       </List>
       
       <Box sx={{ p: 2 }}>

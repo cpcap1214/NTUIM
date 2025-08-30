@@ -50,12 +50,30 @@ const fileFilter = (req, file, cb) => {
     }
 };
 
+// PDF 專用檔案過濾器（管理員上傳）
+const pdfFileFilter = (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+        cb(null, true);
+    } else {
+        cb(new Error('只允許上傳 PDF 檔案'), false);
+    }
+};
+
 // 建立 multer 實例
 const upload = multer({
     storage: storage,
     fileFilter: fileFilter,
     limits: {
         fileSize: parseInt(process.env.UPLOAD_MAX_SIZE) || 10 * 1024 * 1024 // 預設 10MB
+    }
+});
+
+// 建立專門用於管理員上傳的 multer 實例（只接受 PDF）
+const adminUpload = multer({
+    storage: storage,
+    fileFilter: pdfFileFilter,
+    limits: {
+        fileSize: 10 * 1024 * 1024 // 10MB
     }
 });
 
@@ -108,6 +126,7 @@ setInterval(cleanupTempFiles, 60 * 60 * 1000);
 
 module.exports = {
     upload,
+    adminUpload,
     handleUploadError,
     cleanupTempFiles
 };

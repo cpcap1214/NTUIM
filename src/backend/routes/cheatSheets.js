@@ -4,8 +4,8 @@ const path = require('path');
 const fs = require('fs');
 const { body, validationResult, query } = require('express-validator');
 const { CheatSheet, User } = require('../models');
-const { authenticateToken, requirePaidMember } = require('../middleware/auth');
-const { upload, handleUploadError } = require('../middleware/upload');
+const { authenticateToken, requirePaidMember, requireAdmin } = require('../middleware/auth');
+const { upload, adminUpload, handleUploadError } = require('../middleware/upload');
 const { Op } = require('sequelize');
 
 // 取得大抄列表（公開）
@@ -88,11 +88,11 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// 上傳大抄（需登入且繳費）
-router.post('/',
+// 上傳大抄（只有管理員可以上傳）
+router.post('/upload',
     authenticateToken,
-    requirePaidMember,
-    upload.single('file'),
+    requireAdmin,
+    adminUpload.single('file'),
     handleUploadError,
     [
         body('courseCode').notEmpty().withMessage('課程代碼為必填'),
@@ -119,8 +119,17 @@ router.post('/',
                 courseCode,
                 courseName,
                 title,
-                description
+                description,
+                tags
             } = req.body;
+
+            // 解析 tags（前端傳送的是 JSON 字串）
+            let parsedTags = [];
+            try {
+                parsedTags = tags ? JSON.parse(tags) : [];
+            } catch (e) {
+                parsedTags = [];
+            }
 
             // 建立大抄記錄
             const cheatSheet = await CheatSheet.create({
@@ -128,6 +137,7 @@ router.post('/',
                 courseName,
                 title,
                 description,
+                tags: parsedTags,
                 filePath: req.file.path,
                 fileName: req.file.originalname,
                 fileSize: req.file.size,

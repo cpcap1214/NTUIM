@@ -31,7 +31,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const AdminPage = () => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, updateUser } = useAuth();
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [editingId, setEditingId] = useState(null);
@@ -125,8 +125,23 @@ const AdminPage = () => {
         throw new Error('更新失敗');
       }
 
+      const result = await response.json();
+      
       setSuccess('用戶資料已更新');
       setEditingId(null);
+      
+      // 如果更新的是當前登入用戶，同步更新 AuthContext
+      if (user && parseInt(userId) === user.id) {
+        console.log('正在更新當前用戶的 AuthContext 資料');
+        updateUser({
+          username: editData.username,
+          email: editData.email,
+          fullName: editData.fullName,
+          hasPaidFee: editData.hasPaidFee,
+          role: editData.role
+        });
+      }
+      
       fetchUsers();
     } catch (err) {
       setError(err.message);

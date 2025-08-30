@@ -4,8 +4,8 @@ const path = require('path');
 const fs = require('fs');
 const { body, validationResult, query } = require('express-validator');
 const { Exam, User } = require('../models');
-const { authenticateToken, requirePaidMember } = require('../middleware/auth');
-const { upload, handleUploadError } = require('../middleware/upload');
+const { authenticateToken, requirePaidMember, requireAdmin } = require('../middleware/auth');
+const { upload, adminUpload, handleUploadError } = require('../middleware/upload');
 const { Op } = require('sequelize');
 
 // 取得考古題列表（公開）
@@ -66,11 +66,11 @@ router.get('/', [
     }
 });
 
-// 上傳考古題（需登入且繳費）
-router.post('/', 
+// 上傳考古題（只有管理員可以上傳）
+router.post('/upload', 
     authenticateToken,
-    requirePaidMember,
-    upload.single('file'),
+    requireAdmin,
+    adminUpload.single('file'),
     handleUploadError,
     [
         body('courseCode').notEmpty().withMessage('課程代碼為必填'),

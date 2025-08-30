@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -18,6 +18,7 @@ import {
   Avatar,
   Divider,
   Stack,
+  Alert,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -29,7 +30,6 @@ import {
   Tag as TagIcon,
   School as SchoolIcon,
 } from '@mui/icons-material';
-import { cheatSheets } from '../../resources/data/mockData';
 import { useAuth } from '../contexts/AuthContext';
 import PaymentWall from '../components/PaymentWall';
 
@@ -39,26 +39,53 @@ const CheatSheetPage = () => {
   const [courseFilter, setCourseFilter] = useState('all');
   const [tagFilter, setTagFilter] = useState('all');
   const [sortBy, setSortBy] = useState('latest');
+  const [cheatSheets, setCheatSheets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  // 從 API 獲取大抄資料
+  useEffect(() => {
+    fetchCheatSheets();
+  }, []);
+
+  const fetchCheatSheets = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:5001/api/cheat-sheets');
+      
+      if (!response.ok) {
+        throw new Error('獲取大抄失敗');
+      }
+      
+      const result = await response.json();
+      setCheatSheets(result.data || []);
+    } catch (err) {
+      console.error('獲取大抄錯誤:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // 取得所有課程和標籤
   const allCourses = [...new Set(cheatSheets.map(sheet => sheet.courseName))];
-  const allTags = [...new Set(cheatSheets.flatMap(sheet => sheet.tags))];
+  const allTags = [...new Set(cheatSheets.flatMap(sheet => sheet.tags || []))];
 
   const filteredSheets = cheatSheets
     .filter(sheet => {
       const matchesSearch = sheet.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            sheet.courseName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           sheet.description.toLowerCase().includes(searchTerm.toLowerCase());
+                           (sheet.description && sheet.description.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchesCourse = courseFilter === 'all' || sheet.courseName === courseFilter;
-      const matchesTag = tagFilter === 'all' || sheet.tags.includes(tagFilter);
+      const matchesTag = tagFilter === 'all' || (sheet.tags && sheet.tags.includes(tagFilter));
       return matchesSearch && matchesCourse && matchesTag;
     })
     .sort((a, b) => {
       switch (sortBy) {
         case 'latest':
-          return new Date(b.uploadDate) - new Date(a.uploadDate);
+          return new Date(b.created_at) - new Date(a.created_at);
         case 'downloads':
-          return b.downloads - a.downloads;
+          return (b.downloadCount || 0) - (a.downloadCount || 0);
         case 'title':
           return a.title.localeCompare(b.title);
         default:
@@ -66,20 +93,45 @@ const CheatSheetPage = () => {
       }
     });
 
-  const handleDownload = (fileUrl, title) => {
+  const handleDownload = async (cheatSheetId, filename) => {
     if (!hasPaidFee) {
       alert('請先繳交系學會費才能下載大抄');
       return;
     }
-    console.log(`Downloading: ${title} from ${fileUrl}`);
+    
+    try {
+      const response = await fetch(`http://localhost:5001/api/cheat-sheets/${cheatSheetId}/download`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('下載失敗');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('下載錯誤:', error);
+      alert('下載失敗，請稍後再試');
+    }
   };
 
-  const handlePreview = (fileUrl) => {
+  const handlePreview = (cheatSheetId) => {
     if (!hasPaidFee) {
       alert('請先繳交系學會費才能預覽大抄');
       return;
     }
-    console.log(`Previewing: ${fileUrl}`);
+    // 在新視窗中開啟預覽
+    window.open(`http://localhost:5001/uploads/cheat_sheets/${cheatSheetId}/preview`, '_blank');
   };
 
   const getTagColor = (tag) => {
@@ -182,7 +234,7 @@ const CheatSheetPage = () => {
             <Grid item xs={12} sm={4}>
               <Paper sx={{ p: 2, textAlign: 'center' }}>
                 <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                  {cheatSheets.length}
+                  {loading ? '...' : cheatSheets.length}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   份大抄
@@ -192,7 +244,7 @@ const CheatSheetPage = () => {
             <Grid item xs={12} sm={4}>
               <Paper sx={{ p: 2, textAlign: 'center' }}>
                 <Typography variant="h4" sx={{ fontWeight: 700, color: 'success.main' }}>
-                  {cheatSheets.reduce((sum, sheet) => sum + sheet.downloads, 0)}
+                  {loading ? '...' : cheatSheets.reduce((sum, sheet) => sum + (sheet.downloadCount || 0), 0)}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   總下載次數
@@ -202,7 +254,7 @@ const CheatSheetPage = () => {
             <Grid item xs={12} sm={4}>
               <Paper sx={{ p: 2, textAlign: 'center' }}>
                 <Typography variant="h4" sx={{ fontWeight: 700, color: 'info.main' }}>
-                  {allCourses.length}
+                  {loading ? '...' : allCourses.length}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   門課程
@@ -211,6 +263,22 @@ const CheatSheetPage = () => {
             </Grid>
           </Grid>
         </Box>
+
+        {/* 錯誤提示 */}
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        )}
+
+        {/* 載入中 */}
+        {loading && (
+          <Box sx={{ textAlign: 'center', py: 8 }}>
+            <Typography variant="h6" color="text.secondary">
+              載入大抄中...
+            </Typography>
+          </Box>
+        )}
 
         {/* Popular Tags */}
         <Box sx={{ mb: 4 }}>
@@ -268,19 +336,21 @@ const CheatSheetPage = () => {
                   </Typography>
 
                   {/* Tags */}
-                  <Box sx={{ mb: 2 }}>
-                    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                      {sheet.tags.map(tag => (
-                        <Chip
-                          key={tag}
-                          label={tag}
-                          size="small"
-                          color={getTagColor(tag)}
-                          variant="outlined"
-                        />
-                      ))}
-                    </Stack>
-                  </Box>
+                  {sheet.tags && sheet.tags.length > 0 && (
+                    <Box sx={{ mb: 2 }}>
+                      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                        {sheet.tags.map(tag => (
+                          <Chip
+                            key={tag}
+                            label={tag}
+                            size="small"
+                            color={getTagColor(tag)}
+                            variant="outlined"
+                          />
+                        ))}
+                      </Stack>
+                    </Box>
+                  )}
 
                   <Divider sx={{ my: 2 }} />
 
@@ -288,23 +358,23 @@ const CheatSheetPage = () => {
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Avatar sx={{ width: 24, height: 24, fontSize: 12 }}>
-                        {sheet.author.charAt(0)}
+                        {sheet.uploader ? sheet.uploader.fullName.charAt(0) : '?'}
                       </Avatar>
                       <Typography variant="body2" color="text.secondary">
-                        by {sheet.author}
+                        by {sheet.uploader ? sheet.uploader.fullName : '未知'}
                       </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         <DateIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
                         <Typography variant="caption" color="text.disabled">
-                          {sheet.uploadDate}
+                          {sheet.created_at ? new Date(sheet.created_at).toLocaleDateString('zh-TW') : '未知'}
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         <DownloadIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
                         <Typography variant="caption" color="text.disabled">
-                          {sheet.downloads}
+                          {sheet.downloadCount || 0}
                         </Typography>
                       </Box>
                     </Box>
@@ -316,7 +386,7 @@ const CheatSheetPage = () => {
                       variant="outlined" 
                       size="small" 
                       startIcon={<ViewIcon />}
-                      onClick={() => handlePreview(sheet.fileUrl)}
+                      onClick={() => handlePreview(sheet.id)}
                       sx={{ flex: 1 }}
                     >
                       預覽
@@ -325,7 +395,7 @@ const CheatSheetPage = () => {
                       variant="contained" 
                       size="small" 
                       startIcon={<GetAppIcon />}
-                      onClick={() => handleDownload(sheet.fileUrl, sheet.title)}
+                      onClick={() => handleDownload(sheet.id, sheet.fileName || `${sheet.title}.pdf`)}
                       sx={{ flex: 1 }}
                     >
                       下載
@@ -338,14 +408,14 @@ const CheatSheetPage = () => {
         </Grid>
 
         {/* No Results */}
-        {filteredSheets.length === 0 && (
+        {!loading && filteredSheets.length === 0 && (
           <Box sx={{ textAlign: 'center', py: 8 }}>
             <TagIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
             <Typography variant="h6" color="text.secondary" gutterBottom>
-              沒有找到符合條件的大抄
+              {cheatSheets.length === 0 ? '目前沒有大抄' : '沒有找到符合條件的大抄'}
             </Typography>
             <Typography variant="body2" color="text.disabled">
-              請嘗試調整搜尋條件或選擇不同的標籤
+              {cheatSheets.length === 0 ? '請聯繫管理員上傳大抄' : '請嘗試調整搜尋條件或選擇不同的標籤'}
             </Typography>
           </Box>
         )}

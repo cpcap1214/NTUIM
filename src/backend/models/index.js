@@ -147,6 +147,16 @@ const CheatSheet = sequelize.define('CheatSheet', {
     description: {
         type: DataTypes.TEXT
     },
+    tags: {
+        type: DataTypes.TEXT,
+        get() {
+            const rawValue = this.getDataValue('tags');
+            return rawValue ? JSON.parse(rawValue) : [];
+        },
+        set(value) {
+            this.setDataValue('tags', JSON.stringify(value || []));
+        }
+    },
     filePath: {
         type: DataTypes.STRING(500),
         allowNull: false,
