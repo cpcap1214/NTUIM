@@ -86,11 +86,14 @@ const AdminUploadPage = () => {
       return;
     }
     
-    // 檢查是否為管理員
+    // 檢查是否為管理員 - 使用延遲重定向避免資源載入競態條件
     if (!isAdmin) {
-      console.log('權限不足，重導向到首頁');
+      console.log('權限不足，準備重導向到首頁');
       alert('只有管理員可以訪問此頁面');
-      navigate('/');
+      // 延遲重定向，讓靜態資源載入完成，避免競態條件
+      setTimeout(() => {
+        navigate('/');
+      }, 200);
     }
   }, [isAdmin, navigate, user, authLoading]);
 
@@ -283,9 +286,17 @@ const AdminUploadPage = () => {
     }
   };
 
-  // 如果不是管理員，不顯示內容
-  if (!isAdmin) {
-    return null;
+  // 等待認證載入或如果不是管理員，顯示載入狀態
+  if (authLoading || !isAdmin) {
+    return (
+      <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+          <Typography variant="h6" color="text.secondary">
+            {authLoading ? '載入中...' : '權限驗證中...'}
+          </Typography>
+        </Box>
+      </Container>
+    );
   }
 
   return (
