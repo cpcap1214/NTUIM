@@ -110,7 +110,7 @@ const PaymentWall = ({ feature = '此功能' }) => {
               繳費資訊
             </Typography>
             <Typography variant="body1" sx={{ mb: 1 }}>
-              系學會費：<strong>NT$ 500</strong> / 學年
+              系學會費：<strong>NT$ 2000</strong> / 四年
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               繳費方式：請至系辦或系學會辦公室繳交
