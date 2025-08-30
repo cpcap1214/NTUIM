@@ -1,8 +1,8 @@
 import axios from 'axios';
 
-// API 基礎設定 - 直接寫死 IP
-export const API_BASE_URL = 'http://140.112.106.45:5001/api';
-export const UPLOAD_BASE_URL = 'http://140.112.106.45:5001';
+// API 基礎設定 - 使用同源 /api（避免 CORS）
+export const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
+export const UPLOAD_BASE_URL = API_BASE_URL.replace('/api', '');
 
 // 建立 axios 實例
 const api = axios.create({
