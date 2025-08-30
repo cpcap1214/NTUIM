@@ -20,13 +20,26 @@ import {
   DialogContent,
   DialogActions,
   FormControlLabel,
-  Snackbar
+  Snackbar,
+  Tabs,
+  Tab,
+  Grid,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  LinearProgress,
+  Chip,
+  Stack
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../services/api';
 import { useNavigate } from 'react-router-dom';
@@ -34,6 +47,7 @@ import { useNavigate } from 'react-router-dom';
 const AdminPage = () => {
   const { user, loading: authLoading, updateUser } = useAuth();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState(0);
   const [users, setUsers] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
@@ -44,6 +58,37 @@ const AdminPage = () => {
   const [newPasswordDialog, setNewPasswordDialog] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [selectedUserId, setSelectedUserId] = useState(null);
+
+  // 上傳相關狀態
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadMessage, setUploadMessage] = useState({ type: '', text: '' });
+  
+  // 考古題表單狀態
+  const [examForm, setExamForm] = useState({
+    courseCode: '',
+    courseName: '',
+    professor: '',
+    year: new Date().getFullYear() - 1911,
+    semester: '1',
+    examType: 'midterm',
+    examAttempt: 1,
+    file: null,
+  });
+
+  // 大抄表單狀態
+  const [cheatSheetForm, setCheatSheetForm] = useState({
+    courseCode: '',
+    courseName: '',
+    title: '',
+    description: '',
+    tags: [],
+    currentTag: '',
+    file: null,
+  });
+
+  // 上傳表單錯誤狀態
+  const [uploadErrors, setUploadErrors] = useState({});
 
   useEffect(() => {
     // 等待認證載入完成
@@ -195,6 +240,180 @@ const AdminPage = () => {
     setNewPasswordDialog(true);
   };
 
+  // 上傳相關處理函數
+  const handleExamChange = (field, value) => {
+    setExamForm(prev => ({ ...prev, [field]: value }));
+    setUploadErrors(prev => ({ ...prev, [field]: '' }));
+  };
+
+  const handleCheatSheetChange = (field, value) => {
+    setCheatSheetForm(prev => ({ ...prev, [field]: value }));
+    setUploadErrors(prev => ({ ...prev, [field]: '' }));
+  };
+
+  const addTag = () => {
+    if (cheatSheetForm.currentTag && !cheatSheetForm.tags.includes(cheatSheetForm.currentTag)) {
+      setCheatSheetForm(prev => ({
+        ...prev,
+        tags: [...prev.tags, prev.currentTag],
+        currentTag: '',
+      }));
+    }
+  };
+
+  const removeTag = (tagToRemove) => {
+    setCheatSheetForm(prev => ({
+      ...prev,
+      tags: prev.tags.filter(tag => tag !== tagToRemove),
+    }));
+  };
+
+  const handleFileSelect = (file) => {
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+      setUploadMessage({ type: 'error', text: '只能上傳 PDF 檔案' });
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadMessage({ type: 'error', text: '檔案大小不能超過 10MB' });
+      return;
+    }
+
+    if (activeTab === 1) {
+      handleExamChange('file', file);
+    } else if (activeTab === 2) {
+      handleCheatSheetChange('file', file);
+    }
+  };
+
+  const validateExamForm = () => {
+    const newErrors = {};
+    
+    if (!examForm.courseCode) newErrors.courseCode = '請輸入課程代碼';
+    if (!examForm.courseName) newErrors.courseName = '請輸入課程名稱';
+    if (!examForm.professor) newErrors.professor = '請輸入教授姓名';
+    if (!examForm.year) newErrors.year = '請選擇年份';
+    if (!examForm.file) newErrors.file = '請選擇要上傳的 PDF 檔案';
+
+    setUploadErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validateCheatSheetForm = () => {
+    const newErrors = {};
+    
+    if (!cheatSheetForm.courseCode) newErrors.courseCode = '請輸入課程代碼';
+    if (!cheatSheetForm.courseName) newErrors.courseName = '請輸入課程名稱';
+    if (!cheatSheetForm.title) newErrors.title = '請輸入標題';
+    if (!cheatSheetForm.description) newErrors.description = '請輸入描述';
+    if (cheatSheetForm.tags.length === 0) newErrors.tags = '請至少新增一個標籤';
+    if (!cheatSheetForm.file) newErrors.file = '請選擇要上傳的 PDF 檔案';
+
+    setUploadErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const uploadExam = async () => {
+    if (!validateExamForm()) return;
+
+    setUploading(true);
+    setUploadProgress(0);
+
+    const formData = new FormData();
+    formData.append('file', examForm.file);
+    formData.append('courseCode', examForm.courseCode);
+    formData.append('courseName', examForm.courseName);
+    formData.append('professor', examForm.professor);
+    formData.append('year', examForm.year + 1911);
+    formData.append('semester', examForm.semester);
+    formData.append('examType', examForm.examType);
+    formData.append('examAttempt', examForm.examAttempt);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/exams/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('上傳失敗');
+      }
+
+      setUploadMessage({ type: 'success', text: '考古題上傳成功！' });
+      
+      setExamForm({
+        courseCode: '',
+        courseName: '',
+        professor: '',
+        year: new Date().getFullYear() - 1911,
+        semester: '1',
+        examType: 'midterm',
+        examAttempt: 1,
+        file: null,
+      });
+      
+      setUploadProgress(100);
+    } catch (error) {
+      setUploadMessage({ type: 'error', text: error.message || '上傳失敗，請稍後再試' });
+    } finally {
+      setUploading(false);
+      setTimeout(() => setUploadProgress(0), 1000);
+    }
+  };
+
+  const uploadCheatSheet = async () => {
+    if (!validateCheatSheetForm()) return;
+
+    setUploading(true);
+    setUploadProgress(0);
+
+    const formData = new FormData();
+    formData.append('file', cheatSheetForm.file);
+    formData.append('courseCode', cheatSheetForm.courseCode);
+    formData.append('courseName', cheatSheetForm.courseName);
+    formData.append('title', cheatSheetForm.title);
+    formData.append('description', cheatSheetForm.description);
+    formData.append('tags', JSON.stringify(cheatSheetForm.tags));
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/cheat-sheets/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('上傳失敗');
+      }
+
+      setUploadMessage({ type: 'success', text: '大抄上傳成功！' });
+      
+      setCheatSheetForm({
+        courseCode: '',
+        courseName: '',
+        title: '',
+        description: '',
+        tags: [],
+        currentTag: '',
+        file: null,
+      });
+      
+      setUploadProgress(100);
+    } catch (error) {
+      setUploadMessage({ type: 'error', text: error.message || '上傳失敗，請稍後再試' });
+    } finally {
+      setUploading(false);
+      setTimeout(() => setUploadProgress(0), 1000);
+    }
+  };
+
   if (authLoading || loading) return (
     <Container sx={{ mt: 4 }}>
       <Typography>載入中...</Typography>
@@ -212,10 +431,19 @@ const AdminPage = () => {
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" gutterBottom>
-        用戶管理系統
+        管理員控制台
       </Typography>
       
-      <Paper sx={{ p: 2 }}>
+      {/* Tab 切換 */}
+      <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)} sx={{ mb: 3 }}>
+        <Tab label="用戶管理" />
+        <Tab label="上傳考古題" />
+        <Tab label="上傳大抄" />
+      </Tabs>
+
+      {/* 用戶管理分頁 */}
+      {activeTab === 0 && (
+        <Paper sx={{ p: 2 }}>
         <Typography variant="body2" color="textSecondary" gutterBottom>
           總共 {users.length} 個用戶
         </Typography>
@@ -365,7 +593,315 @@ const AdminPage = () => {
             </TableBody>
           </Table>
         </TableContainer>
-      </Paper>
+        </Paper>
+      )}
+
+      {/* 考古題上傳分頁 */}
+      {activeTab === 1 && (
+        <Paper sx={{ p: 4 }}>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
+            上傳考古題
+          </Typography>
+          
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="課程代碼"
+                placeholder="例如：IM1001"
+                value={examForm.courseCode}
+                onChange={(e) => handleExamChange('courseCode', e.target.value)}
+                error={!!uploadErrors.courseCode}
+                helperText={uploadErrors.courseCode}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="課程名稱"
+                placeholder="例如：資訊管理導論"
+                value={examForm.courseName}
+                onChange={(e) => handleExamChange('courseName', e.target.value)}
+                error={!!uploadErrors.courseName}
+                helperText={uploadErrors.courseName}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="教授姓名"
+                placeholder="例如：王教授"
+                value={examForm.professor}
+                onChange={(e) => handleExamChange('professor', e.target.value)}
+                error={!!uploadErrors.professor}
+                helperText={uploadErrors.professor}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                type="number"
+                label="年份（民國）"
+                value={examForm.year}
+                onChange={(e) => handleExamChange('year', parseInt(e.target.value))}
+                error={!!uploadErrors.year}
+                helperText={uploadErrors.year}
+                inputProps={{ min: 100, max: 150 }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <FormControl fullWidth>
+                <InputLabel>學期</InputLabel>
+                <Select
+                  value={examForm.semester}
+                  label="學期"
+                  onChange={(e) => handleExamChange('semester', e.target.value)}
+                >
+                  <MenuItem value="1">上學期</MenuItem>
+                  <MenuItem value="2">下學期</MenuItem>
+                  <MenuItem value="summer">暑期</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <FormControl fullWidth>
+                <InputLabel>考試類型</InputLabel>
+                <Select
+                  value={examForm.examType}
+                  label="考試類型"
+                  onChange={(e) => handleExamChange('examType', e.target.value)}
+                >
+                  <MenuItem value="midterm">期中考</MenuItem>
+                  <MenuItem value="final">期末考</MenuItem>
+                  <MenuItem value="quiz">小考</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                type="number"
+                label="第幾次考試"
+                value={examForm.examAttempt}
+                onChange={(e) => handleExamChange('examAttempt', parseInt(e.target.value))}
+                inputProps={{ min: 1, max: 10 }}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <Box sx={{ border: '1px dashed #ccc', p: 2, textAlign: 'center' }}>
+                <input
+                  accept="application/pdf"
+                  style={{ display: 'none' }}
+                  id="exam-file-upload"
+                  type="file"
+                  onChange={(e) => handleFileSelect(e.target.files[0])}
+                />
+                <label htmlFor="exam-file-upload">
+                  <Button
+                    variant="outlined"
+                    component="span"
+                    startIcon={<CloudUploadIcon />}
+                    sx={{ mb: 1 }}
+                  >
+                    選擇 PDF 檔案
+                  </Button>
+                </label>
+                {examForm.file && (
+                  <Typography variant="body2" color="success.main">
+                    已選擇：{examForm.file.name}
+                  </Typography>
+                )}
+                {uploadErrors.file && (
+                  <Typography variant="body2" color="error">
+                    {uploadErrors.file}
+                  </Typography>
+                )}
+              </Box>
+            </Grid>
+          </Grid>
+
+          {/* 進度條 */}
+          {uploading && (
+            <Box sx={{ mt: 3 }}>
+              <LinearProgress variant="determinate" value={uploadProgress} />
+            </Box>
+          )}
+
+          {/* 上傳按鈕 */}
+          <Box sx={{ mt: 3, textAlign: 'center' }}>
+            <Button
+              variant="contained"
+              size="large"
+              onClick={uploadExam}
+              disabled={uploading}
+              startIcon={<CloudUploadIcon />}
+            >
+              {uploading ? '上傳中...' : '上傳考古題'}
+            </Button>
+          </Box>
+        </Paper>
+      )}
+
+      {/* 大抄上傳分頁 */}
+      {activeTab === 2 && (
+        <Paper sx={{ p: 4 }}>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
+            上傳學習大抄
+          </Typography>
+          
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="課程代碼"
+                placeholder="例如：IM1001"
+                value={cheatSheetForm.courseCode}
+                onChange={(e) => handleCheatSheetChange('courseCode', e.target.value)}
+                error={!!uploadErrors.courseCode}
+                helperText={uploadErrors.courseCode}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="課程名稱"
+                placeholder="例如：資訊管理導論"
+                value={cheatSheetForm.courseName}
+                onChange={(e) => handleCheatSheetChange('courseName', e.target.value)}
+                error={!!uploadErrors.courseName}
+                helperText={uploadErrors.courseName}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="大抄標題"
+                placeholder="例如：期末考重點整理"
+                value={cheatSheetForm.title}
+                onChange={(e) => handleCheatSheetChange('title', e.target.value)}
+                error={!!uploadErrors.title}
+                helperText={uploadErrors.title}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                multiline
+                rows={3}
+                label="描述"
+                placeholder="簡述大抄內容..."
+                value={cheatSheetForm.description}
+                onChange={(e) => handleCheatSheetChange('description', e.target.value)}
+                error={!!uploadErrors.description}
+                helperText={uploadErrors.description}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <Box sx={{ mb: 2 }}>
+                <TextField
+                  fullWidth
+                  label="標籤"
+                  placeholder="輸入標籤後按 Enter 或點擊新增"
+                  value={cheatSheetForm.currentTag}
+                  onChange={(e) => handleCheatSheetChange('currentTag', e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addTag();
+                    }
+                  }}
+                  InputProps={{
+                    endAdornment: (
+                      <IconButton onClick={addTag} disabled={!cheatSheetForm.currentTag}>
+                        <AddIcon />
+                      </IconButton>
+                    )
+                  }}
+                />
+              </Box>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {cheatSheetForm.tags.map((tag) => (
+                  <Chip
+                    key={tag}
+                    label={tag}
+                    onDelete={() => removeTag(tag)}
+                    deleteIcon={<DeleteIcon />}
+                    color="primary"
+                    variant="outlined"
+                  />
+                ))}
+              </Stack>
+              {uploadErrors.tags && (
+                <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                  {uploadErrors.tags}
+                </Typography>
+              )}
+            </Grid>
+            <Grid item xs={12}>
+              <Box sx={{ border: '1px dashed #ccc', p: 2, textAlign: 'center' }}>
+                <input
+                  accept="application/pdf"
+                  style={{ display: 'none' }}
+                  id="cheatsheet-file-upload"
+                  type="file"
+                  onChange={(e) => handleFileSelect(e.target.files[0])}
+                />
+                <label htmlFor="cheatsheet-file-upload">
+                  <Button
+                    variant="outlined"
+                    component="span"
+                    startIcon={<CloudUploadIcon />}
+                    sx={{ mb: 1 }}
+                  >
+                    選擇 PDF 檔案
+                  </Button>
+                </label>
+                {cheatSheetForm.file && (
+                  <Typography variant="body2" color="success.main">
+                    已選擇：{cheatSheetForm.file.name}
+                  </Typography>
+                )}
+                {uploadErrors.file && (
+                  <Typography variant="body2" color="error">
+                    {uploadErrors.file}
+                  </Typography>
+                )}
+              </Box>
+            </Grid>
+          </Grid>
+
+          {/* 進度條 */}
+          {uploading && (
+            <Box sx={{ mt: 3 }}>
+              <LinearProgress variant="determinate" value={uploadProgress} />
+            </Box>
+          )}
+
+          {/* 上傳按鈕 */}
+          <Box sx={{ mt: 3, textAlign: 'center' }}>
+            <Button
+              variant="contained"
+              size="large"
+              onClick={uploadCheatSheet}
+              disabled={uploading}
+              startIcon={<CloudUploadIcon />}
+            >
+              {uploading ? '上傳中...' : '上傳大抄'}
+            </Button>
+          </Box>
+        </Paper>
+      )}
+
+      {/* 上傳訊息 */}
+      {uploadMessage.text && (
+        <Alert 
+          severity={uploadMessage.type} 
+          sx={{ mt: 3 }}
+          onClose={() => setUploadMessage({ type: '', text: '' })}
+        >
+          {uploadMessage.text}
+        </Alert>
+      )}
 
       {/* 更改密碼對話框 */}
       <Dialog open={newPasswordDialog} onClose={() => setNewPasswordDialog(false)}>
