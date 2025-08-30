@@ -22,22 +22,7 @@ const PORT = process.env.PORT || 5001;
 
 // 中間件設定
 const corsOptions = {
-    origin: function (origin, callback) {
-        const allowedOrigins = [
-            'http://localhost:3000',
-            'https://ntu.im',
-            process.env.FRONTEND_URL || 'http://localhost:3000'
-        ];
-        
-        // 允許沒有 origin 的請求（例如 mobile apps）
-        if (!origin) return callback(null, true);
-        
-        if (allowedOrigins.includes(origin)) {
-            return callback(null, true);
-        } else {
-            return callback(new Error('Not allowed by CORS'));
-        }
-    },
+    origin: true, // 允許所有來源
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
