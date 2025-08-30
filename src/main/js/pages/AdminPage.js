@@ -420,10 +420,17 @@ const AdminPage = () => {
     </Container>
   );
 
-  if (!authLoading && (!user || user.username !== 'cpcap')) {
+  // 檢查管理員權限 - 允許 cpcap 用戶名或 admin 角色
+  const isAdmin = user && (user.username === 'cpcap' || user.role === 'admin');
+  
+  if (!authLoading && !isAdmin) {
     return (
       <Container sx={{ mt: 4 }}>
-        <Alert severity="error">您沒有權限訪問此頁面</Alert>
+        <Alert severity="error">
+          您沒有權限訪問此頁面
+          <br />
+          調試資訊：用戶名={user?.username}，角色={user?.role}
+        </Alert>
       </Container>
     );
   }
