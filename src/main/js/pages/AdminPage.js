@@ -276,8 +276,8 @@ const AdminPage = () => {
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      setUploadMessage({ type: 'error', text: '檔案大小不能超過 10MB' });
+    if (file.size > 50 * 1024 * 1024) {
+      setUploadMessage({ type: 'error', text: '檔案大小不能超過 50MB' });
       return;
     }
 
