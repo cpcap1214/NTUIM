@@ -30,7 +30,11 @@ import {
   MenuItem,
   LinearProgress,
   Chip,
-  Stack
+  Stack,
+  Tooltip,
+  InputAdornment,
+  Avatar,
+  DialogContentText
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
@@ -41,6 +45,11 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
+import SearchIcon from '@mui/icons-material/Search';
+import DownloadIcon from '@mui/icons-material/Download';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import DescriptionIcon from '@mui/icons-material/Description';
+import ViewIcon from '@mui/icons-material/Visibility';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../services/api';
 import { useNavigate } from 'react-router-dom';
@@ -66,6 +75,20 @@ const AdminPage = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadMessage, setUploadMessage] = useState({ type: '', text: '' });
+
+  // 考古題管理相關狀態
+  const [exams, setExams] = useState([]);
+  const [examSearchTerm, setExamSearchTerm] = useState('');
+  const [examDeleteDialog, setExamDeleteDialog] = useState(false);
+  const [examToDelete, setExamToDelete] = useState(null);
+  const [examLoading, setExamLoading] = useState(false);
+
+  // 大抄管理相關狀態
+  const [cheatSheets, setCheatSheets] = useState([]);
+  const [cheatSheetSearchTerm, setCheatSheetSearchTerm] = useState('');
+  const [cheatSheetDeleteDialog, setCheatSheetDeleteDialog] = useState(false);
+  const [cheatSheetToDelete, setCheatSheetToDelete] = useState(null);
+  const [cheatSheetLoading, setCheatSheetLoading] = useState(false);
   
   // 考古題表單狀態
   const [examForm, setExamForm] = useState({
@@ -119,7 +142,14 @@ const AdminPage = () => {
     
     console.log('User is cpcap, fetching users...');
     fetchUsers();
-  }, [user, navigate, authLoading]);
+    
+    // 如果是管理分頁，載入對應資料
+    if (activeTab === 3) {
+      fetchExams();
+    } else if (activeTab === 4) {
+      fetchCheatSheets();
+    }
+  }, [user, navigate, authLoading, activeTab]);
 
   const fetchUsers = async () => {
     try {
@@ -143,6 +173,46 @@ const AdminPage = () => {
     } catch (err) {
       setError(err.message);
       setLoading(false);
+    }
+  };
+
+  // 獲取考古題資料
+  const fetchExams = async () => {
+    try {
+      setExamLoading(true);
+      const response = await fetch(`${API_BASE_URL}/exams`);
+      
+      if (!response.ok) {
+        throw new Error('獲取考古題失敗');
+      }
+      
+      const result = await response.json();
+      setExams(result.data || []);
+    } catch (err) {
+      console.error('獲取考古題錯誤:', err);
+      setError(err.message);
+    } finally {
+      setExamLoading(false);
+    }
+  };
+
+  // 獲取大抄資料
+  const fetchCheatSheets = async () => {
+    try {
+      setCheatSheetLoading(true);
+      const response = await fetch(`${API_BASE_URL}/cheat-sheets`);
+      
+      if (!response.ok) {
+        throw new Error('獲取大抄失敗');
+      }
+      
+      const result = await response.json();
+      setCheatSheets(result.data || []);
+    } catch (err) {
+      console.error('獲取大抄錯誤:', err);
+      setError(err.message);
+    } finally {
+      setCheatSheetLoading(false);
     }
   };
 
@@ -441,6 +511,161 @@ const AdminPage = () => {
     }
   };
 
+  // 考古題處理函數
+  const handleExamDeleteClick = (exam) => {
+    setExamToDelete(exam);
+    setExamDeleteDialog(true);
+  };
+
+  const handleExamDeleteConfirm = async () => {
+    if (!examToDelete) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/exams/${examToDelete.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('刪除失敗');
+      }
+
+      await fetchExams();
+      setSuccess('考古題已成功刪除');
+    } catch (error) {
+      console.error('刪除考古題錯誤:', error);
+      setError(error.message || '刪除失敗');
+    } finally {
+      setExamDeleteDialog(false);
+      setExamToDelete(null);
+    }
+  };
+
+  const handleExamPreview = (examId) => {
+    const token = localStorage.getItem('token');
+    window.open(`${API_BASE_URL}/exams/${examId}/preview?token=${token}`, '_blank');
+  };
+
+  const handleExamDownload = async (examId, filename) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/exams/${examId}/download`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('下載失敗');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('下載錯誤:', error);
+      setError('下載失敗，請稍後再試');
+    }
+  };
+
+  // 大抄處理函數
+  const handleCheatSheetDeleteClick = (cheatSheet) => {
+    setCheatSheetToDelete(cheatSheet);
+    setCheatSheetDeleteDialog(true);
+  };
+
+  const handleCheatSheetDeleteConfirm = async () => {
+    if (!cheatSheetToDelete) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/cheat-sheets/${cheatSheetToDelete.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('刪除失敗');
+      }
+
+      await fetchCheatSheets();
+      setSuccess('大抄已成功刪除');
+    } catch (error) {
+      console.error('刪除大抄錯誤:', error);
+      setError(error.message || '刪除失敗');
+    } finally {
+      setCheatSheetDeleteDialog(false);
+      setCheatSheetToDelete(null);
+    }
+  };
+
+  const handleCheatSheetPreview = (cheatSheetId) => {
+    const token = localStorage.getItem('token');
+    window.open(`${API_BASE_URL}/cheat-sheets/${cheatSheetId}/preview?token=${token}`, '_blank');
+  };
+
+  const handleCheatSheetDownload = async (cheatSheetId, filename) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/cheat-sheets/${cheatSheetId}/download`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('下載失敗');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('下載錯誤:', error);
+      setError('下載失敗，請稍後再試');
+    }
+  };
+
+  const getTagColor = (tag) => {
+    const colors = {
+      '資料庫': 'primary',
+      'React': 'info',
+      'JavaScript': 'warning',
+      '前端': 'success',
+      '機器學習': 'secondary',
+      'AI': 'error',
+      '演算法': 'primary',
+      '理論': 'info',
+    };
+    return colors[tag] || 'default';
+  };
+
+  // 篩選考古題和大抄
+  const filteredExams = exams.filter(exam => 
+    exam.courseName.toLowerCase().includes(examSearchTerm.toLowerCase()) ||
+    exam.courseCode.toLowerCase().includes(examSearchTerm.toLowerCase()) ||
+    (exam.professor && exam.professor.toLowerCase().includes(examSearchTerm.toLowerCase()))
+  );
+
+  const filteredCheatSheets = cheatSheets.filter(sheet => 
+    sheet.title.toLowerCase().includes(cheatSheetSearchTerm.toLowerCase()) ||
+    sheet.courseName.toLowerCase().includes(cheatSheetSearchTerm.toLowerCase()) ||
+    (sheet.description && sheet.description.toLowerCase().includes(cheatSheetSearchTerm.toLowerCase()))
+  );
+
   if (authLoading || loading) return (
     <Container sx={{ mt: 4 }}>
       <Typography>載入中...</Typography>
@@ -473,6 +698,8 @@ const AdminPage = () => {
         <Tab label="用戶管理" />
         <Tab label="上傳考古題" />
         <Tab label="上傳大抄" />
+        <Tab label="考古題管理" />
+        <Tab label="大抄管理" />
       </Tabs>
 
       {/* 用戶管理分頁 */}
@@ -946,6 +1173,342 @@ const AdminPage = () => {
         </Paper>
       )}
 
+      {/* 考古題管理分頁 */}
+      {activeTab === 3 && (
+        <Paper sx={{ p: 2 }}>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
+            考古題管理
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            管理系統中的所有考古題，可檢視、下載和刪除
+          </Typography>
+
+          {/* 搜尋欄 */}
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <TextField
+              fullWidth
+              placeholder="搜尋課程名稱、代碼或教授..."
+              value={examSearchTerm}
+              onChange={(e) => setExamSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Paper>
+
+          {/* 載入中 */}
+          {examLoading && (
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <Typography variant="h6" color="text.secondary">
+                載入考古題中...
+              </Typography>
+            </Box>
+          )}
+
+          {/* 考古題列表 */}
+          {!examLoading && (
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>課程資訊</TableCell>
+                    <TableCell>教授</TableCell>
+                    <TableCell>考試資訊</TableCell>
+                    <TableCell>檔案資訊</TableCell>
+                    <TableCell>上傳者</TableCell>
+                    <TableCell>上傳日期</TableCell>
+                    <TableCell align="right">下載次數</TableCell>
+                    <TableCell align="center">操作</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredExams.map((exam) => (
+                    <TableRow key={exam.id} hover>
+                      <TableCell>
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {exam.courseName}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {exam.courseCode}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell>{exam.professor || '-'}</TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                          <Chip 
+                            label={exam.examType} 
+                            color="primary" 
+                            size="small" 
+                          />
+                          <Chip 
+                            label={`${exam.year - 1911}-${exam.semester}`} 
+                            color="secondary" 
+                            size="small" 
+                          />
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <PictureAsPdfIcon sx={{ fontSize: 16, color: 'error.main' }} />
+                          <Box>
+                            <Typography variant="caption" display="block">
+                              {exam.fileName}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {(exam.fileSize / 1024 / 1024).toFixed(2)} MB
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </TableCell>
+                      <TableCell>{exam.uploader?.fullName || '未知'}</TableCell>
+                      <TableCell>
+                        {exam.created_at ? new Date(exam.created_at).toLocaleDateString('zh-TW') : '未知'}
+                      </TableCell>
+                      <TableCell align="right">{exam.downloadCount || 0}</TableCell>
+                      <TableCell align="center">
+                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+                          <Tooltip title="預覽">
+                            <IconButton 
+                              size="small" 
+                              onClick={() => handleExamPreview(exam.id)}
+                            >
+                              <ViewIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="下載">
+                            <IconButton 
+                              size="small" 
+                              color="primary"
+                              onClick={() => handleExamDownload(exam.id, exam.fileName)}
+                            >
+                              <DownloadIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="刪除">
+                            <IconButton 
+                              size="small" 
+                              color="error"
+                              onClick={() => handleExamDeleteClick(exam)}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+
+          {/* 沒有結果 */}
+          {!examLoading && filteredExams.length === 0 && (
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                {exams.length === 0 ? '目前沒有考古題' : '沒有找到符合條件的考古題'}
+              </Typography>
+              <Typography variant="body2" color="text.disabled">
+                {exams.length === 0 ? '請先上傳考古題' : '請嘗試調整搜尋條件'}
+              </Typography>
+            </Box>
+          )}
+        </Paper>
+      )}
+
+      {/* 大抄管理分頁 */}
+      {activeTab === 4 && (
+        <Paper sx={{ p: 2 }}>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
+            大抄管理
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            管理系統中的所有學習大抄，可檢視、下載和刪除
+          </Typography>
+
+          {/* 搜尋欄 */}
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <TextField
+              fullWidth
+              placeholder="搜尋標題、課程或內容..."
+              value={cheatSheetSearchTerm}
+              onChange={(e) => setCheatSheetSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Paper>
+
+          {/* 載入中 */}
+          {cheatSheetLoading && (
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <Typography variant="h6" color="text.secondary">
+                載入大抄中...
+              </Typography>
+            </Box>
+          )}
+
+          {/* 大抄列表 */}
+          {!cheatSheetLoading && (
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>標題</TableCell>
+                    <TableCell>課程資訊</TableCell>
+                    <TableCell>描述</TableCell>
+                    <TableCell>標籤</TableCell>
+                    <TableCell>檔案資訊</TableCell>
+                    <TableCell>上傳者</TableCell>
+                    <TableCell>上傳日期</TableCell>
+                    <TableCell align="right">下載次數</TableCell>
+                    <TableCell align="center">操作</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredCheatSheets.map((sheet) => (
+                    <TableRow key={sheet.id} hover>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <DescriptionIcon sx={{ fontSize: 20, color: 'success.main' }} />
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {sheet.title}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {sheet.courseName}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {sheet.courseCode}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ 
+                          maxWidth: 200, 
+                          overflow: 'hidden', 
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {sheet.description || '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ maxWidth: 150 }}>
+                          {sheet.tags && sheet.tags.length > 0 ? (
+                            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                              {sheet.tags.slice(0, 2).map(tag => (
+                                <Chip
+                                  key={tag}
+                                  label={tag}
+                                  size="small"
+                                  color={getTagColor(tag)}
+                                  variant="outlined"
+                                />
+                              ))}
+                              {sheet.tags.length > 2 && (
+                                <Chip 
+                                  label={`+${sheet.tags.length - 2}`} 
+                                  size="small" 
+                                  variant="outlined" 
+                                />
+                              )}
+                            </Stack>
+                          ) : (
+                            <Typography variant="caption" color="text.disabled">
+                              無標籤
+                            </Typography>
+                          )}
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Box>
+                          <Typography variant="caption" display="block">
+                            {sheet.fileName}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {(sheet.fileSize / 1024 / 1024).toFixed(2)} MB
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Avatar sx={{ width: 24, height: 24, fontSize: 12 }}>
+                            {sheet.uploader ? sheet.uploader.fullName.charAt(0) : '?'}
+                          </Avatar>
+                          <Typography variant="body2">
+                            {sheet.uploader?.fullName || '未知'}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        {sheet.created_at ? new Date(sheet.created_at).toLocaleDateString('zh-TW') : '未知'}
+                      </TableCell>
+                      <TableCell align="right">{sheet.downloadCount || 0}</TableCell>
+                      <TableCell align="center">
+                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+                          <Tooltip title="預覽">
+                            <IconButton 
+                              size="small" 
+                              onClick={() => handleCheatSheetPreview(sheet.id)}
+                            >
+                              <ViewIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="下載">
+                            <IconButton 
+                              size="small" 
+                              color="primary"
+                              onClick={() => handleCheatSheetDownload(sheet.id, sheet.fileName)}
+                            >
+                              <DownloadIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="刪除">
+                            <IconButton 
+                              size="small" 
+                              color="error"
+                              onClick={() => handleCheatSheetDeleteClick(sheet)}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+
+          {/* 沒有結果 */}
+          {!cheatSheetLoading && filteredCheatSheets.length === 0 && (
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                {cheatSheets.length === 0 ? '目前沒有大抄' : '沒有找到符合條件的大抄'}
+              </Typography>
+              <Typography variant="body2" color="text.disabled">
+                {cheatSheets.length === 0 ? '請先上傳大抄' : '請嘗試調整搜尋條件'}
+              </Typography>
+            </Box>
+          )}
+        </Paper>
+      )}
+
       {/* 上傳訊息 */}
       {uploadMessage.text && (
         <Alert 
@@ -1004,6 +1567,52 @@ const AdminPage = () => {
             取消
           </Button>
           <Button onClick={handleDeleteUser} color="error" variant="contained">
+            確認刪除
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 考古題刪除確認對話框 */}
+      <Dialog
+        open={examDeleteDialog}
+        onClose={() => setExamDeleteDialog(false)}
+      >
+        <DialogTitle>確認刪除考古題</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            確定要刪除「{examToDelete?.courseName} - {examToDelete?.examType}」嗎？
+            <br />
+            此操作無法復原，檔案將永久刪除。
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setExamDeleteDialog(false)}>
+            取消
+          </Button>
+          <Button onClick={handleExamDeleteConfirm} color="error" variant="contained">
+            確認刪除
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 大抄刪除確認對話框 */}
+      <Dialog
+        open={cheatSheetDeleteDialog}
+        onClose={() => setCheatSheetDeleteDialog(false)}
+      >
+        <DialogTitle>確認刪除大抄</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            確定要刪除「{cheatSheetToDelete?.title}」嗎？
+            <br />
+            此操作無法復原，檔案將永久刪除。
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCheatSheetDeleteDialog(false)}>
+            取消
+          </Button>
+          <Button onClick={handleCheatSheetDeleteConfirm} color="error" variant="contained">
             確認刪除
           </Button>
         </DialogActions>
