@@ -9,12 +9,15 @@ const sequelize = new Sequelize({
     define: {
         timestamps: true,
         underscored: true, // 使用底線命名（created_at 而非 createdAt）
-        charset: 'utf8',
-        collate: 'utf8_unicode_ci'
-    },
-    dialectOptions: {
-        charset: 'utf8'
     }
+});
+
+// 在連接後執行 PRAGMA 設定
+sequelize.addHook('afterConnect', async (connection) => {
+    // 確保 SQLite 使用 UTF-8 編碼並啟用外鍵約束
+    await sequelize.query('PRAGMA encoding = "UTF-8"');
+    await sequelize.query('PRAGMA foreign_keys = ON');
+    console.log('SQLite PRAGMA 設定完成: UTF-8 編碼, 外鍵約束啟用');
 });
 
 // 定義 User 模型

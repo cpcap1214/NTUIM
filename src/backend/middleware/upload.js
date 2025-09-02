@@ -24,32 +24,52 @@ const storage = multer.diskStorage({
         cb(null, uploadPath);
     },
     filename: function (req, file, cb) {
-        // 確保 originalname 使用正確的編碼
+        // 詳細除錯資訊
+        console.log('=== 檔案上傳除錯資訊 ===');
+        console.log('原始檔名 (file.originalname):', file.originalname);
+        console.log('檔名長度:', file.originalname.length);
+        console.log('檔名 Buffer 內容:', Buffer.from(file.originalname));
+        console.log('檔名各字元編碼:');
+        for (let i = 0; i < file.originalname.length; i++) {
+            const char = file.originalname[i];
+            console.log(`  ${i}: '${char}' (0x${char.charCodeAt(0).toString(16)})`);
+        }
+        
         let originalName = file.originalname;
+        let encodingMethod = 'original';
         
         // 嘗試多種編碼方式修正檔名
         try {
             // 方法1: 檢測如果是 Latin1 編碼的 UTF-8 資料
             const buffer = Buffer.from(originalName, 'latin1');
             const utf8String = buffer.toString('utf8');
+            console.log('Latin1->UTF8 轉換結果:', utf8String);
+            
             if (/[\u4e00-\u9fff]/.test(utf8String)) {
                 originalName = utf8String;
-                console.log('檔名編碼修正成功 (Latin1->UTF8):', originalName);
+                encodingMethod = 'latin1-to-utf8';
+                console.log('✅ 檔名編碼修正成功 (Latin1->UTF8):', originalName);
             } else {
                 // 方法2: 嘗試 ISO-8859-1 到 UTF-8
                 try {
                     const decoded = decodeURIComponent(escape(originalName));
+                    console.log('ISO-8859-1->UTF8 轉換結果:', decoded);
+                    
                     if (/[\u4e00-\u9fff]/.test(decoded)) {
                         originalName = decoded;
-                        console.log('檔名編碼修正成功 (ISO-8859-1->UTF8):', originalName);
+                        encodingMethod = 'iso-to-utf8';
+                        console.log('✅ 檔名編碼修正成功 (ISO-8859-1->UTF8):', originalName);
+                    } else {
+                        console.log('⚠️ 檔名編碼保持原始:', originalName);
                     }
                 } catch (e2) {
-                    // 如果都失敗，保持原始檔名
-                    console.log('檔名編碼保持原始:', originalName);
+                    console.log('❌ ISO-8859-1 轉換失敗:', e2.message);
+                    console.log('⚠️ 檔名編碼保持原始:', originalName);
                 }
             }
         } catch (e) {
-            console.log('檔名編碼轉換失敗，使用原始名稱:', originalName);
+            console.log('❌ 檔名編碼轉換失敗:', e.message);
+            console.log('⚠️ 使用原始名稱:', originalName);
         }
         
         // 產生唯一檔名
@@ -60,12 +80,22 @@ const storage = multer.diskStorage({
         const safeName = basename.replace(/[<>:"/\\|?*]/g, '_');
         const finalName = `${safeName}_${uniqueSuffix}${ext}`;
         
-        // 儲存原始檔名和處理後檔名供後續使用
+        // 儲存詳細資訊供後續使用
         if (!req.fileInfo) req.fileInfo = {};
         req.fileInfo[file.fieldname] = {
             originalName: originalName,
-            safeName: finalName
+            safeName: finalName,
+            encodingMethod: encodingMethod,
+            rawOriginalName: file.originalname
         };
+        
+        console.log('最終檔名資訊:', {
+            原始: file.originalname,
+            修正後: originalName,
+            安全檔名: finalName,
+            編碼方法: encodingMethod
+        });
+        console.log('=== 檔案上傳除錯結束 ===');
         
         cb(null, finalName);
     }
