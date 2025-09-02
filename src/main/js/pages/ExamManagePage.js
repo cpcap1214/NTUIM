@@ -30,9 +30,12 @@ import {
   Search as SearchIcon,
   Download as DownloadIcon,
   PictureAsPdf as PdfIcon,
+  Edit as EditIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL, UPLOAD_BASE_URL } from '../services/api';
+import examService from '../services/examService';
+import EditExamDialog from '../components/EditExamDialog';
 
 const ExamManagePage = () => {
   const { user } = useAuth();
@@ -41,6 +44,8 @@ const ExamManagePage = () => {
   const [error, setError] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [examToDelete, setExamToDelete] = useState(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [examToEdit, setExamToEdit] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -112,6 +117,46 @@ const ExamManagePage = () => {
   const handleDeleteCancel = () => {
     setDeleteDialogOpen(false);
     setExamToDelete(null);
+  };
+
+  const handleEditClick = (exam) => {
+    setExamToEdit(exam);
+    setEditDialogOpen(true);
+  };
+
+  const handleEditSave = async (examId, examData) => {
+    try {
+      await examService.updateExam(examId, examData);
+      await fetchExams(); // 重新載入資料
+      setSnackbar({
+        open: true,
+        message: '考古題資訊已更新',
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('更新考古題錯誤:', error);
+      throw new Error(error.error || '更新失敗');
+    }
+  };
+
+  const handleFileUpdate = async (examId, formData) => {
+    try {
+      await examService.updateExamFiles(examId, formData);
+      await fetchExams(); // 重新載入資料
+      setSnackbar({
+        open: true,
+        message: '考古題檔案已更新',
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('更新考古題檔案錯誤:', error);
+      throw new Error(error.error || '檔案更新失敗');
+    }
+  };
+
+  const handleEditClose = () => {
+    setEditDialogOpen(false);
+    setExamToEdit(null);
   };
 
   const handlePreview = (examId) => {
@@ -298,6 +343,15 @@ const ExamManagePage = () => {
                             <DownloadIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
+                        <Tooltip title="編輯">
+                          <IconButton 
+                            size="small" 
+                            color="info"
+                            onClick={() => handleEditClick(exam)}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                         <Tooltip title="刪除">
                           <IconButton 
                             size="small" 
@@ -350,6 +404,15 @@ const ExamManagePage = () => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* 編輯考古題對話框 */}
+        <EditExamDialog
+          open={editDialogOpen}
+          onClose={handleEditClose}
+          exam={examToEdit}
+          onSave={handleEditSave}
+          onFileUpdate={handleFileUpdate}
+        />
 
         {/* Snackbar 通知 */}
         <Snackbar 

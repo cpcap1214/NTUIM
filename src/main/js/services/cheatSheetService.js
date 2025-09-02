@@ -68,10 +68,24 @@ const cheatSheetService = {
         }
     },
 
-    // 更新大抄
+    // 更新大抄資訊
     async updateCheatSheet(id, data) {
         try {
             const response = await api.put(`/cheat-sheets/${id}`, data);
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error;
+        }
+    },
+
+    // 更新大抄檔案
+    async updateCheatSheetFile(id, formData) {
+        try {
+            const response = await api.put(`/cheat-sheets/${id}/file`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
             return response.data;
         } catch (error) {
             throw error.response?.data || error;

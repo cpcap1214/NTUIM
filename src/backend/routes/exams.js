@@ -311,6 +311,161 @@ router.get('/:id/download/answer', authenticateToken, requirePaidMember, async (
     }
 });
 
+// 更新考古題資訊（只有上傳者或管理員可以更新）
+router.put('/:id',
+    authenticateToken,
+    [
+        body('courseCode').optional().notEmpty().withMessage('課程代碼不能為空'),
+        body('courseName').optional().notEmpty().withMessage('課程名稱不能為空'),
+        body('professor').optional().isString(),
+        body('year').optional().isInt({ min: 2000, max: 2100 }).withMessage('請輸入有效年份'),
+        body('semester').optional().isIn(['1', '2', 'summer']).withMessage('請選擇學期'),
+        body('examType').optional().isIn(['midterm', 'final', 'quiz']).withMessage('請選擇考試類型'),
+        body('examAttempt').optional().isInt({ min: 1, max: 3 }).withMessage('考試次數須為 1-3')
+    ],
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        try {
+            const exam = await Exam.findByPk(req.params.id);
+
+            if (!exam) {
+                return res.status(404).json({ error: '考古題不存在' });
+            }
+
+            // 檢查權限
+            if (exam.uploadedBy !== req.user.id && req.user.role !== 'admin') {
+                return res.status(403).json({ error: '無權修改此考古題' });
+            }
+
+            // 更新資訊
+            const {
+                courseCode,
+                courseName,
+                professor,
+                year,
+                semester,
+                examType,
+                examAttempt
+            } = req.body;
+
+            if (courseCode) exam.courseCode = courseCode;
+            if (courseName) exam.courseName = courseName;
+            if (professor !== undefined) exam.professor = professor;
+            if (year) exam.year = parseInt(year);
+            if (semester) exam.semester = semester;
+            if (examType) exam.examType = examType;
+            if (examAttempt) exam.examAttempt = parseInt(examAttempt);
+
+            await exam.save();
+
+            res.json({
+                message: '考古題資訊更新成功',
+                data: exam
+            });
+        } catch (error) {
+            console.error('更新考古題錯誤:', error);
+            res.status(500).json({ error: '更新失敗' });
+        }
+    }
+);
+
+// 更新考古題檔案（只有上傳者或管理員可以更新）
+router.put('/:id/files',
+    authenticateToken,
+    adminUpload.fields([
+        { name: 'questionFile', maxCount: 1 },
+        { name: 'answerFile', maxCount: 1 }
+    ]),
+    handleUploadError,
+    async (req, res) => {
+        try {
+            const exam = await Exam.findByPk(req.params.id);
+
+            if (!exam) {
+                // 清理上傳的檔案
+                if (req.files) {
+                    Object.values(req.files).flat().forEach(file => {
+                        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+                    });
+                }
+                return res.status(404).json({ error: '考古題不存在' });
+            }
+
+            // 檢查權限
+            if (exam.uploadedBy !== req.user.id && req.user.role !== 'admin') {
+                // 清理上傳的檔案
+                if (req.files) {
+                    Object.values(req.files).flat().forEach(file => {
+                        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+                    });
+                }
+                return res.status(403).json({ error: '無權修改此考古題' });
+            }
+
+            const questionFile = req.files?.questionFile?.[0];
+            const answerFile = req.files?.answerFile?.[0];
+
+            // 如果有新的題目檔案，更新題目檔案
+            if (questionFile) {
+                // 刪除舊的題目檔案
+                if (fs.existsSync(exam.questionFilePath)) {
+                    fs.unlinkSync(exam.questionFilePath);
+                }
+
+                // 更新題目檔案資訊
+                const questionFileName = req.fileInfo?.questionFile?.originalName || questionFile.originalname;
+                exam.questionFilePath = questionFile.path;
+                exam.questionFileName = questionFileName;
+                exam.questionFileSize = questionFile.size;
+            }
+
+            // 如果有新的答案檔案，更新答案檔案
+            if (answerFile) {
+                // 刪除舊的答案檔案（如果存在）
+                if (exam.answerFilePath && fs.existsSync(exam.answerFilePath)) {
+                    fs.unlinkSync(exam.answerFilePath);
+                }
+
+                // 更新答案檔案資訊
+                const answerFileName = req.fileInfo?.answerFile?.originalName || answerFile.originalname;
+                exam.answerFilePath = answerFile.path;
+                exam.answerFileName = answerFileName;
+                exam.answerFileSize = answerFile.size;
+            }
+
+            // 如果要移除答案檔案
+            if (req.body.removeAnswerFile === 'true') {
+                if (exam.answerFilePath && fs.existsSync(exam.answerFilePath)) {
+                    fs.unlinkSync(exam.answerFilePath);
+                }
+                exam.answerFilePath = null;
+                exam.answerFileName = null;
+                exam.answerFileSize = null;
+            }
+
+            await exam.save();
+
+            res.json({
+                message: '考古題檔案更新成功',
+                data: exam
+            });
+        } catch (error) {
+            // 清理上傳的檔案
+            if (req.files) {
+                Object.values(req.files).flat().forEach(file => {
+                    if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+                });
+            }
+            console.error('更新考古題檔案錯誤:', error);
+            res.status(500).json({ error: '檔案更新失敗' });
+        }
+    }
+);
+
 // 刪除考古題（只有上傳者或管理員可以刪除）
 router.delete('/:id', authenticateToken, async (req, res) => {
     try {

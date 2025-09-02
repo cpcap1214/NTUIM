@@ -68,6 +68,30 @@ const examService = {
         }
     },
 
+    // 更新考古題資訊
+    async updateExam(id, examData) {
+        try {
+            const response = await api.put(`/exams/${id}`, examData);
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error;
+        }
+    },
+
+    // 更新考古題檔案
+    async updateExamFiles(id, formData) {
+        try {
+            const response = await api.put(`/exams/${id}/files`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error;
+        }
+    },
+
     // 刪除考古題
     async deleteExam(id) {
         try {

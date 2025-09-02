@@ -33,9 +33,12 @@ import {
   Download as DownloadIcon,
   Description as DescriptionIcon,
   Tag as TagIcon,
+  Edit as EditIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL, UPLOAD_BASE_URL } from '../services/api';
+import cheatSheetService from '../services/cheatSheetService';
+import EditCheatSheetDialog from '../components/EditCheatSheetDialog';
 
 const CheatSheetManagePage = () => {
   const { user } = useAuth();
@@ -44,6 +47,8 @@ const CheatSheetManagePage = () => {
   const [error, setError] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [cheatSheetToDelete, setCheatSheetToDelete] = useState(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [cheatSheetToEdit, setCheatSheetToEdit] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -115,6 +120,46 @@ const CheatSheetManagePage = () => {
   const handleDeleteCancel = () => {
     setDeleteDialogOpen(false);
     setCheatSheetToDelete(null);
+  };
+
+  const handleEditClick = (cheatSheet) => {
+    setCheatSheetToEdit(cheatSheet);
+    setEditDialogOpen(true);
+  };
+
+  const handleEditSave = async (cheatSheetId, cheatSheetData) => {
+    try {
+      await cheatSheetService.updateCheatSheet(cheatSheetId, cheatSheetData);
+      await fetchCheatSheets(); // 重新載入資料
+      setSnackbar({
+        open: true,
+        message: '大抄資訊已更新',
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('更新大抄錯誤:', error);
+      throw new Error(error.error || '更新失敗');
+    }
+  };
+
+  const handleFileUpdate = async (cheatSheetId, formData) => {
+    try {
+      await cheatSheetService.updateCheatSheetFile(cheatSheetId, formData);
+      await fetchCheatSheets(); // 重新載入資料
+      setSnackbar({
+        open: true,
+        message: '大抄檔案已更新',
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('更新大抄檔案錯誤:', error);
+      throw new Error(error.error || '檔案更新失敗');
+    }
+  };
+
+  const handleEditClose = () => {
+    setEditDialogOpen(false);
+    setCheatSheetToEdit(null);
   };
 
   const handlePreview = (cheatSheetId) => {
@@ -353,6 +398,15 @@ const CheatSheetManagePage = () => {
                             <DownloadIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
+                        <Tooltip title="編輯">
+                          <IconButton 
+                            size="small" 
+                            color="info"
+                            onClick={() => handleEditClick(sheet)}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                         <Tooltip title="刪除">
                           <IconButton 
                             size="small" 
@@ -406,6 +460,15 @@ const CheatSheetManagePage = () => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* 編輯大抄對話框 */}
+        <EditCheatSheetDialog
+          open={editDialogOpen}
+          onClose={handleEditClose}
+          cheatSheet={cheatSheetToEdit}
+          onSave={handleEditSave}
+          onFileUpdate={handleFileUpdate}
+        />
 
         {/* Snackbar 通知 */}
         <Snackbar 

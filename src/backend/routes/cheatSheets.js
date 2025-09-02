@@ -236,8 +236,11 @@ router.get('/:id/download', authenticateToken, async (req, res) => {
 router.put('/:id',
     authenticateToken,
     [
-        body('title').optional().notEmpty(),
-        body('description').optional().isString()
+        body('courseCode').optional().notEmpty().withMessage('課程代碼不能為空'),
+        body('courseName').optional().notEmpty().withMessage('課程名稱不能為空'),
+        body('title').optional().notEmpty().withMessage('標題不能為空'),
+        body('description').optional().isString(),
+        body('tags').optional().isArray()
     ],
     async (req, res) => {
         const errors = validationResult(req);
@@ -258,19 +261,80 @@ router.put('/:id',
             }
 
             // 更新資訊
-            const { title, description } = req.body;
+            const { courseCode, courseName, title, description, tags } = req.body;
+            if (courseCode) cheatSheet.courseCode = courseCode;
+            if (courseName) cheatSheet.courseName = courseName;
             if (title) cheatSheet.title = title;
             if (description !== undefined) cheatSheet.description = description;
+            if (tags !== undefined) cheatSheet.tags = tags;
 
             await cheatSheet.save();
 
             res.json({
-                message: '大抄更新成功',
+                message: '大抄資訊更新成功',
                 data: cheatSheet
             });
         } catch (error) {
             console.error('更新大抄錯誤:', error);
             res.status(500).json({ error: '更新失敗' });
+        }
+    }
+);
+
+// 更新大抄檔案（只有上傳者或管理員可以更新）
+router.put('/:id/file',
+    authenticateToken,
+    adminUpload.single('file'),
+    handleUploadError,
+    async (req, res) => {
+        try {
+            const cheatSheet = await CheatSheet.findByPk(req.params.id);
+
+            if (!cheatSheet) {
+                // 清理上傳的檔案
+                if (req.file && fs.existsSync(req.file.path)) {
+                    fs.unlinkSync(req.file.path);
+                }
+                return res.status(404).json({ error: '大抄不存在' });
+            }
+
+            // 檢查權限
+            if (cheatSheet.uploadedBy !== req.user.id && req.user.role !== 'admin') {
+                // 清理上傳的檔案
+                if (req.file && fs.existsSync(req.file.path)) {
+                    fs.unlinkSync(req.file.path);
+                }
+                return res.status(403).json({ error: '無權修改此大抄' });
+            }
+
+            if (!req.file) {
+                return res.status(400).json({ error: '請選擇要上傳的檔案' });
+            }
+
+            // 刪除舊檔案
+            if (fs.existsSync(cheatSheet.filePath)) {
+                fs.unlinkSync(cheatSheet.filePath);
+            }
+
+            // 更新檔案資訊
+            const fileName = req.fileInfo?.file?.originalName || req.file.originalname;
+            cheatSheet.filePath = req.file.path;
+            cheatSheet.fileName = fileName;
+            cheatSheet.fileSize = req.file.size;
+
+            await cheatSheet.save();
+
+            res.json({
+                message: '大抄檔案更新成功',
+                data: cheatSheet
+            });
+        } catch (error) {
+            // 清理上傳的檔案
+            if (req.file && fs.existsSync(req.file.path)) {
+                fs.unlinkSync(req.file.path);
+            }
+            console.error('更新大抄檔案錯誤:', error);
+            res.status(500).json({ error: '檔案更新失敗' });
         }
     }
 );
