@@ -73,3 +73,4 @@ examples/
 tools/
 docs/
 
+src/backend/database/ntuim.db
