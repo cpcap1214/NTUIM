@@ -28,9 +28,15 @@ const storage = multer.diskStorage({
         const uniqueSuffix = crypto.randomBytes(6).toString('hex');
         const ext = path.extname(file.originalname);
         const basename = path.basename(file.originalname, ext);
-        // 移除特殊字元
-        const safeName = basename.replace(/[^a-zA-Z0-9_\-\u4e00-\u9fff]/g, '_');
-        cb(null, `${safeName}_${uniqueSuffix}${ext}`);
+        // 保留中文字元，只移除檔案系統不允許的特殊字元
+        const safeName = basename.replace(/[<>:"/\\|?*]/g, '_');
+        const finalName = `${safeName}_${uniqueSuffix}${ext}`;
+        
+        // 將實際檔名儲存在 req 中，供後續使用
+        if (!req.actualFileNames) req.actualFileNames = {};
+        req.actualFileNames[file.fieldname] = finalName;
+        
+        cb(null, finalName);
     }
 });
 

@@ -117,7 +117,7 @@ router.post('/upload',
             const questionFile = req.files.questionFile[0];
             const answerFile = req.files.answerFile ? req.files.answerFile[0] : null;
 
-            // 建立考古題記錄
+            // 建立考古題記錄 - 使用原始檔名作為顯示名稱
             const exam = await Exam.create({
                 courseCode,
                 courseName,
@@ -127,10 +127,10 @@ router.post('/upload',
                 examType,
                 examAttempt: parseInt(examAttempt),
                 questionFilePath: questionFile.path,
-                questionFileName: questionFile.originalname,
+                questionFileName: questionFile.originalname, // 保留原始中文檔名供顯示
                 questionFileSize: questionFile.size,
                 answerFilePath: answerFile ? answerFile.path : null,
-                answerFileName: answerFile ? answerFile.originalname : null,
+                answerFileName: answerFile ? answerFile.originalname : null, // 保留原始中文檔名供顯示
                 answerFileSize: answerFile ? answerFile.size : null,
                 uploadedBy: req.user.id
             });
@@ -181,7 +181,9 @@ router.get('/:id/preview/question', (req, res, next) => {
 
         // 設定為在線預覽（而非下載）
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(exam.questionFileName)}"`);
+        // 使用 RFC 5987 標準處理中文檔名
+        const encodedFilename = encodeURIComponent(exam.questionFileName);
+        res.setHeader('Content-Disposition', `inline; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`);
         
         // 傳送檔案
         const fileStream = fs.createReadStream(filePath);
@@ -222,7 +224,9 @@ router.get('/:id/preview/answer', (req, res, next) => {
 
         // 設定為在線預覽（而非下載）
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(exam.answerFileName)}"`);
+        // 使用 RFC 5987 標準處理中文檔名
+        const encodedFilename = encodeURIComponent(exam.answerFileName);
+        res.setHeader('Content-Disposition', `inline; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`);
         
         // 傳送檔案
         const fileStream = fs.createReadStream(filePath);
@@ -254,7 +258,9 @@ router.get('/:id/download/question', authenticateToken, requirePaidMember, async
 
         // 設定下載標頭
         res.setHeader('Content-Type', 'application/octet-stream');
-        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(exam.questionFileName)}"`);
+        // 使用 RFC 5987 標準處理中文檔名
+        const encodedFilename = encodeURIComponent(exam.questionFileName);
+        res.setHeader('Content-Disposition', `attachment; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`);
 
         // 傳送檔案
         res.sendFile(path.resolve(exam.questionFilePath));
@@ -288,7 +294,9 @@ router.get('/:id/download/answer', authenticateToken, requirePaidMember, async (
 
         // 設定下載標頭
         res.setHeader('Content-Type', 'application/octet-stream');
-        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(exam.answerFileName)}"`);
+        // 使用 RFC 5987 標準處理中文檔名
+        const encodedFilename = encodeURIComponent(exam.answerFileName);
+        res.setHeader('Content-Disposition', `attachment; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`);
 
         // 傳送檔案
         res.sendFile(path.resolve(exam.answerFilePath));

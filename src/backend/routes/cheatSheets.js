@@ -184,7 +184,9 @@ router.get('/:id/preview', (req, res, next) => {
 
         // 設定為在線預覽（而非下載）
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(cheatSheet.fileName)}"`);
+        // 使用 RFC 5987 標準處理中文檔名
+        const encodedFilename = encodeURIComponent(cheatSheet.fileName);
+        res.setHeader('Content-Disposition', `inline; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`);
         
         // 傳送檔案
         const fileStream = fs.createReadStream(filePath);
@@ -216,7 +218,9 @@ router.get('/:id/download', authenticateToken, async (req, res) => {
 
         // 設定下載標頭
         res.setHeader('Content-Type', 'application/octet-stream');
-        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(cheatSheet.fileName)}"`);
+        // 使用 RFC 5987 標準處理中文檔名
+        const encodedFilename = encodeURIComponent(cheatSheet.fileName);
+        res.setHeader('Content-Disposition', `attachment; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`);
 
         // 傳送檔案
         res.sendFile(path.resolve(cheatSheet.filePath));
