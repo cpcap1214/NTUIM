@@ -9,6 +9,11 @@ const sequelize = new Sequelize({
     define: {
         timestamps: true,
         underscored: true, // 使用底線命名（created_at 而非 createdAt）
+        charset: 'utf8',
+        collate: 'utf8_unicode_ci'
+    },
+    dialectOptions: {
+        charset: 'utf8'
     }
 });
 

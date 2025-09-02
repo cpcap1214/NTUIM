@@ -24,17 +24,48 @@ const storage = multer.diskStorage({
         cb(null, uploadPath);
     },
     filename: function (req, file, cb) {
+        // 確保 originalname 使用正確的編碼
+        let originalName = file.originalname;
+        
+        // 嘗試多種編碼方式修正檔名
+        try {
+            // 方法1: 檢測如果是 Latin1 編碼的 UTF-8 資料
+            const buffer = Buffer.from(originalName, 'latin1');
+            const utf8String = buffer.toString('utf8');
+            if (/[\u4e00-\u9fff]/.test(utf8String)) {
+                originalName = utf8String;
+                console.log('檔名編碼修正成功 (Latin1->UTF8):', originalName);
+            } else {
+                // 方法2: 嘗試 ISO-8859-1 到 UTF-8
+                try {
+                    const decoded = decodeURIComponent(escape(originalName));
+                    if (/[\u4e00-\u9fff]/.test(decoded)) {
+                        originalName = decoded;
+                        console.log('檔名編碼修正成功 (ISO-8859-1->UTF8):', originalName);
+                    }
+                } catch (e2) {
+                    // 如果都失敗，保持原始檔名
+                    console.log('檔名編碼保持原始:', originalName);
+                }
+            }
+        } catch (e) {
+            console.log('檔名編碼轉換失敗，使用原始名稱:', originalName);
+        }
+        
         // 產生唯一檔名
         const uniqueSuffix = crypto.randomBytes(6).toString('hex');
-        const ext = path.extname(file.originalname);
-        const basename = path.basename(file.originalname, ext);
+        const ext = path.extname(originalName);
+        const basename = path.basename(originalName, ext);
         // 保留中文字元，只移除檔案系統不允許的特殊字元
         const safeName = basename.replace(/[<>:"/\\|?*]/g, '_');
         const finalName = `${safeName}_${uniqueSuffix}${ext}`;
         
-        // 將實際檔名儲存在 req 中，供後續使用
-        if (!req.actualFileNames) req.actualFileNames = {};
-        req.actualFileNames[file.fieldname] = finalName;
+        // 儲存原始檔名和處理後檔名供後續使用
+        if (!req.fileInfo) req.fileInfo = {};
+        req.fileInfo[file.fieldname] = {
+            originalName: originalName,
+            safeName: finalName
+        };
         
         cb(null, finalName);
     }

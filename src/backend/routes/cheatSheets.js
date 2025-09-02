@@ -131,7 +131,9 @@ router.post('/upload',
                 parsedTags = [];
             }
 
-            // 建立大抄記錄
+            // 建立大抄記錄 - 使用修正編碼後的檔名
+            const fileName = req.fileInfo?.file?.originalName || req.file.originalname;
+            
             const cheatSheet = await CheatSheet.create({
                 courseCode,
                 courseName,
@@ -139,7 +141,7 @@ router.post('/upload',
                 description,
                 tags: parsedTags,
                 filePath: req.file.path,
-                fileName: req.file.originalname,
+                fileName: fileName, // 使用修正編碼的檔名
                 fileSize: req.file.size,
                 uploadedBy: req.user.id
             });

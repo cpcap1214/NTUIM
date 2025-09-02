@@ -117,7 +117,12 @@ router.post('/upload',
             const questionFile = req.files.questionFile[0];
             const answerFile = req.files.answerFile ? req.files.answerFile[0] : null;
 
-            // 建立考古題記錄 - 使用原始檔名作為顯示名稱
+            // 建立考古題記錄 - 使用修正編碼後的檔名
+            const questionFileName = req.fileInfo?.questionFile?.originalName || questionFile.originalname;
+            const answerFileName = answerFile && req.fileInfo?.answerFile?.originalName 
+                ? req.fileInfo.answerFile.originalName 
+                : (answerFile ? answerFile.originalname : null);
+                
             const exam = await Exam.create({
                 courseCode,
                 courseName,
@@ -127,10 +132,10 @@ router.post('/upload',
                 examType,
                 examAttempt: parseInt(examAttempt),
                 questionFilePath: questionFile.path,
-                questionFileName: questionFile.originalname, // 保留原始中文檔名供顯示
+                questionFileName: questionFileName, // 使用修正編碼的檔名
                 questionFileSize: questionFile.size,
                 answerFilePath: answerFile ? answerFile.path : null,
-                answerFileName: answerFile ? answerFile.originalname : null, // 保留原始中文檔名供顯示
+                answerFileName: answerFileName, // 使用修正編碼的檔名
                 answerFileSize: answerFile ? answerFile.size : null,
                 uploadedBy: req.user.id
             });
