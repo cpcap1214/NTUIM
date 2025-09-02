@@ -1,37 +1,3 @@
-export const announcements = [
-  {
-    id: 1,
-    title: '112學年度第二學期期末考古題更新',
-    content: '已新增資料庫管理、網路程式設計、資訊系統分析等科目的期末考古題，歡迎同學下載參考。',
-    date: '2024-06-15',
-    type: 'exam',
-    urgent: false,
-  },
-  {
-    id: 2,
-    title: '系學會幹部招募中',
-    content: '113學年度系學會各部門開始招募新血，歡迎對服務同學有熱忱的學弟妹加入我們的行列！',
-    date: '2024-06-10',
-    type: 'recruitment',
-    urgent: true,
-  },
-  {
-    id: 3,
-    title: '資管營報名開始',
-    content: '第15屆資管營將於暑假期間舉辦，活動內容包括資訊技能工作坊、企業參訪、團康活動等。',
-    date: '2024-05-28',
-    type: 'event',
-    urgent: false,
-  },
-  {
-    id: 4,
-    title: '課程大抄分享活動',
-    content: '鼓勵同學分享優質的課程重點整理，通過審核的大抄將會獲得小禮品一份。',
-    date: '2024-05-20',
-    type: 'academic',
-    urgent: false,
-  },
-];
 
 export const quickLinks = [
   {

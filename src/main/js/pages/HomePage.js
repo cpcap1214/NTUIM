@@ -10,14 +10,12 @@ import {
   CardActionArea,
   Button,
   Chip,
-  Paper,
 } from '@mui/material';
 import {
   RateReview as ReviewIcon,
   Quiz as QuizIcon,
   Description as DescriptionIcon,
 } from '@mui/icons-material';
-import { announcements } from '../../resources/data/mockData';
 import { APP_CONFIG } from '../../resources/config/constants';
 import { API_BASE_URL } from '../services/api';
 
@@ -27,15 +25,6 @@ const iconMap = {
   description: DescriptionIcon,
 };
 
-const getAnnouncementTypeColor = (type) => {
-  const colors = {
-    exam: 'primary',
-    recruitment: 'secondary',
-    event: 'info',
-    academic: 'success',
-  };
-  return colors[type] || 'default';
-};
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -46,7 +35,6 @@ const HomePage = () => {
   });
   const [loading, setLoading] = useState(true);
 
-  const recentAnnouncements = announcements.slice(0, 3);
 
   // 從 API 獲取統計數據
   useEffect(() => {
@@ -206,67 +194,6 @@ const HomePage = () => {
             })}
           </Grid>
 
-          {/* Latest Announcements */}
-          <Typography variant="h4" component="h2" gutterBottom sx={{ fontWeight: 600 }}>
-            最新公告
-          </Typography>
-          <Box sx={{ mb: 4 }}>
-            {recentAnnouncements.map((announcement, index) => (
-              <Paper 
-                key={announcement.id} 
-                sx={{ 
-                  p: 3, 
-                  mb: 2,
-                  border: announcement.urgent ? 2 : 1,
-                  borderColor: announcement.urgent ? 'error.main' : 'grey.200',
-                  '&:hover': {
-                    boxShadow: 2,
-                  },
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-                  <Box sx={{ flexGrow: 1 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                      <Typography variant="h6" component="h3" sx={{ fontWeight: 600 }}>
-                        {announcement.title}
-                      </Typography>
-                      {announcement.urgent && (
-                        <Chip 
-                          label="重要" 
-                          color="error" 
-                          size="small" 
-                          sx={{ fontWeight: 600 }}
-                        />
-                      )}
-                      <Chip 
-                        label={announcement.type === 'exam' ? '考試' : 
-                              announcement.type === 'recruitment' ? '招募' :
-                              announcement.type === 'event' ? '活動' : '學術'}
-                        size="small"
-                        color={getAnnouncementTypeColor(announcement.type)}
-                        variant="outlined"
-                      />
-                    </Box>
-                    <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>
-                      {announcement.content}
-                    </Typography>
-                    <Typography variant="body2" color="text.disabled">
-                      發布日期：{announcement.date}
-                    </Typography>
-                  </Box>
-                </Box>
-              </Paper>
-            ))}
-            <Box sx={{ textAlign: 'center', mt: 3 }}>
-              <Button 
-                variant="outlined" 
-                color="primary"
-                onClick={() => navigate('/announcements')}
-              >
-                查看更多公告
-              </Button>
-            </Box>
-          </Box>
         </Grid>
       </Grid>
     </Container>
