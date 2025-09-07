@@ -82,12 +82,38 @@ if [ ! -f ".env" ]; then
     echo "✅ 請檢查並修改 .env 檔案中的設定"
 fi
 
-# 確保資料庫檔案存在且有正確權限
+# 資料庫備份與管理
+echo "💾 處理資料庫..."
+
+# 建立備份目錄
+BACKUP_DIR="database/backups"
+mkdir -p "$BACKUP_DIR"
+
+# 如果資料庫存在，先備份
 if [ -f "database/ntuim.db" ]; then
+    # 產生時間戳記的備份檔名
+    TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+    BACKUP_FILE="$BACKUP_DIR/ntuim_backup_${TIMESTAMP}.db"
+    
+    echo "📦 備份現有資料庫到: $BACKUP_FILE"
+    cp "database/ntuim.db" "$BACKUP_FILE"
+    
+    # 壓縮備份檔案以節省空間
+    gzip "$BACKUP_FILE"
+    echo "✅ 資料庫備份完成: ${BACKUP_FILE}.gz"
+    
+    # 保留最近 10 個備份，刪除較舊的
+    echo "🧹 清理舊備份檔案..."
+    ls -t "$BACKUP_DIR"/ntuim_backup_*.db.gz 2>/dev/null | tail -n +11 | xargs -r rm -f
+    
+    # 設定資料庫權限
     chmod 664 database/ntuim.db
     echo "✅ 資料庫權限設定完成"
 else
-    echo "⚠️ 警告：資料庫檔案不存在，請先執行 npm run init-db"
+    echo "⚠️ 警告：資料庫檔案不存在"
+    echo "📝 如果是首次部署，請執行以下命令初始化資料庫："
+    echo "   npm run init-db"
+    echo "❗ 注意：不會自動建立新資料庫，以避免覆蓋現有資料"
 fi
 
 # 檢查 PM2 是否安裝

@@ -181,7 +181,8 @@ const AdminPage = () => {
   const fetchExams = async () => {
     try {
       setExamLoading(true);
-      const response = await fetch(`${API_BASE_URL}/exams`);
+      // 不設限制，獲取所有考古題
+      const response = await fetch(`${API_BASE_URL}/exams?limit=9999`);
       
       if (!response.ok) {
         throw new Error('獲取考古題失敗');
