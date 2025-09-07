@@ -58,7 +58,7 @@ const ExamArchivePage = () => {
     try {
       setLoading(true);
       // 不設限制，獲取所有考古題
-      const response = await fetch(`${API_BASE_URL}/exams?limit=9999`);
+      const response = await fetch(`${API_BASE_URL}/exams?limit=1000`);
       
       if (!response.ok) {
         throw new Error('獲取考古題失敗');

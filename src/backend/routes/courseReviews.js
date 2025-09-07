@@ -13,7 +13,7 @@ router.get('/', [
     query('year').optional().isInt(),
     query('semester').optional().isIn(['1', '2', 'summer']),
     query('page').optional().isInt({ min: 1 }),
-    query('limit').optional().isInt({ min: 1, max: 100 })
+    query('limit').optional().isInt({ min: 1, max: 10000 })
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

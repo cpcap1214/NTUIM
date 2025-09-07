@@ -47,7 +47,7 @@ const HomePage = () => {
       
       // 並行獲取三種資源的數量
       const [examResponse, cheatSheetResponse] = await Promise.all([
-        fetch(`${API_BASE_URL}/exams?limit=9999`),
+        fetch(`${API_BASE_URL}/exams?limit=1000`),
         fetch(`${API_BASE_URL}/cheat-sheets`)
       ]);
 
