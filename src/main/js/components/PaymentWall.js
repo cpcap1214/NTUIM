@@ -111,7 +111,7 @@ const PaymentWall = ({ feature = '此功能' }) => {
               系學會費：<strong>NT$ 2000</strong> / 四年
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              繳費方式：請至系辦或系學會辦公室繳交
+              聯絡系學會繳交：imsa@ntu.im
             </Typography>
             <Typography variant="caption" color="text.secondary">
               繳費後請聯繫系學會幹部更新您的帳號狀態
