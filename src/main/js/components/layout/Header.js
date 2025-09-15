@@ -202,8 +202,83 @@ const Header = () => {
           </>
         )}
       </List>
-      
-      <Box sx={{ p: 2 }}>
+
+      <Box sx={{ p: 2, mt: 'auto' }}>
+        {/* 登入/登出按鈕 */}
+        {isAuthenticated ? (
+          <Box sx={{ mb: 2 }}>
+            <Box sx={{
+              display: 'flex',
+              alignItems: 'center',
+              mb: 1,
+              p: 1,
+              backgroundColor: 'grey.50',
+              borderRadius: 1
+            }}>
+              <Avatar sx={{ width: 24, height: 24, bgcolor: 'primary.main', mr: 1, fontSize: '0.75rem' }}>
+                {user?.username?.charAt(0).toUpperCase()}
+              </Avatar>
+              <Box>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {user?.fullName || user?.username}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {user?.hasPaidFee ? '已繳會費' : '未繳會費'}
+                </Typography>
+              </Box>
+            </Box>
+            <Button
+              variant="outlined"
+              fullWidth
+              size="small"
+              startIcon={<LogoutIcon />}
+              onClick={() => {
+                handleLogout();
+                setMobileOpen(false);
+              }}
+              sx={{
+                borderColor: 'primary.main',
+                color: 'primary.main',
+                fontWeight: 600,
+                py: 0.75,
+                borderRadius: 2,
+                textTransform: 'none',
+                '&:hover': {
+                  backgroundColor: 'primary.light',
+                },
+              }}
+            >
+              登出
+            </Button>
+          </Box>
+        ) : (
+          <Box sx={{ mb: 2 }}>
+            <Button
+              variant="contained"
+              fullWidth
+              size="medium"
+              startIcon={<LoginIcon />}
+              onClick={() => {
+                navigate('/login');
+                setMobileOpen(false);
+              }}
+              sx={{
+                backgroundColor: 'primary.main',
+                color: 'white',
+                fontWeight: 600,
+                py: 1,
+                borderRadius: 2,
+                textTransform: 'none',
+                '&:hover': {
+                  backgroundColor: 'primary.dark',
+                },
+              }}
+            >
+              登入/註冊
+            </Button>
+          </Box>
+        )}
+
         <Button
           variant="contained"
           fullWidth
@@ -224,7 +299,7 @@ const Header = () => {
             },
           }}
         >
-          註冊資管系 google space  
+          註冊資管系 google space
         </Button>
       </Box>
     </Box>
