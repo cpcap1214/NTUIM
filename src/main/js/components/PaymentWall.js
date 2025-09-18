@@ -113,9 +113,6 @@ const PaymentWall = ({ feature = '此功能' }) => {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               聯絡系學會繳交：imsa@ntu.im
             </Typography>
-            <Typography variant="caption" color="text.secondary">
-              繳費後請聯繫系學會幹部更新您的帳號狀態
-            </Typography>
           </Box>
 
           {/* Action Buttons */}
@@ -138,6 +135,15 @@ const PaymentWall = ({ feature = '此功能' }) => {
                 >
                   註冊新帳號
                 </Button>
+                <Button
+                  variant="contained"
+                  size="large"
+                  color="success"
+                  sx={{ minWidth: 200 }}
+                  onClick={() => window.location.href = 'mailto:imsa@ntu.im'}
+                >
+                  聯繫系學會
+                </Button>
               </>
             ) : (
               <>
@@ -146,6 +152,7 @@ const PaymentWall = ({ feature = '此功能' }) => {
                   size="large"
                   color="success"
                   sx={{ minWidth: 200 }}
+                  onClick={() => window.location.href = 'mailto:imsa@ntu.im'}
                 >
                   聯繫系學會
                 </Button>
