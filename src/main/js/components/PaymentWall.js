@@ -113,6 +113,12 @@ const PaymentWall = ({ feature = '此功能' }) => {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               聯絡系學會繳交：imsa@ntu.im
             </Typography>
+            <Alert severity="info" sx={{ mt: 2 }}>
+              <Typography variant="body2">
+                <strong>注意：</strong>繳費資格為人工審核，每日晚間進行統一審核處理。
+                審核通過後即可使用完整功能。
+              </Typography>
+            </Alert>
           </Box>
 
           {/* Action Buttons */}
