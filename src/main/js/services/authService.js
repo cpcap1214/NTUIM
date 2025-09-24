@@ -6,8 +6,13 @@ const authService = {
         try {
             const response = await api.post('/auth/register', userData);
             if (response.data.token) {
-                localStorage.setItem('token', response.data.token);
-                localStorage.setItem('user', JSON.stringify(response.data.user));
+                try {
+                    localStorage.setItem('token', response.data.token);
+                    localStorage.setItem('user', JSON.stringify(response.data.user));
+                } catch (storageError) {
+                    console.warn('儲存使用者資料失敗，可能是私人瀏覽模式:', storageError);
+                    // 即使無法儲存到 localStorage，仍然可以繼續使用（只是重新整理後會需要重新登入）
+                }
             }
             return response.data;
         } catch (error) {
@@ -20,8 +25,13 @@ const authService = {
         try {
             const response = await api.post('/auth/login', { username, password });
             if (response.data.token) {
-                localStorage.setItem('token', response.data.token);
-                localStorage.setItem('user', JSON.stringify(response.data.user));
+                try {
+                    localStorage.setItem('token', response.data.token);
+                    localStorage.setItem('user', JSON.stringify(response.data.user));
+                } catch (storageError) {
+                    console.warn('儲存使用者資料失敗，可能是私人瀏覽模式:', storageError);
+                    // 即使無法儲存到 localStorage，仍然可以繼續使用
+                }
             }
             return response.data;
         } catch (error) {
@@ -31,8 +41,13 @@ const authService = {
 
     // 登出
     logout() {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        try {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+        } catch (error) {
+            // iOS Safari 私人瀏覽模式下可能會出錯
+            console.warn('localStorage 清除失敗:', error);
+        }
         window.location.href = '/login';
     },
 
@@ -52,13 +67,23 @@ const authService = {
 
     // 取得當前使用者
     getCurrentUser() {
-        const userStr = localStorage.getItem('user');
-        return userStr ? JSON.parse(userStr) : null;
+        try {
+            const userStr = localStorage.getItem('user');
+            return userStr ? JSON.parse(userStr) : null;
+        } catch (error) {
+            console.warn('讀取使用者資料失敗:', error);
+            return null;
+        }
     },
 
     // 取得 Token
     getToken() {
-        return localStorage.getItem('token');
+        try {
+            return localStorage.getItem('token');
+        } catch (error) {
+            console.warn('讀取 token 失敗:', error);
+            return null;
+        }
     },
 
     // 檢查是否已登入

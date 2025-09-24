@@ -38,7 +38,8 @@ const LoginPage = () => {
             await login(formData.username, formData.password);
             navigate('/');
         } catch (err) {
-            setError(err.error || '登入失敗，請檢查帳號密碼');
+            console.error('登入錯誤:', err);
+            setError(err.error || err.message || '登入失敗，請檢查帳號密碼或網路連線');
         } finally {
             setLoading(false);
         }

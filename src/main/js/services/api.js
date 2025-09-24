@@ -7,7 +7,7 @@ export const UPLOAD_BASE_URL = API_BASE_URL.replace('/api', '');
 // 建立 axios 實例
 const api = axios.create({
     baseURL: API_BASE_URL,
-    timeout: 10000,
+    timeout: 15000, // 增加超時時間至15秒，適應手機網路
     headers: {
         'Content-Type': 'application/json'
     }
@@ -43,6 +43,13 @@ api.interceptors.response.use(
             if (error.response.status === 403 && error.response.data.requirePayment) {
                 alert('此功能需要繳交系學會費');
             }
+        } else if (error.request) {
+            // 網路錯誤 - 特別針對手機版的網路問題
+            console.error('網路連線錯誤:', error.request);
+            error.message = '網路連線失敗，請檢查您的網路連線';
+        } else if (error.code === 'ECONNABORTED') {
+            // 超時錯誤
+            error.message = '請求超時，請檢查網路連線後重試';
         }
         return Promise.reject(error);
     }
