@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
 const { User } = require('../models');
 const { generateToken } = require('../middleware/auth');
+const { checkStudentPaidFee } = require('../services/feeStatusService');
 
 // 註冊
 router.post('/register', [
@@ -46,6 +47,8 @@ router.post('/register', [
         // 加密密碼
         const passwordHash = await bcrypt.hash(password, 10);
 
+        const hasPaidFee = await checkStudentPaidFee(studentId);
+
         // 建立使用者
         const user = await User.create({
             studentId,
@@ -54,7 +57,7 @@ router.post('/register', [
             passwordHash,
             fullName,
             role: 'user',
-            hasPaidFee: false
+            hasPaidFee
         });
 
         // 產生 Token
