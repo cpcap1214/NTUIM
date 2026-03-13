@@ -446,18 +446,12 @@ const AdminPage = () => {
       }
 
       setUploadMessage({ type: 'success', text: '考古題上傳成功！' });
-      
-      setExamForm({
-        courseCode: '',
-        courseName: '',
-        professor: '',
-        year: new Date().getFullYear() - 1911,
-        semester: '1',
-        examType: 'midterm',
-        examAttempt: 1,
+
+      setExamForm((prev) => ({
+        ...prev,
         questionFile: null,
         answerFile: null,
-      });
+      }));
       
       setUploadProgress(100);
     } catch (error) {
