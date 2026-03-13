@@ -19,10 +19,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  FormControlLabel,
   Snackbar,
-  Tabs,
-  Tab,
   Grid,
   FormControl,
   InputLabel,
@@ -34,13 +31,12 @@ import {
   Tooltip,
   InputAdornment,
   Avatar,
-  DialogContentText
+  DialogContentText,
+  Divider
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -50,6 +46,10 @@ import DownloadIcon from '@mui/icons-material/Download';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DescriptionIcon from '@mui/icons-material/Description';
 import ViewIcon from '@mui/icons-material/Visibility';
+import BadgeIcon from '@mui/icons-material/Badge';
+import PaidIcon from '@mui/icons-material/Paid';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import LockResetIcon from '@mui/icons-material/LockReset';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../services/api';
 import { useNavigate } from 'react-router-dom';
@@ -64,12 +64,14 @@ const AdminPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [showPasswords, setShowPasswords] = useState({});
   const [newPasswordDialog, setNewPasswordDialog] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [deleteUserDialog, setDeleteUserDialog] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [paymentFilter, setPaymentFilter] = useState('all');
 
   // 上傳相關狀態
   const [uploading, setUploading] = useState(false);
@@ -325,13 +327,6 @@ const AdminPage = () => {
     } catch (err) {
       setError(err.message);
     }
-  };
-
-  const togglePasswordVisibility = (userId) => {
-    setShowPasswords(prev => ({
-      ...prev,
-      [userId]: !prev[userId]
-    }));
   };
 
   const openPasswordDialog = (userId) => {
@@ -676,6 +671,40 @@ const AdminPage = () => {
     (sheet.description && sheet.description.toLowerCase().includes(cheatSheetSearchTerm.toLowerCase()))
   );
 
+  const filteredUsers = users.filter((managedUser) => {
+    const keyword = userSearchTerm.trim().toLowerCase();
+    const matchKeyword = !keyword || [
+      managedUser.username,
+      managedUser.fullName,
+      managedUser.email,
+      managedUser.studentId
+    ].some((value) => (value || '').toLowerCase().includes(keyword));
+
+    const matchRole = roleFilter === 'all' || managedUser.role === roleFilter;
+    const matchPayment = paymentFilter === 'all'
+      || (paymentFilter === 'paid' && managedUser.hasPaidFee)
+      || (paymentFilter === 'unpaid' && !managedUser.hasPaidFee);
+
+    return matchKeyword && matchRole && matchPayment;
+  });
+
+  const selectedUser = filteredUsers.find((managedUser) => managedUser.id === selectedUserId) || null;
+  const activeUser = selectedUser || filteredUsers[0] || null;
+  const userStats = {
+    total: users.length,
+    admins: users.filter((managedUser) => managedUser.role === 'admin').length,
+    members: users.filter((managedUser) => managedUser.role === 'member').length,
+    paid: users.filter((managedUser) => managedUser.hasPaidFee).length,
+  };
+
+  const adminSections = [
+    { label: '用戶管理', description: '查詢、編輯、重設密碼', value: 0 },
+    { label: '上傳考古題', description: '新增題目與答案檔案', value: 1 },
+    { label: '上傳大抄', description: '建立課程重點整理', value: 2 },
+    { label: '考古題管理', description: '搜尋、預覽、刪除', value: 3 },
+    { label: '大抄管理', description: '檢視內容與清理資料', value: 4 },
+  ];
+
   if (authLoading || loading) return (
     <Container sx={{ mt: 4 }}>
       <Typography>載入中...</Typography>
@@ -699,192 +728,448 @@ const AdminPage = () => {
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        管理員控制台
-      </Typography>
-      
-      {/* Tab 切換 */}
-      <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)} sx={{ mb: 3 }}>
-        <Tab label="用戶管理" />
-        <Tab label="上傳考古題" />
-        <Tab label="上傳大抄" />
-        <Tab label="考古題管理" />
-        <Tab label="大抄管理" />
-      </Tabs>
+      <Stack spacing={3}>
+        <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 3 }}>
+          <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
+            管理員控制台
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            直接切到要處理的工作區，不使用滑動式分頁。
+          </Typography>
+          <Grid container spacing={2}>
+            {adminSections.map((section) => (
+              <Grid item xs={12} sm={6} md={4} key={section.value}>
+                <Paper
+                  onClick={() => setActiveTab(section.value)}
+                  sx={{
+                    p: 2,
+                    height: '100%',
+                    cursor: 'pointer',
+                    borderRadius: 3,
+                    border: '1px solid',
+                    borderColor: activeTab === section.value ? 'primary.main' : 'divider',
+                    bgcolor: activeTab === section.value ? 'primary.50' : 'background.paper',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      boxShadow: 2,
+                    },
+                  }}
+                >
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
+                    {section.label}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {section.description}
+                  </Typography>
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
+        </Paper>
 
       {/* 用戶管理分頁 */}
       {activeTab === 0 && (
-        <Paper sx={{ p: 2 }}>
-        <Typography variant="body2" color="textSecondary" gutterBottom>
-          總共 {users.length} 個用戶
-        </Typography>
-        
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>ID</TableCell>
-                <TableCell>用戶名</TableCell>
-                <TableCell>密碼</TableCell>
-                <TableCell>學號</TableCell>
-                <TableCell>姓名</TableCell>
-                <TableCell>Email</TableCell>
-                <TableCell>角色</TableCell>
-                <TableCell>繳費狀態</TableCell>
-                <TableCell>註冊時間</TableCell>
-                <TableCell>操作</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>{user.id}</TableCell>
-                  <TableCell>
-                    {editingId === user.id ? (
-                      <TextField
-                        size="small"
-                        value={editData.username}
-                        onChange={(e) => setEditData({...editData, username: e.target.value})}
-                      />
-                    ) : (
-                      user.username
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Box display="flex" alignItems="center">
-                      {showPasswords[user.id] ? (
-                        <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                          {user.passwordDisplay || '••••••••'}
-                        </Typography>
-                      ) : (
-                        '••••••••'
-                      )}
-                      <IconButton 
-                        size="small" 
-                        onClick={() => togglePasswordVisibility(user.id)}
-                        sx={{ ml: 1 }}
-                      >
-                        {showPasswords[user.id] ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                      </IconButton>
-                      {editingId === user.id && (
-                        <Button 
-                          size="small" 
-                          onClick={() => openPasswordDialog(user.id)}
-                          sx={{ ml: 1 }}
-                        >
-                          更改密碼
-                        </Button>
-                      )}
+        <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ p: 2.5, borderRadius: 3 }}>
+                  <Stack direction="row" spacing={1.5} alignItems="center">
+                    <Avatar sx={{ bgcolor: 'primary.main' }}>
+                      <BadgeIcon />
+                    </Avatar>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">總用戶數</Typography>
+                      <Typography variant="h5" sx={{ fontWeight: 700 }}>{userStats.total}</Typography>
                     </Box>
-                  </TableCell>
-                  <TableCell>
-                    {editingId === user.id ? (
-                      <TextField
-                        size="small"
-                        value={editData.studentId}
-                        onChange={(e) => setEditData({...editData, studentId: e.target.value})}
-                      />
-                    ) : (
-                      user.studentId
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {editingId === user.id ? (
-                      <TextField
-                        size="small"
-                        value={editData.fullName}
-                        onChange={(e) => setEditData({...editData, fullName: e.target.value})}
-                      />
-                    ) : (
-                      user.fullName
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {editingId === user.id ? (
-                      <TextField
-                        size="small"
-                        value={editData.email}
-                        onChange={(e) => setEditData({...editData, email: e.target.value})}
-                      />
-                    ) : (
-                      user.email
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {editingId === user.id ? (
-                      <TextField
-                        size="small"
-                        select
-                        SelectProps={{ native: true }}
-                        value={editData.role}
-                        onChange={(e) => setEditData({...editData, role: e.target.value})}
+                  </Stack>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ p: 2.5, borderRadius: 3 }}>
+                  <Stack direction="row" spacing={1.5} alignItems="center">
+                    <Avatar sx={{ bgcolor: 'warning.main' }}>
+                      <AdminPanelSettingsIcon />
+                    </Avatar>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">管理員</Typography>
+                      <Typography variant="h5" sx={{ fontWeight: 700 }}>{userStats.admins}</Typography>
+                    </Box>
+                  </Stack>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ p: 2.5, borderRadius: 3 }}>
+                  <Stack direction="row" spacing={1.5} alignItems="center">
+                    <Avatar sx={{ bgcolor: 'info.main' }}>
+                      <BadgeIcon />
+                    </Avatar>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">會員</Typography>
+                      <Typography variant="h5" sx={{ fontWeight: 700 }}>{userStats.members}</Typography>
+                    </Box>
+                  </Stack>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ p: 2.5, borderRadius: 3 }}>
+                  <Stack direction="row" spacing={1.5} alignItems="center">
+                    <Avatar sx={{ bgcolor: 'success.main' }}>
+                      <PaidIcon />
+                    </Avatar>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">已繳費</Typography>
+                      <Typography variant="h5" sx={{ fontWeight: 700 }}>{userStats.paid}</Typography>
+                    </Box>
+                  </Stack>
+                </Paper>
+              </Grid>
+            </Grid>
+          </Grid>
+
+          <Grid item xs={12} lg={8}>
+            <Paper sx={{ p: 3, borderRadius: 3 }}>
+              <Stack
+                direction={{ xs: 'column', md: 'row' }}
+                spacing={2}
+                sx={{ mb: 3 }}
+                alignItems={{ xs: 'stretch', md: 'center' }}
+              >
+                <TextField
+                  fullWidth
+                  placeholder="搜尋帳號、姓名、Email、學號"
+                  value={userSearchTerm}
+                  onChange={(e) => setUserSearchTerm(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <FormControl sx={{ minWidth: 140 }}>
+                  <InputLabel>角色</InputLabel>
+                  <Select
+                    value={roleFilter}
+                    label="角色"
+                    onChange={(e) => setRoleFilter(e.target.value)}
+                  >
+                    <MenuItem value="all">全部</MenuItem>
+                    <MenuItem value="admin">管理員</MenuItem>
+                    <MenuItem value="member">會員</MenuItem>
+                    <MenuItem value="user">一般用戶</MenuItem>
+                  </Select>
+                </FormControl>
+                <FormControl sx={{ minWidth: 140 }}>
+                  <InputLabel>繳費</InputLabel>
+                  <Select
+                    value={paymentFilter}
+                    label="繳費"
+                    onChange={(e) => setPaymentFilter(e.target.value)}
+                  >
+                    <MenuItem value="all">全部</MenuItem>
+                    <MenuItem value="paid">已繳費</MenuItem>
+                    <MenuItem value="unpaid">未繳費</MenuItem>
+                  </Select>
+                </FormControl>
+              </Stack>
+
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  顯示 {filteredUsers.length} / {users.length} 位用戶
+                </Typography>
+                {(userSearchTerm || roleFilter !== 'all' || paymentFilter !== 'all') && (
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      setUserSearchTerm('');
+                      setRoleFilter('all');
+                      setPaymentFilter('all');
+                    }}
+                  >
+                    清除篩選
+                  </Button>
+                )}
+              </Stack>
+
+              <TableContainer sx={{ overflowX: 'visible' }}>
+                <Table sx={{ tableLayout: 'fixed', width: '100%' }}>
+                  <colgroup>
+                    <col style={{ width: '34%' }} />
+                    <col style={{ width: '28%' }} />
+                    <col style={{ width: '20%' }} />
+                    <col style={{ width: '18%' }} />
+                  </colgroup>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>用戶</TableCell>
+                      <TableCell>聯絡與校內資料</TableCell>
+                      <TableCell>身份狀態</TableCell>
+                      <TableCell align="right">操作</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {filteredUsers.map((managedUser) => (
+                      <TableRow
+                        key={managedUser.id}
+                        hover
+                        selected={activeUser?.id === managedUser.id}
+                        onClick={() => setSelectedUserId(managedUser.id)}
+                        sx={{ cursor: 'pointer' }}
                       >
-                        <option value="admin">管理員</option>
-                        <option value="member">會員</option>
-                        <option value="user">一般用戶</option>
-                      </TextField>
-                    ) : (
-                      user.role === 'admin' ? '管理員' : 
-                      user.role === 'member' ? '會員' : '一般用戶'
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {editingId === user.id ? (
-                      <Switch
-                        checked={editData.hasPaidFee}
-                        onChange={(e) => setEditData({...editData, hasPaidFee: e.target.checked})}
-                      />
-                    ) : (
-                      <Typography color={user.hasPaidFee ? 'success.main' : 'text.secondary'}>
-                        {user.hasPaidFee ? '已繳費' : '未繳費'}
+                        <TableCell>
+                          {editingId === managedUser.id ? (
+                            <Stack spacing={1} sx={{ minWidth: 220 }}>
+                              <TextField
+                                size="small"
+                                label="姓名"
+                                value={editData.fullName}
+                                onChange={(e) => setEditData({ ...editData, fullName: e.target.value })}
+                              />
+                              <TextField
+                                size="small"
+                                label="帳號"
+                                value={editData.username}
+                                onChange={(e) => setEditData({ ...editData, username: e.target.value })}
+                              />
+                            </Stack>
+                          ) : (
+                            <Stack direction="row" spacing={1.5} alignItems="center">
+                              <Avatar sx={{ width: 36, height: 36 }}>
+                                {(managedUser.fullName || managedUser.username || '?').charAt(0)}
+                              </Avatar>
+                              <Box>
+                                <Typography sx={{ fontWeight: 600 }}>
+                                  {managedUser.fullName || managedUser.username}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                  @{managedUser.username} · ID {managedUser.id}
+                                </Typography>
+                              </Box>
+                            </Stack>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {editingId === managedUser.id ? (
+                            <Stack spacing={1}>
+                              <TextField
+                                size="small"
+                                label="學號"
+                                fullWidth
+                                value={editData.studentId}
+                                onChange={(e) => setEditData({ ...editData, studentId: e.target.value })}
+                              />
+                              <TextField
+                                size="small"
+                                label="Email"
+                                fullWidth
+                                value={editData.email}
+                                onChange={(e) => setEditData({ ...editData, email: e.target.value })}
+                              />
+                            </Stack>
+                          ) : (
+                            <Stack spacing={0.5}>
+                              <Typography variant="body2">
+                                學號：{managedUser.studentId || '-'}
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                                sx={{ wordBreak: 'break-word' }}
+                              >
+                                {managedUser.email || '未填寫 Email'}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                註冊：{managedUser.created_at ? new Date(managedUser.created_at).toLocaleString('zh-TW') : '-'}
+                              </Typography>
+                            </Stack>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {editingId === managedUser.id ? (
+                            <Stack spacing={1}>
+                              <FormControl fullWidth size="small">
+                                <Select
+                                  value={editData.role}
+                                  onChange={(e) => setEditData({ ...editData, role: e.target.value })}
+                                >
+                                  <MenuItem value="admin">管理員</MenuItem>
+                                  <MenuItem value="member">會員</MenuItem>
+                                  <MenuItem value="user">一般用戶</MenuItem>
+                                </Select>
+                              </FormControl>
+                              <Stack direction="row" spacing={1} alignItems="center">
+                                <Switch
+                                  checked={editData.hasPaidFee}
+                                  onChange={(e) => setEditData({ ...editData, hasPaidFee: e.target.checked })}
+                                />
+                                <Typography variant="body2">
+                                  {editData.hasPaidFee ? '已繳費' : '未繳費'}
+                                </Typography>
+                              </Stack>
+                            </Stack>
+                          ) : (
+                            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                              <Chip
+                                size="small"
+                                label={managedUser.role === 'admin' ? '管理員' : managedUser.role === 'member' ? '會員' : '一般用戶'}
+                                color={managedUser.role === 'admin' ? 'warning' : managedUser.role === 'member' ? 'info' : 'default'}
+                                variant={managedUser.role === 'user' ? 'outlined' : 'filled'}
+                              />
+                              <Chip
+                                size="small"
+                                label={managedUser.hasPaidFee ? '已繳費' : '未繳費'}
+                                color={managedUser.hasPaidFee ? 'success' : 'default'}
+                                variant={managedUser.hasPaidFee ? 'filled' : 'outlined'}
+                              />
+                            </Stack>
+                          )}
+                        </TableCell>
+                        <TableCell align="right" onClick={(event) => event.stopPropagation()}>
+                          {editingId === managedUser.id ? (
+                            <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                              <IconButton color="primary" onClick={() => handleSave(managedUser.id)} title="儲存">
+                                <SaveIcon />
+                              </IconButton>
+                              <IconButton color="secondary" onClick={handleCancel} title="取消">
+                                <CancelIcon />
+                              </IconButton>
+                            </Stack>
+                          ) : (
+                            <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                              <IconButton onClick={() => handleEdit(managedUser)} title="編輯">
+                                <EditIcon />
+                              </IconButton>
+                              <IconButton
+                                onClick={() => openPasswordDialog(managedUser.id)}
+                                color="info"
+                                title="重設密碼"
+                              >
+                                <LockResetIcon />
+                              </IconButton>
+                              <IconButton
+                                onClick={() => {
+                                  setUserToDelete(managedUser);
+                                  setDeleteUserDialog(true);
+                                }}
+                                color="error"
+                                title="刪除用戶"
+                                disabled={managedUser.username === 'cpcap'}
+                              >
+                                <PersonRemoveIcon />
+                              </IconButton>
+                            </Stack>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              {filteredUsers.length === 0 && (
+                <Box sx={{ py: 6, textAlign: 'center' }}>
+                  <Typography variant="h6" gutterBottom>沒有符合條件的用戶</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    請調整搜尋字詞或篩選條件。
+                  </Typography>
+                </Box>
+              )}
+            </Paper>
+          </Grid>
+
+          <Grid item xs={12} lg={4}>
+            <Paper sx={{ p: 3, borderRadius: 3, position: 'sticky', top: 24 }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+                用戶詳情
+              </Typography>
+
+              {activeUser ? (
+                <Stack spacing={2.5}>
+                  <Stack direction="row" spacing={1.5} alignItems="center">
+                    <Avatar sx={{ width: 56, height: 56, fontSize: 24 }}>
+                      {(activeUser.fullName || activeUser.username || '?').charAt(0)}
+                    </Avatar>
+                    <Box>
+                      <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                        {activeUser.fullName || activeUser.username}
                       </Typography>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {user.created_at ? new Date(user.created_at).toLocaleString('zh-TW') : '-'}
-                  </TableCell>
-                  <TableCell>
-                    {editingId === user.id ? (
-                      <>
-                        <IconButton color="primary" onClick={() => handleSave(user.id)}>
-                          <SaveIcon />
-                        </IconButton>
-                        <IconButton color="secondary" onClick={handleCancel}>
-                          <CancelIcon />
-                        </IconButton>
-                      </>
-                    ) : (
-                      <>
-                        <IconButton onClick={() => handleEdit(user)} title="編輯">
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton 
-                          onClick={() => openPasswordDialog(user.id)}
-                          color="info"
-                          title="更改密碼"
-                        >
-                          <VisibilityIcon />
-                        </IconButton>
-                        <IconButton 
-                          onClick={() => {
-                            setUserToDelete(user);
-                            setDeleteUserDialog(true);
-                          }}
-                          color="error"
-                          title="刪除用戶"
-                          disabled={user.username === 'cpcap'}
-                        >
-                          <PersonRemoveIcon />
-                        </IconButton>
-                      </>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        </Paper>
+                      <Typography variant="body2" color="text.secondary">
+                        @{activeUser.username}
+                      </Typography>
+                    </Box>
+                  </Stack>
+
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    <Chip
+                      label={activeUser.role === 'admin' ? '管理員' : activeUser.role === 'member' ? '會員' : '一般用戶'}
+                      color={activeUser.role === 'admin' ? 'warning' : activeUser.role === 'member' ? 'info' : 'default'}
+                    />
+                    <Chip
+                      label={activeUser.hasPaidFee ? '已繳費' : '未繳費'}
+                      color={activeUser.hasPaidFee ? 'success' : 'default'}
+                      variant={activeUser.hasPaidFee ? 'filled' : 'outlined'}
+                    />
+                  </Stack>
+
+                  <Divider />
+
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">學號</Typography>
+                    <Typography>{activeUser.studentId || '未填寫'}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">Email</Typography>
+                    <Typography sx={{ wordBreak: 'break-word' }}>{activeUser.email || '未填寫'}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">註冊時間</Typography>
+                    <Typography>{activeUser.created_at ? new Date(activeUser.created_at).toLocaleString('zh-TW') : '未知'}</Typography>
+                  </Box>
+
+                  <Divider />
+
+                  <Stack spacing={1.5}>
+                    <Button
+                      variant="contained"
+                      startIcon={<EditIcon />}
+                      onClick={() => handleEdit(activeUser)}
+                      disabled={editingId === activeUser.id}
+                    >
+                      編輯這位用戶
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="info"
+                      startIcon={<LockResetIcon />}
+                      onClick={() => openPasswordDialog(activeUser.id)}
+                    >
+                      重設密碼
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      startIcon={<PersonRemoveIcon />}
+                      disabled={activeUser.username === 'cpcap'}
+                      onClick={() => {
+                        setUserToDelete(activeUser);
+                        setDeleteUserDialog(true);
+                      }}
+                    >
+                      刪除此用戶
+                    </Button>
+                  </Stack>
+                </Stack>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  目前沒有可顯示的用戶資料。
+                </Typography>
+              )}
+            </Paper>
+          </Grid>
+        </Grid>
       )}
 
       {/* 考古題上傳分頁 */}
@@ -1731,6 +2016,7 @@ const AdminPage = () => {
           {success}
         </Alert>
       </Snackbar>
+      </Stack>
     </Container>
   );
 };
