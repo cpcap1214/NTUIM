@@ -1,6 +1,26 @@
 import api from './api';
 
 const authService = {
+    // 儲存目前使用者資料
+    setCurrentUser(userData) {
+        try {
+            localStorage.setItem('user', JSON.stringify(userData));
+        } catch (storageError) {
+            console.warn('儲存使用者資料失敗，可能是私人瀏覽模式:', storageError);
+        }
+    },
+
+    // 清除本地認證資料
+    clearAuthData() {
+        try {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+        } catch (error) {
+            // iOS Safari 私人瀏覽模式下可能會出錯
+            console.warn('localStorage 清除失敗:', error);
+        }
+    },
+
     // 註冊
     async register(userData) {
         try {
@@ -8,7 +28,7 @@ const authService = {
             if (response.data.token) {
                 try {
                     localStorage.setItem('token', response.data.token);
-                    localStorage.setItem('user', JSON.stringify(response.data.user));
+                    this.setCurrentUser(response.data.user);
                 } catch (storageError) {
                     console.warn('儲存使用者資料失敗，可能是私人瀏覽模式:', storageError);
                     // 即使無法儲存到 localStorage，仍然可以繼續使用（只是重新整理後會需要重新登入）
@@ -27,7 +47,7 @@ const authService = {
             if (response.data.token) {
                 try {
                     localStorage.setItem('token', response.data.token);
-                    localStorage.setItem('user', JSON.stringify(response.data.user));
+                    this.setCurrentUser(response.data.user);
                 } catch (storageError) {
                     console.warn('儲存使用者資料失敗，可能是私人瀏覽模式:', storageError);
                     // 即使無法儲存到 localStorage，仍然可以繼續使用
@@ -41,13 +61,7 @@ const authService = {
 
     // 登出
     logout() {
-        try {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-        } catch (error) {
-            // iOS Safari 私人瀏覽模式下可能會出錯
-            console.warn('localStorage 清除失敗:', error);
-        }
+        this.clearAuthData();
         window.location.href = '/login';
     },
 
@@ -105,9 +119,9 @@ const authService = {
 
     // 更新本地使用者資料
     updateLocalUser(userData) {
-        const currentUser = this.getCurrentUser();
+        const currentUser = this.getCurrentUser() || {};
         const updatedUser = { ...currentUser, ...userData };
-        localStorage.setItem('user', JSON.stringify(updatedUser));
+        this.setCurrentUser(updatedUser);
     }
 };
 
