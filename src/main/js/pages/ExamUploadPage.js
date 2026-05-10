@@ -18,7 +18,6 @@ import {
 import {
   Quiz as QuizIcon,
   Description as DescriptionIcon,
-  RateReview as ReviewIcon,
   PictureAsPdf as PdfIcon,
   OpenInNew as OpenInNewIcon,
   CloudUpload as UploadIcon,
@@ -73,7 +72,7 @@ const QUICK_STATS = [
   },
 ];
 
-// 三大類別
+// 可上傳類別
 const CATEGORIES = [
   {
     icon: QuizIcon,
@@ -97,18 +96,6 @@ const CATEGORIES = [
       '整理後以 PDF 上傳',
       '清晰整齊且可辨識文字',
       '由學術部審核是否錄用',
-    ],
-  },
-  {
-    icon: ReviewIcon,
-    accent: '#7c3aed',
-    title: '課程評價',
-    desc: '參照 PTT 格式撰寫，幫助選課決策',
-    bullets: [
-      '修課學年度、授課教師、開課系所',
-      '五星制推薦指數、上課方式、評分方式',
-      '考題型式、加分項目、其他補充（建議填寫）',
-      '不接受「系訂必修課」',
     ],
   },
 ];
@@ -230,7 +217,7 @@ const ExamUploadPage = () => {
           請先登入
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          登入後即可上傳考古題、大抄與課程評價
+          登入後即可上傳考古題與大抄
         </Typography>
         <Button variant="contained" onClick={() => navigate('/login')}>
           前往登入
@@ -267,7 +254,7 @@ const ExamUploadPage = () => {
             上傳考古題
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            哈囉 {user?.fullName || user?.username}，貢獻考古、大抄或課程評價，幫助學弟妹也賺取回饋
+            哈囉 {user?.fullName || user?.username}，貢獻考古題或大抄，幫助學弟妹也賺取回饋
           </Typography>
         </Box>
         <Stack direction="row" spacing={1}>
@@ -300,7 +287,7 @@ const ExamUploadPage = () => {
         </Typography>
         <Grid container spacing={2.5}>
           {CATEGORIES.map((c) => (
-            <Grid item xs={12} md={4} key={c.title}>
+            <Grid item xs={12} md={6} key={c.title}>
               <CategoryCard {...c} />
             </Grid>
           ))}

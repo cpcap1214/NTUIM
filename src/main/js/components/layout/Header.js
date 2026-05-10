@@ -20,6 +20,7 @@ import {
   Avatar,
   Divider,
   Chip,
+  Stack,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -399,53 +400,63 @@ const Header = () => {
                       onClose={handleUserMenuClose}
                       anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
                       transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                      MenuListProps={{ sx: { py: 0.5 } }}
                       PaperProps={{
                         elevation: 0,
                         sx: {
                           mt: 1,
-                          minWidth: 220,
+                          minWidth: 240,
                           border: '1px solid',
                           borderColor: 'divider',
                           borderRadius: 1.5,
                           boxShadow: '0 12px 24px rgba(15, 23, 42, 0.08)',
+                          overflow: 'hidden',
                         },
                       }}
                     >
-                      <Box sx={{ px: 2, py: 1.5 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
-                          {user?.fullName || user?.username}
-                        </Typography>
-                        <Chip
-                          size="small"
-                          label={user?.hasPaidFee ? '已繳會費' : '未繳會費'}
-                          color={user?.hasPaidFee ? 'success' : 'default'}
-                          variant="outlined"
-                          sx={{ mt: 0.5, height: 20, fontSize: '0.7rem' }}
-                        />
+                      {/* User info — name 與 chip 同列、緊湊 */}
+                      <Box sx={{ px: 2, pt: 1.5, pb: 1.25 }}>
+                        <Stack
+                          direction="row"
+                          alignItems="center"
+                          justifyContent="space-between"
+                          spacing={1}
+                        >
+                          <Typography
+                            variant="body2"
+                            sx={{ fontWeight: 600, minWidth: 0 }}
+                            noWrap
+                          >
+                            {user?.fullName || user?.username}
+                          </Typography>
+                          <Chip
+                            size="small"
+                            label={user?.hasPaidFee ? '已繳會費' : '未繳會費'}
+                            color={user?.hasPaidFee ? 'success' : 'default'}
+                            variant="outlined"
+                            sx={{ height: 20, fontSize: '0.7rem', flexShrink: 0 }}
+                          />
+                        </Stack>
                       </Box>
                       <Divider />
+
+                      {/* Menu items — 統一單行高度、icon 與文字一致對齊 */}
                       <MenuItem
                         onClick={() => {
                           navigate('/upload-exam');
                           handleUserMenuClose();
                         }}
-                        sx={{ mt: 0.5 }}
+                        sx={{ py: 1, mt: 0.5 }}
                       >
-                        <ListItemIcon>
+                        <ListItemIcon sx={{ minWidth: 32 }}>
                           <UploadIcon fontSize="small" sx={{ color: 'primary.main' }} />
                         </ListItemIcon>
-                        <Box sx={{ flex: 1 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            上傳考古題
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            貢獻換獎勵
-                          </Typography>
-                        </Box>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          上傳考古題
+                        </Typography>
                       </MenuItem>
-                      <Divider sx={{ my: 0.5 }} />
-                      <MenuItem onClick={handleLogout}>
-                        <ListItemIcon>
+                      <MenuItem onClick={handleLogout} sx={{ py: 1 }}>
+                        <ListItemIcon sx={{ minWidth: 32 }}>
                           <LogoutIcon fontSize="small" />
                         </ListItemIcon>
                         <Typography variant="body2">登出</Typography>
