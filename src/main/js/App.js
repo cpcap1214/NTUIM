@@ -14,6 +14,8 @@ import RegisterPage from './pages/RegisterPage';
 import AdminPage from './pages/AdminPage';
 import ExamManagePage from './pages/ExamManagePage';
 import CheatSheetManagePage from './pages/CheatSheetManagePage';
+import ChangelogPage from './pages/ChangelogPage';
+import ExamUploadPage from './pages/ExamUploadPage';
 
 function App() {
   return (
@@ -29,6 +31,8 @@ function App() {
               <Route path="/exam-archive" element={<ExamArchivePage />} />
               <Route path="/cheat-sheets" element={<CheatSheetPage />} />
               <Route path="/about" element={<AboutUsPage />} />
+              <Route path="/changelog" element={<ChangelogPage />} />
+              <Route path="/upload-exam" element={<ExamUploadPage />} />
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/admin/exam-manage" element={<ExamManagePage />} />
               <Route path="/admin/cheatsheet-manage" element={<CheatSheetManagePage />} />

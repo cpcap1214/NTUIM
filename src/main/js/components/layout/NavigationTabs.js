@@ -7,9 +7,7 @@ const NavigationTabs = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const currentTabIndex = NAVIGATION_ITEMS.findIndex(
-    item => item.path === location.pathname
-  );
+  const currentTabIndex = NAVIGATION_ITEMS.findIndex((item) => item.path === location.pathname);
 
   const handleTabChange = (_, newValue) => {
     const selectedItem = NAVIGATION_ITEMS[newValue];
@@ -20,17 +18,10 @@ const NavigationTabs = () => {
 
   return (
     <Tabs
-      value={currentTabIndex >= 0 ? currentTabIndex : 0}
+      value={currentTabIndex >= 0 ? currentTabIndex : false}
       onChange={handleTabChange}
       aria-label="網站導覽"
-      sx={{
-        '& .MuiTabs-indicator': {
-          backgroundColor: 'primary.main',
-        },
-        '& .MuiTabs-flexContainer': {
-          alignItems: 'center',
-        },
-      }}
+      sx={{ minHeight: 48 }}
     >
       {NAVIGATION_ITEMS.map((item, index) => (
         <Tab
@@ -38,19 +29,7 @@ const NavigationTabs = () => {
           label={item.label}
           id={`nav-tab-${index}`}
           aria-controls={`nav-tabpanel-${index}`}
-          sx={{
-            minWidth: 80,
-            fontSize: '0.875rem',
-            fontWeight: 500,
-            color: 'text.secondary',
-            '&.Mui-selected': {
-              color: 'primary.main',
-              fontWeight: 600,
-            },
-            '&:hover': {
-              color: 'primary.main',
-            },
-          }}
+          sx={{ minWidth: 'auto', px: 2 }}
         />
       ))}
     </Tabs>

@@ -5,17 +5,17 @@ import Footer from './Footer';
 
 const Layout = ({ children }) => {
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'background.default' }}>
       <Header />
-      <Box 
-        component="main" 
-        sx={{ 
-          flexGrow: 1, 
-          py: 3,
-          px: { xs: 2, sm: 3, md: 4 },
-          maxWidth: '1200px',
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          width: '100%',
+          maxWidth: 1200,
           mx: 'auto',
-          width: '100%'
+          px: { xs: 2, sm: 3, md: 4 },
+          py: { xs: 3, md: 4 },
         }}
       >
         {children}

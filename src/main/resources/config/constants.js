@@ -3,7 +3,7 @@ export const APP_CONFIG = {
   fullName: '國立台灣大學資訊管理學系學會',
   englishName: 'NTU IM Student Association',
   description: '',
-  version: '1.0.0',
+  version: '1.6.7',
 };
 
 export const NAVIGATION_ITEMS = [

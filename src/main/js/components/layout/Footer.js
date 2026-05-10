@@ -1,136 +1,139 @@
 import React from 'react';
-import {
-  Box,
-  Container,
-  Typography,
-  Link,
-  Divider,
-  Grid,
-} from '@mui/material';
+import { Box, Typography, Link, Divider, Grid, Stack } from '@mui/material';
+import { Link as RouterLink } from 'react-router-dom';
 import { APP_CONFIG } from '../../../resources/config/constants';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
 
+  const linkSx = {
+    fontSize: '0.875rem',
+    color: 'text.secondary',
+    transition: 'color 120ms ease',
+    '&:hover': { color: 'primary.main' },
+  };
+
   return (
     <Box
       component="footer"
       sx={{
-        backgroundColor: 'grey.50',
-        borderTop: 1,
-        borderColor: 'grey.200',
+        backgroundColor: 'background.paper',
+        borderTop: '1px solid',
+        borderColor: 'divider',
         mt: 'auto',
-        py: 4,
+        py: { xs: 4, md: 5 },
       }}
     >
-      <Container maxWidth="lg">
+      <Box sx={{ maxWidth: 1200, mx: 'auto', px: { xs: 2, sm: 3, md: 4 } }}>
         <Grid container spacing={4}>
           <Grid item xs={12} md={6}>
-            <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'primary.main', mb: 0.5 }}>
               {APP_CONFIG.name}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
               {APP_CONFIG.fullName}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {APP_CONFIG.description}
-            </Typography>
+            {APP_CONFIG.description && (
+              <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 480, lineHeight: 1.7 }}>
+                {APP_CONFIG.description}
+              </Typography>
+            )}
           </Grid>
-          
-          <Grid item xs={12} md={3}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2 }}>
+
+          <Grid item xs={6} md={3}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5 }}>
               聯絡資訊
             </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <Link
-                href="mailto:imsa@ntu.im"
-                color="text.secondary"
-                underline="hover"
-                variant="body2"
-              >
+            <Stack spacing={1}>
+              <Link href="mailto:imsa@ntu.im" underline="hover" sx={linkSx}>
                 imsa@ntu.im
               </Link>
               <Link
                 href="https://www.facebook.com/NTUIMSA"
-                color="text.secondary"
                 underline="hover"
-                variant="body2"
                 target="_blank"
                 rel="noopener noreferrer"
+                sx={linkSx}
               >
-                Facebook 粉絲專頁
+                Facebook
               </Link>
               <Link
-                href="https://www.instagram.com/ntu.imsa?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw=="
-                color="text.secondary"
+                href="https://www.instagram.com/ntu.imsa"
                 underline="hover"
-                variant="body2"
                 target="_blank"
                 rel="noopener noreferrer"
+                sx={linkSx}
               >
                 Instagram
               </Link>
-            </Box>
+            </Stack>
           </Grid>
-          
-          <Grid item xs={12} md={3}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2 }}>
+
+          <Grid item xs={6} md={3}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5 }}>
               相關連結
             </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <Stack spacing={1}>
               <Link
                 href="https://management.ntu.edu.tw/IM"
-                color="text.secondary"
                 underline="hover"
-                variant="body2"
                 target="_blank"
                 rel="noopener noreferrer"
+                sx={linkSx}
               >
                 資管系官網
               </Link>
               <Link
                 href="https://www.ntu.edu.tw"
-                color="text.secondary"
                 underline="hover"
-                variant="body2"
                 target="_blank"
                 rel="noopener noreferrer"
+                sx={linkSx}
               >
                 台大官網
               </Link>
               <Link
                 href="https://github.com/ntu-im-sa"
-                color="text.secondary"
                 underline="hover"
-                variant="body2"
                 target="_blank"
                 rel="noopener noreferrer"
+                sx={linkSx}
               >
                 GitHub
               </Link>
-            </Box>
+            </Stack>
           </Grid>
         </Grid>
-        
+
         <Divider sx={{ my: 3 }} />
-        
+
         <Box
           sx={{
             display: 'flex',
             flexDirection: { xs: 'column', sm: 'row' },
             justifyContent: 'space-between',
             alignItems: { xs: 'flex-start', sm: 'center' },
-            gap: 2,
+            gap: 1,
           }}
         >
-          <Typography variant="body2" color="text.secondary">
-            © {currentYear} {APP_CONFIG.fullName}. All rights reserved.
+          <Typography variant="caption" color="text.secondary">
+            © {currentYear} {APP_CONFIG.fullName}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Version {APP_CONFIG.version} | Built with React & MUI
-          </Typography>
+          <Link
+            component={RouterLink}
+            to="/changelog"
+            underline="none"
+            sx={{
+              fontSize: '0.75rem',
+              color: 'text.secondary',
+              transition: 'color 120ms ease',
+              '&:hover': { color: 'primary.main' },
+            }}
+          >
+            v{APP_CONFIG.version} · 版本紀錄
+          </Link>
         </Box>
-      </Container>
+      </Box>
     </Box>
   );
 };
