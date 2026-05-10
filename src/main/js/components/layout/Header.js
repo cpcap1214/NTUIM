@@ -34,6 +34,7 @@ import {
   CloudUpload as UploadIcon,
   School as SchoolIcon,
   OpenInNew as OpenInNewIcon,
+  GroupAdd as GroupAddIcon,
 } from '@mui/icons-material';
 import NavigationTabs from './NavigationTabs';
 import { APP_CONFIG, NAVIGATION_ITEMS } from '../../../resources/config/constants';
@@ -229,17 +230,32 @@ const Header = () => {
         )}
 
         <Button
-          variant="outlined"
           fullWidth
-          size="small"
+          size="medium"
+          startIcon={<GroupAddIcon sx={{ fontSize: 18 }} />}
           endIcon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
           onClick={() => {
             window.open(GOOGLE_SPACE_URL, '_blank');
             setMobileOpen(false);
           }}
-          sx={{ mt: 1 }}
+          sx={{
+            mt: 1,
+            py: 1,
+            borderRadius: 2,
+            fontWeight: 600,
+            color: 'primary.main',
+            bgcolor: 'rgba(25, 118, 210, 0.08)',
+            border: '1px solid rgba(25, 118, 210, 0.18)',
+            justifyContent: 'space-between',
+            transition: 'background-color 180ms ease, border-color 180ms ease',
+            '&:hover': {
+              bgcolor: 'rgba(25, 118, 210, 0.14)',
+              borderColor: 'rgba(25, 118, 210, 0.32)',
+            },
+            '& .MuiButton-startIcon': { mr: 1 },
+          }}
         >
-          資管系 Google Space
+          加入資管系 Space
         </Button>
       </Box>
     </Box>
@@ -306,11 +322,29 @@ const Header = () => {
                 <Button
                   variant="outlined"
                   size="small"
-                  endIcon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
+                  startIcon={<GroupAddIcon sx={{ fontSize: 16 }} />}
                   onClick={() => window.open(GOOGLE_SPACE_URL, '_blank')}
-                  sx={{ display: { xs: 'none', lg: 'inline-flex' } }}
+                  sx={{
+                    display: { xs: 'none', lg: 'inline-flex' },
+                    borderRadius: 999,
+                    px: 1.75,
+                    py: 0.5,
+                    fontWeight: 500,
+                    color: 'primary.main',
+                    borderColor: 'rgba(25, 118, 210, 0.32)',
+                    bgcolor: 'rgba(25, 118, 210, 0.04)',
+                    transition:
+                      'background-color 180ms ease, color 180ms ease, border-color 180ms ease, transform 180ms cubic-bezier(0.2,0.7,0.2,1), box-shadow 180ms ease',
+                    '&:hover': {
+                      bgcolor: 'primary.main',
+                      color: '#fff',
+                      borderColor: 'primary.main',
+                      transform: 'translateY(-1px)',
+                      boxShadow: '0 6px 14px rgba(25, 118, 210, 0.28)',
+                    },
+                  }}
                 >
-                  Google Space
+                  加入 Space
                 </Button>
 
                 {isAuthenticated ? (
