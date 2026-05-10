@@ -34,24 +34,79 @@ const AboutUsPage = () => {
 
   return (
     <Box>
-      {/* Header */}
-      <Box sx={{ textAlign: 'center', mb: 5 }}>
-        <Typography variant="h2" component="h1" sx={{ fontWeight: 700, mb: 1 }}>
-          關於我們
-        </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-          {APP_CONFIG.fullName}
-        </Typography>
-        {aboutSummary.description && (
+      {/* Hero banner — 系學會品牌橫幅 */}
+      <Box
+        sx={{
+          position: 'relative',
+          width: '100%',
+          borderRadius: { xs: 2, md: 3 },
+          overflow: 'hidden',
+          mb: { xs: 3, md: 4 },
+          bgcolor: '#ffffff',
+          border: '1px solid',
+          borderColor: 'divider',
+          // 讓 banner 與下方內容銜接更柔和
+          boxShadow: '0 4px 16px rgba(15, 23, 42, 0.04)',
+        }}
+      >
+        <Box
+          component="img"
+          src="/images/branding/imsa-banner.png"
+          alt="台大資管系學會"
+          onError={(e) => {
+            // 圖片不存在時以漸層底 + 文字 fallback，不會破版
+            e.currentTarget.style.display = 'none';
+            e.currentTarget.parentElement.classList.add('banner-fallback');
+          }}
+          sx={{
+            display: 'block',
+            width: '100%',
+            height: 'auto',
+            maxHeight: { xs: 200, sm: 280, md: 360 },
+            objectFit: 'cover',
+            objectPosition: 'center',
+          }}
+        />
+        {/* Banner 缺失時的 fallback */}
+        <Box
+          className="banner-fallback-content"
+          sx={{
+            display: 'none',
+            '.banner-fallback &': {
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: { xs: 160, md: 220 },
+              background:
+                'linear-gradient(135deg, #1976d2 0%, #0891b2 100%)',
+              color: '#fff',
+              p: 4,
+              textAlign: 'center',
+            },
+          }}
+        >
+          <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
+            {APP_CONFIG.name}
+          </Typography>
+          <Typography variant="body2" sx={{ opacity: 0.9 }}>
+            {APP_CONFIG.englishName}
+          </Typography>
+        </Box>
+      </Box>
+
+      {/* 描述文字 */}
+      {aboutSummary.description && (
+        <Box sx={{ textAlign: 'center', mb: 5, px: { xs: 1, md: 2 } }}>
           <Typography
             variant="body1"
             color="text.secondary"
-            sx={{ maxWidth: 720, mx: 'auto', lineHeight: 1.7 }}
+            sx={{ maxWidth: 720, mx: 'auto', lineHeight: 1.8 }}
           >
             {aboutSummary.description}
           </Typography>
-        )}
-      </Box>
+        </Box>
+      )}
 
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 4 }}>
