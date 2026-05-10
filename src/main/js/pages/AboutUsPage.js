@@ -132,20 +132,6 @@ const AboutUsPage = () => {
             )}
           </Box>
         </Stack>
-
-        {/* Banner 波紋裝飾條（僅取下半部） */}
-        <Box
-          sx={{
-            height: { xs: 40, md: 56 },
-            backgroundImage: 'url(/images/branding/imsa-banner.png)',
-            backgroundSize: { xs: '180% auto', md: '160% auto' },
-            backgroundPosition: 'center bottom',
-            backgroundRepeat: 'no-repeat',
-            // 圖片載入失敗時用漸層當 fallback
-            backgroundColor: '#1976d2',
-            backgroundBlendMode: 'normal',
-          }}
-        />
       </Box>
 
       {/* Tabs */}
