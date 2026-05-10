@@ -229,6 +229,16 @@ const Header = () => {
               </Box>
             </Box>
             <Button
+              variant="contained"
+              fullWidth
+              size="small"
+              startIcon={<UploadIcon />}
+              onClick={() => handleMobileNavigation('/upload-exam')}
+              sx={{ mb: 1 }}
+            >
+              上傳考古題
+            </Button>
+            <Button
               variant="outlined"
               fullWidth
               size="small"
@@ -414,7 +424,27 @@ const Header = () => {
                         />
                       </Box>
                       <Divider />
-                      <MenuItem onClick={handleLogout} sx={{ mt: 0.5 }}>
+                      <MenuItem
+                        onClick={() => {
+                          navigate('/upload-exam');
+                          handleUserMenuClose();
+                        }}
+                        sx={{ mt: 0.5 }}
+                      >
+                        <ListItemIcon>
+                          <UploadIcon fontSize="small" sx={{ color: 'primary.main' }} />
+                        </ListItemIcon>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            上傳考古題
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            貢獻換獎勵
+                          </Typography>
+                        </Box>
+                      </MenuItem>
+                      <Divider sx={{ my: 0.5 }} />
+                      <MenuItem onClick={handleLogout}>
                         <ListItemIcon>
                           <LogoutIcon fontSize="small" />
                         </ListItemIcon>
