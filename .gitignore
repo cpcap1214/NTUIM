@@ -77,3 +77,6 @@ src/backend/database/ntuim.db
 
 # 使用者上傳/seed 假資料
 uploads/
+# 本地測試資料（不上 git）
+uploads/
+src/backend/database/seed.js
