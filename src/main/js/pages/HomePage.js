@@ -20,6 +20,7 @@ import {
 import { APP_CONFIG } from '../../resources/config/constants';
 import { API_BASE_URL } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import NTUCalendar from '../components/NTUCalendar';
 
 const iconMap = {
   rate_review: ReviewIcon,
@@ -277,7 +278,7 @@ const HomePage = () => {
       {renderContextBanner()}
 
       {/* Quick Links */}
-      <Box sx={{ mb: { xs: 3, md: 4 } }}>
+      <Box sx={{ mb: { xs: 4, md: 5 } }}>
         <Typography variant="h3" component="h2" sx={{ fontWeight: 700, mb: 2.5 }}>
           快速入口
         </Typography>
@@ -340,6 +341,11 @@ const HomePage = () => {
             );
           })}
         </Grid>
+      </Box>
+
+      {/* NTU Calendar */}
+      <Box sx={{ mb: { xs: 3, md: 4 } }}>
+        <NTUCalendar limit={6} />
       </Box>
     </Box>
   );

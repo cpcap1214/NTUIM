@@ -17,9 +17,12 @@
     "react-scripts": "5.0.1"
   },
   "scripts": {
+    "prestart": "node scripts/fetch-ntu-calendar.js",
     "start": "react-scripts start",
+    "prebuild": "node scripts/fetch-ntu-calendar.js",
     "build": "react-scripts build",
-    "build:production": "NODE_ENV=production react-scripts build",
+    "build:production": "node scripts/fetch-ntu-calendar.js && NODE_ENV=production react-scripts build",
+    "fetch-calendar": "node scripts/fetch-ntu-calendar.js",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
