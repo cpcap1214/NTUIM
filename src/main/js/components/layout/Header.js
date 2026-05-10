@@ -199,14 +199,14 @@ const Header = () => {
       <Divider />
       <Box sx={{ p: 2 }}>
         {isAuthenticated ? (
-          <Box>
+          <Stack spacing={1}>
+            {/* User card 內含登出 icon，省一個按鈕 */}
             <Box
               sx={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 1.25,
                 p: 1.25,
-                mb: 1.5,
                 bgcolor: 'grey.50',
                 border: '1px solid',
                 borderColor: 'divider',
@@ -228,30 +228,30 @@ const Header = () => {
                   sx={{ height: 18, fontSize: '0.7rem' }}
                 />
               </Box>
+              <IconButton
+                size="small"
+                aria-label="登出"
+                onClick={() => {
+                  handleLogout();
+                  setMobileOpen(false);
+                }}
+                sx={{ color: 'text.secondary' }}
+              >
+                <LogoutIcon fontSize="small" />
+              </IconButton>
             </Box>
+
+            {/* Primary action：上傳考古題 */}
             <Button
               variant="contained"
               fullWidth
               size="small"
               startIcon={<UploadIcon />}
               onClick={() => handleMobileNavigation('/upload-exam')}
-              sx={{ mb: 1 }}
             >
               上傳考古題
             </Button>
-            <Button
-              variant="outlined"
-              fullWidth
-              size="small"
-              startIcon={<LogoutIcon />}
-              onClick={() => {
-                handleLogout();
-                setMobileOpen(false);
-              }}
-            >
-              登出
-            </Button>
-          </Box>
+          </Stack>
         ) : (
           <Button
             variant="contained"
@@ -261,42 +261,42 @@ const Header = () => {
               navigate('/login');
               setMobileOpen(false);
             }}
-            sx={{ mb: 1 }}
           >
             登入 / 註冊
           </Button>
         )}
 
+        {/* Secondary action：Google Workspace（縮短字數避免換行） */}
         <Button
           fullWidth
-          size="medium"
-          startIcon={<GoogleIcon size={18} />}
-          endIcon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
+          size="small"
+          startIcon={<GoogleIcon size={16} />}
+          endIcon={<OpenInNewIcon sx={{ fontSize: 13 }} />}
           onClick={() => {
             window.open(GOOGLE_SPACE_URL, '_blank');
             setMobileOpen(false);
           }}
           sx={{
-            mt: 1,
-            py: 1.1,
-            borderRadius: 2,
-            fontWeight: 600,
+            mt: 1.25,
+            py: 0.85,
+            borderRadius: 1.5,
+            fontWeight: 500,
             color: 'text.primary',
             bgcolor: '#ffffff',
             border: '1px solid rgba(15, 23, 42, 0.12)',
             justifyContent: 'space-between',
             textAlign: 'left',
-            fontSize: '0.85rem',
-            transition: 'background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease',
+            fontSize: '0.8rem',
+            whiteSpace: 'nowrap',
+            transition: 'background-color 180ms ease, border-color 180ms ease',
             '&:hover': {
               bgcolor: '#ffffff',
               borderColor: 'rgba(15, 23, 42, 0.24)',
-              boxShadow: '0 2px 6px rgba(15, 23, 42, 0.06)',
             },
-            '& .MuiButton-startIcon': { mr: 1 },
+            '& .MuiButton-startIcon': { mr: 0.75 },
           }}
         >
-          加入資管系 Google Workspace
+          加入 Google Workspace
         </Button>
       </Box>
     </Box>
@@ -388,81 +388,11 @@ const Header = () => {
                 </Button>
 
                 {isAuthenticated ? (
-                  <>
-                    <IconButton onClick={handleUserMenuOpen} sx={{ p: 0.5 }}>
-                      <Avatar sx={{ width: 34, height: 34, bgcolor: 'primary.main', fontSize: '0.9rem' }}>
-                        {user?.username?.charAt(0).toUpperCase()}
-                      </Avatar>
-                    </IconButton>
-                    <Menu
-                      anchorEl={anchorEl}
-                      open={Boolean(anchorEl)}
-                      onClose={handleUserMenuClose}
-                      anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                      transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-                      MenuListProps={{ sx: { py: 0.5 } }}
-                      PaperProps={{
-                        elevation: 0,
-                        sx: {
-                          mt: 1,
-                          minWidth: 240,
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          borderRadius: 1.5,
-                          boxShadow: '0 12px 24px rgba(15, 23, 42, 0.08)',
-                          overflow: 'hidden',
-                        },
-                      }}
-                    >
-                      {/* User info — name 與 chip 同列、緊湊 */}
-                      <Box sx={{ px: 2, pt: 1.5, pb: 1.25 }}>
-                        <Stack
-                          direction="row"
-                          alignItems="center"
-                          justifyContent="space-between"
-                          spacing={1}
-                        >
-                          <Typography
-                            variant="body2"
-                            sx={{ fontWeight: 600, minWidth: 0 }}
-                            noWrap
-                          >
-                            {user?.fullName || user?.username}
-                          </Typography>
-                          <Chip
-                            size="small"
-                            label={user?.hasPaidFee ? '已繳會費' : '未繳會費'}
-                            color={user?.hasPaidFee ? 'success' : 'default'}
-                            variant="outlined"
-                            sx={{ height: 20, fontSize: '0.7rem', flexShrink: 0 }}
-                          />
-                        </Stack>
-                      </Box>
-                      <Divider />
-
-                      {/* Menu items — 統一單行高度、icon 與文字一致對齊 */}
-                      <MenuItem
-                        onClick={() => {
-                          navigate('/upload-exam');
-                          handleUserMenuClose();
-                        }}
-                        sx={{ py: 1, mt: 0.5 }}
-                      >
-                        <ListItemIcon sx={{ minWidth: 32 }}>
-                          <UploadIcon fontSize="small" sx={{ color: 'primary.main' }} />
-                        </ListItemIcon>
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          上傳考古題
-                        </Typography>
-                      </MenuItem>
-                      <MenuItem onClick={handleLogout} sx={{ py: 1 }}>
-                        <ListItemIcon sx={{ minWidth: 32 }}>
-                          <LogoutIcon fontSize="small" />
-                        </ListItemIcon>
-                        <Typography variant="body2">登出</Typography>
-                      </MenuItem>
-                    </Menu>
-                  </>
+                  <IconButton onClick={handleUserMenuOpen} sx={{ p: 0.5 }}>
+                    <Avatar sx={{ width: 34, height: 34, bgcolor: 'primary.main', fontSize: '0.9rem' }}>
+                      {user?.username?.charAt(0).toUpperCase()}
+                    </Avatar>
+                  </IconButton>
                 ) : (
                   <Button
                     variant="contained"
@@ -498,6 +428,75 @@ const Header = () => {
           )}
         </Toolbar>
       </AppBar>
+
+      {/* User dropdown menu — 桌面/手機共用 */}
+      {isAuthenticated && (
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleUserMenuClose}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          MenuListProps={{ sx: { py: 0.5 } }}
+          PaperProps={{
+            elevation: 0,
+            sx: {
+              mt: 1,
+              minWidth: 240,
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 1.5,
+              boxShadow: '0 12px 24px rgba(15, 23, 42, 0.08)',
+              overflow: 'hidden',
+            },
+          }}
+        >
+          <Box sx={{ px: 2, pt: 1.5, pb: 1.25 }}>
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
+              spacing={1}
+            >
+              <Typography
+                variant="body2"
+                sx={{ fontWeight: 600, minWidth: 0 }}
+                noWrap
+              >
+                {user?.fullName || user?.username}
+              </Typography>
+              <Chip
+                size="small"
+                label={user?.hasPaidFee ? '已繳會費' : '未繳會費'}
+                color={user?.hasPaidFee ? 'success' : 'default'}
+                variant="outlined"
+                sx={{ height: 20, fontSize: '0.7rem', flexShrink: 0 }}
+              />
+            </Stack>
+          </Box>
+          <Divider />
+          <MenuItem
+            onClick={() => {
+              navigate('/upload-exam');
+              handleUserMenuClose();
+            }}
+            sx={{ py: 1, mt: 0.5 }}
+          >
+            <ListItemIcon sx={{ minWidth: 32 }}>
+              <UploadIcon fontSize="small" sx={{ color: 'primary.main' }} />
+            </ListItemIcon>
+            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+              上傳考古題
+            </Typography>
+          </MenuItem>
+          <MenuItem onClick={handleLogout} sx={{ py: 1 }}>
+            <ListItemIcon sx={{ minWidth: 32 }}>
+              <LogoutIcon fontSize="small" />
+            </ListItemIcon>
+            <Typography variant="body2">登出</Typography>
+          </MenuItem>
+        </Menu>
+      )}
 
       {isMobile && (
         <Drawer
