@@ -34,79 +34,119 @@ const AboutUsPage = () => {
 
   return (
     <Box>
-      {/* Hero banner — 系學會品牌橫幅 */}
+      {/* Hero — 左 logo / 右標題與描述、底部用 banner 波紋當裝飾條 */}
       <Box
         sx={{
           position: 'relative',
-          width: '100%',
+          mb: { xs: 4, md: 5 },
           borderRadius: { xs: 2, md: 3 },
           overflow: 'hidden',
-          mb: { xs: 3, md: 4 },
           bgcolor: '#ffffff',
           border: '1px solid',
           borderColor: 'divider',
-          // 讓 banner 與下方內容銜接更柔和
-          boxShadow: '0 4px 16px rgba(15, 23, 42, 0.04)',
         }}
       >
-        <Box
-          component="img"
-          src="/images/branding/imsa-banner.png"
-          alt="台大資管系學會"
-          onError={(e) => {
-            // 圖片不存在時以漸層底 + 文字 fallback，不會破版
-            e.currentTarget.style.display = 'none';
-            e.currentTarget.parentElement.classList.add('banner-fallback');
-          }}
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          spacing={{ xs: 2.5, md: 4 }}
+          alignItems={{ xs: 'center', md: 'flex-start' }}
           sx={{
-            display: 'block',
-            width: '100%',
-            height: 'auto',
-            maxHeight: { xs: 200, sm: 280, md: 360 },
-            objectFit: 'cover',
-            objectPosition: 'center',
-          }}
-        />
-        {/* Banner 缺失時的 fallback */}
-        <Box
-          className="banner-fallback-content"
-          sx={{
-            display: 'none',
-            '.banner-fallback &': {
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: { xs: 160, md: 220 },
-              background:
-                'linear-gradient(135deg, #1976d2 0%, #0891b2 100%)',
-              color: '#fff',
-              p: 4,
-              textAlign: 'center',
-            },
+            p: { xs: 3, md: 4 },
+            pb: { xs: 4, md: 5 },
+            position: 'relative',
+            zIndex: 1,
           }}
         >
-          <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
-            {APP_CONFIG.name}
-          </Typography>
-          <Typography variant="body2" sx={{ opacity: 0.9 }}>
-            {APP_CONFIG.englishName}
-          </Typography>
-        </Box>
-      </Box>
-
-      {/* 描述文字 */}
-      {aboutSummary.description && (
-        <Box sx={{ textAlign: 'center', mb: 5, px: { xs: 1, md: 2 } }}>
-          <Typography
-            variant="body1"
-            color="text.secondary"
-            sx={{ maxWidth: 720, mx: 'auto', lineHeight: 1.8 }}
+          {/* 方形 logo */}
+          <Box
+            sx={{
+              width: { xs: 96, md: 128 },
+              height: { xs: 96, md: 128 },
+              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
           >
-            {aboutSummary.description}
-          </Typography>
-        </Box>
-      )}
+            <Box
+              component="img"
+              src="/images/branding/imsa-logo.png"
+              alt="IMSA"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+              sx={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+              }}
+            />
+          </Box>
+
+          {/* 文字區 */}
+          <Box
+            sx={{
+              flex: 1,
+              minWidth: 0,
+              textAlign: { xs: 'center', md: 'left' },
+            }}
+          >
+            <Typography
+              variant="overline"
+              sx={{
+                color: 'primary.main',
+                letterSpacing: '0.18em',
+                fontWeight: 700,
+                fontSize: '0.72rem',
+              }}
+            >
+              ABOUT IMSA
+            </Typography>
+            <Typography
+              variant="h2"
+              component="h1"
+              sx={{
+                fontWeight: 700,
+                mt: 0.5,
+                mb: 0.75,
+                lineHeight: 1.2,
+              }}
+            >
+              關於我們
+            </Typography>
+            <Typography
+              variant="subtitle1"
+              color="text.secondary"
+              sx={{ fontWeight: 500, mb: 1.5 }}
+            >
+              {APP_CONFIG.fullName}
+            </Typography>
+            {aboutSummary.description && (
+              <Typography
+                variant="body1"
+                color="text.secondary"
+                sx={{ lineHeight: 1.8, maxWidth: 640 }}
+              >
+                {aboutSummary.description}
+              </Typography>
+            )}
+          </Box>
+        </Stack>
+
+        {/* Banner 波紋裝飾條（僅取下半部） */}
+        <Box
+          sx={{
+            height: { xs: 40, md: 56 },
+            backgroundImage: 'url(/images/branding/imsa-banner.png)',
+            backgroundSize: { xs: '180% auto', md: '160% auto' },
+            backgroundPosition: 'center bottom',
+            backgroundRepeat: 'no-repeat',
+            // 圖片載入失敗時用漸層當 fallback
+            backgroundColor: '#1976d2',
+            backgroundBlendMode: 'normal',
+          }}
+        />
+      </Box>
 
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 4 }}>
