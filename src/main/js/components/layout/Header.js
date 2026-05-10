@@ -18,6 +18,8 @@ import {
   Menu,
   MenuItem,
   Avatar,
+  Divider,
+  Chip,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -31,6 +33,7 @@ import {
   AdminPanelSettings as AdminIcon,
   CloudUpload as UploadIcon,
   School as SchoolIcon,
+  OpenInNew as OpenInNewIcon,
 } from '@mui/icons-material';
 import NavigationTabs from './NavigationTabs';
 import { APP_CONFIG, NAVIGATION_ITEMS } from '../../../resources/config/constants';
@@ -44,6 +47,8 @@ const iconMap = {
   info: InfoIcon,
 };
 
+const GOOGLE_SPACE_URL = 'https://forms.gle/5ckpNSH74FhXBugM8';
+
 const Header = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -53,51 +58,20 @@ const Header = () => {
   const navigate = useNavigate();
   const { user, logout, isAuthenticated, isAdmin } = useAuth();
 
-  // 管理員導航項目
   const adminNavItems = [
-    {
-      id: 'admin-panel',
-      label: '用戶管理',
-      path: '/admin',
-      icon: AdminIcon,
-    },
-    {
-      id: 'admin-upload',
-      label: '上傳資源',
-      path: '/admin/upload',
-      icon: UploadIcon,
-    },
-    {
-      id: 'admin-exam-manage',
-      label: '考古題管理',
-      path: '/admin/exam-manage',
-      icon: SchoolIcon,
-    },
-    {
-      id: 'admin-cheatsheet-manage',
-      label: '大抄管理',
-      path: '/admin/cheatsheet-manage',
-      icon: DescriptionIcon,
-    },
+    { id: 'admin-panel', label: '用戶管理', path: '/admin', icon: AdminIcon },
+    { id: 'admin-upload', label: '上傳資源', path: '/admin/upload', icon: UploadIcon },
+    { id: 'admin-exam-manage', label: '考古題管理', path: '/admin/exam-manage', icon: SchoolIcon },
+    { id: 'admin-cheatsheet-manage', label: '大抄管理', path: '/admin/cheatsheet-manage', icon: DescriptionIcon },
   ];
 
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
-
+  const handleDrawerToggle = () => setMobileOpen((v) => !v);
   const handleMobileNavigation = (path) => {
     navigate(path);
     setMobileOpen(false);
   };
-
-  const handleUserMenuOpen = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleUserMenuClose = () => {
-    setAnchorEl(null);
-  };
-
+  const handleUserMenuOpen = (e) => setAnchorEl(e.currentTarget);
+  const handleUserMenuClose = () => setAnchorEl(null);
   const handleLogout = () => {
     logout();
     handleUserMenuClose();
@@ -105,93 +79,83 @@ const Header = () => {
   };
 
   const drawer = (
-    <Box sx={{ width: 250, pt: 2 }}>
-      <Box sx={{ px: 2, pb: 2 }}>
-        <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main' }}>
+    <Box sx={{ width: 280, height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ px: 2.5, py: 2.5 }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'primary.main' }}>
           {APP_CONFIG.name}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="caption" color="text.secondary">
           {APP_CONFIG.englishName}
         </Typography>
       </Box>
-      <List>
+      <Divider />
+
+      <List sx={{ px: 1, py: 1.5, flexGrow: 1 }}>
         {NAVIGATION_ITEMS.map((item) => {
           const IconComponent = iconMap[item.icon];
           const isActive = location.pathname === item.path;
-          
           return (
-            <ListItem key={item.id} disablePadding>
+            <ListItem key={item.id} disablePadding sx={{ mb: 0.5 }}>
               <ListItemButton
                 onClick={() => handleMobileNavigation(item.path)}
                 selected={isActive}
                 sx={{
-                  mx: 1,
-                  borderRadius: 1,
+                  borderRadius: 1.5,
+                  py: 1,
                   '&.Mui-selected': {
-                    backgroundColor: 'primary.light',
-                    '&:hover': {
-                      backgroundColor: 'primary.light',
-                    },
+                    backgroundColor: 'primary.main',
+                    color: 'primary.contrastText',
+                    '&:hover': { backgroundColor: 'primary.dark' },
+                    '& .MuiListItemIcon-root': { color: 'primary.contrastText' },
                   },
                 }}
               >
-                <ListItemIcon>
-                  <IconComponent 
-                    color={isActive ? 'primary' : 'inherit'} 
-                    sx={{ fontSize: 20 }}
-                  />
+                <ListItemIcon sx={{ minWidth: 36, color: 'inherit' }}>
+                  <IconComponent sx={{ fontSize: 20 }} />
                 </ListItemIcon>
-                <ListItemText 
+                <ListItemText
                   primary={item.label}
-                  primaryTypographyProps={{
-                    fontWeight: isActive ? 600 : 400,
-                    color: isActive ? 'primary.main' : 'text.primary',
-                  }}
+                  primaryTypographyProps={{ fontWeight: isActive ? 600 : 500, fontSize: '0.9rem' }}
                 />
               </ListItemButton>
             </ListItem>
           );
         })}
-        
-        {/* 管理員選項 */}
+
         {isAdmin && (
           <>
-            <Box sx={{ my: 1, mx: 2 }}>
-              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                管理員功能
-              </Typography>
-            </Box>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ px: 1.5, mt: 2, mb: 0.5, display: 'block', fontWeight: 600, letterSpacing: '0.04em' }}
+            >
+              管理員功能
+            </Typography>
             {adminNavItems.map((item) => {
               const IconComponent = item.icon;
               const isActive = location.pathname === item.path;
-              
               return (
-                <ListItem key={item.id} disablePadding>
+                <ListItem key={item.id} disablePadding sx={{ mb: 0.5 }}>
                   <ListItemButton
                     onClick={() => handleMobileNavigation(item.path)}
                     selected={isActive}
                     sx={{
-                      mx: 1,
-                      borderRadius: 1,
-                      backgroundColor: isActive ? 'secondary.light' : 'transparent',
+                      borderRadius: 1.5,
+                      py: 1,
                       '&.Mui-selected': {
-                        backgroundColor: 'secondary.light',
-                        '&:hover': {
-                          backgroundColor: 'secondary.light',
-                        },
+                        backgroundColor: 'grey.100',
+                        '&:hover': { backgroundColor: 'grey.200' },
                       },
                     }}
                   >
-                    <ListItemIcon>
-                      <IconComponent 
-                        color={isActive ? 'secondary' : 'inherit'} 
-                        sx={{ fontSize: 20 }}
-                      />
+                    <ListItemIcon sx={{ minWidth: 36 }}>
+                      <IconComponent sx={{ fontSize: 20, color: isActive ? 'secondary.main' : 'text.secondary' }} />
                     </ListItemIcon>
-                    <ListItemText 
+                    <ListItemText
                       primary={item.label}
                       primaryTypographyProps={{
-                        fontWeight: isActive ? 600 : 400,
+                        fontWeight: isActive ? 600 : 500,
+                        fontSize: '0.875rem',
                         color: isActive ? 'secondary.main' : 'text.primary',
                       }}
                     />
@@ -203,28 +167,37 @@ const Header = () => {
         )}
       </List>
 
-      <Box sx={{ p: 2, mt: 'auto' }}>
-        {/* 登入/登出按鈕 */}
+      <Divider />
+      <Box sx={{ p: 2 }}>
         {isAuthenticated ? (
-          <Box sx={{ mb: 2 }}>
-            <Box sx={{
-              display: 'flex',
-              alignItems: 'center',
-              mb: 1,
-              p: 1,
-              backgroundColor: 'grey.50',
-              borderRadius: 1
-            }}>
-              <Avatar sx={{ width: 24, height: 24, bgcolor: 'primary.main', mr: 1, fontSize: '0.75rem' }}>
+          <Box>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.25,
+                p: 1.25,
+                mb: 1.5,
+                bgcolor: 'grey.50',
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 1.5,
+              }}
+            >
+              <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: '0.85rem' }}>
                 {user?.username?.charAt(0).toUpperCase()}
               </Avatar>
-              <Box>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
                   {user?.fullName || user?.username}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {user?.hasPaidFee ? '已繳會費' : '未繳會費'}
-                </Typography>
+                <Chip
+                  size="small"
+                  label={user?.hasPaidFee ? '已繳會費' : '未繳會費'}
+                  color={user?.hasPaidFee ? 'success' : 'default'}
+                  variant="outlined"
+                  sx={{ height: 18, fontSize: '0.7rem' }}
+                />
               </Box>
             </Box>
             <Button
@@ -236,70 +209,37 @@ const Header = () => {
                 handleLogout();
                 setMobileOpen(false);
               }}
-              sx={{
-                borderColor: 'primary.main',
-                color: 'primary.main',
-                fontWeight: 600,
-                py: 0.75,
-                borderRadius: 2,
-                textTransform: 'none',
-                '&:hover': {
-                  backgroundColor: 'primary.light',
-                },
-              }}
             >
               登出
             </Button>
           </Box>
         ) : (
-          <Box sx={{ mb: 2 }}>
-            <Button
-              variant="contained"
-              fullWidth
-              size="medium"
-              startIcon={<LoginIcon />}
-              onClick={() => {
-                navigate('/login');
-                setMobileOpen(false);
-              }}
-              sx={{
-                backgroundColor: 'primary.main',
-                color: 'white',
-                fontWeight: 600,
-                py: 1,
-                borderRadius: 2,
-                textTransform: 'none',
-                '&:hover': {
-                  backgroundColor: 'primary.dark',
-                },
-              }}
-            >
-              登入/註冊
-            </Button>
-          </Box>
+          <Button
+            variant="contained"
+            fullWidth
+            startIcon={<LoginIcon />}
+            onClick={() => {
+              navigate('/login');
+              setMobileOpen(false);
+            }}
+            sx={{ mb: 1 }}
+          >
+            登入 / 註冊
+          </Button>
         )}
 
         <Button
-          variant="contained"
+          variant="outlined"
           fullWidth
-          size="medium"
+          size="small"
+          endIcon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
           onClick={() => {
-            window.open('https://forms.gle/5ckpNSH74FhXBugM8', '_blank');
+            window.open(GOOGLE_SPACE_URL, '_blank');
             setMobileOpen(false);
           }}
-          sx={{
-            backgroundColor: 'primary.main',
-            color: 'white',
-            fontWeight: 600,
-            py: 1,
-            borderRadius: 2,
-            textTransform: 'none',
-            '&:hover': {
-              backgroundColor: 'primary.dark',
-            },
-          }}
+          sx={{ mt: 1 }}
         >
-          註冊資管系 google space
+          資管系 Google Space
         </Button>
       </Box>
     </Box>
@@ -307,140 +247,150 @@ const Header = () => {
 
   return (
     <>
-      <AppBar 
-        position="static" 
-        elevation={0}
-        sx={{ 
-          backgroundColor: 'background.paper',
-          borderBottom: 1,
-          borderColor: 'grey.200'
-        }}
-      >
-        <Toolbar sx={{ maxWidth: 1200, mx: 'auto', width: '100%', px: { xs: 2, sm: 3, md: 4 } }}>
+      <AppBar position="sticky">
+        <Toolbar
+          sx={{
+            maxWidth: 1200,
+            mx: 'auto',
+            width: '100%',
+            px: { xs: 2, sm: 3, md: 4 },
+            minHeight: { xs: 60, md: 64 },
+            gap: 2,
+          }}
+        >
           {isMobile && (
             <IconButton
-              color="inherit"
-              aria-label="開啟選單"
               edge="start"
+              aria-label="開啟選單"
               onClick={handleDrawerToggle}
-              sx={{ mr: 2 }}
+              sx={{ color: 'text.primary' }}
             >
               <MenuIcon />
             </IconButton>
           )}
-          
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography 
-              variant="h6" 
-              component="div" 
-              sx={{ 
-                fontWeight: 700,
-                color: 'primary.main',
-                cursor: 'pointer'
-              }}
-              onClick={() => navigate('/')}
+
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              cursor: 'pointer',
+              minWidth: 0,
+              mr: { md: 2 },
+            }}
+            onClick={() => navigate('/')}
+          >
+            <Typography
+              variant="subtitle1"
+              sx={{ fontWeight: 700, color: 'primary.main', lineHeight: 1.2 }}
+              noWrap
             >
               {APP_CONFIG.name}
             </Typography>
-            <Typography 
-              variant="body2" 
+            <Typography
+              variant="caption"
               color="text.secondary"
-              sx={{ display: { xs: 'none', sm: 'block' } }}
+              sx={{ display: { xs: 'none', sm: 'block' }, lineHeight: 1.2 }}
+              noWrap
             >
               {APP_CONFIG.englishName}
             </Typography>
           </Box>
 
           {!isMobile && (
-            <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 2 }}>
-              <NavigationTabs />
-              
+            <>
+              <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'center' }}>
+                <NavigationTabs />
+              </Box>
+
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  endIcon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
+                  onClick={() => window.open(GOOGLE_SPACE_URL, '_blank')}
+                  sx={{ display: { xs: 'none', lg: 'inline-flex' } }}
+                >
+                  Google Space
+                </Button>
+
+                {isAuthenticated ? (
+                  <>
+                    <IconButton onClick={handleUserMenuOpen} sx={{ p: 0.5 }}>
+                      <Avatar sx={{ width: 34, height: 34, bgcolor: 'primary.main', fontSize: '0.9rem' }}>
+                        {user?.username?.charAt(0).toUpperCase()}
+                      </Avatar>
+                    </IconButton>
+                    <Menu
+                      anchorEl={anchorEl}
+                      open={Boolean(anchorEl)}
+                      onClose={handleUserMenuClose}
+                      anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                      transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                      PaperProps={{
+                        elevation: 0,
+                        sx: {
+                          mt: 1,
+                          minWidth: 220,
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          borderRadius: 1.5,
+                          boxShadow: '0 12px 24px rgba(15, 23, 42, 0.08)',
+                        },
+                      }}
+                    >
+                      <Box sx={{ px: 2, py: 1.5 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
+                          {user?.fullName || user?.username}
+                        </Typography>
+                        <Chip
+                          size="small"
+                          label={user?.hasPaidFee ? '已繳會費' : '未繳會費'}
+                          color={user?.hasPaidFee ? 'success' : 'default'}
+                          variant="outlined"
+                          sx={{ mt: 0.5, height: 20, fontSize: '0.7rem' }}
+                        />
+                      </Box>
+                      <Divider />
+                      <MenuItem onClick={handleLogout} sx={{ mt: 0.5 }}>
+                        <ListItemIcon>
+                          <LogoutIcon fontSize="small" />
+                        </ListItemIcon>
+                        <Typography variant="body2">登出</Typography>
+                      </MenuItem>
+                    </Menu>
+                  </>
+                ) : (
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<LoginIcon />}
+                    onClick={() => navigate('/login')}
+                  >
+                    登入
+                  </Button>
+                )}
+              </Box>
+            </>
+          )}
+
+          {isMobile && !isAuthenticated && (
+            <Box sx={{ ml: 'auto' }}>
               <Button
                 variant="contained"
                 size="small"
-                onClick={() => window.open('https://forms.gle/5ckpNSH74FhXBugM8', '_blank')}
-                sx={{
-                  backgroundColor: 'primary.main',
-                  color: 'white',
-                  fontWeight: 600,
-                  px: 2,
-                  py: 0.5,
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  fontSize: '0.875rem',
-                  '&:hover': {
-                    backgroundColor: 'primary.dark',
-                  },
-                }}
+                startIcon={<LoginIcon />}
+                onClick={() => navigate('/login')}
               >
-                註冊資管系 Google space
+                登入
               </Button>
-              
-              {isAuthenticated ? (
-                <>
-                  <IconButton
-                    onClick={handleUserMenuOpen}
-                    sx={{ p: 0.5 }}
-                  >
-                    <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
-                      {user?.username?.charAt(0).toUpperCase()}
-                    </Avatar>
-                  </IconButton>
-                  <Menu
-                    anchorEl={anchorEl}
-                    open={Boolean(anchorEl)}
-                    onClose={handleUserMenuClose}
-                    anchorOrigin={{
-                      vertical: 'bottom',
-                      horizontal: 'right',
-                    }}
-                    transformOrigin={{
-                      vertical: 'top',
-                      horizontal: 'right',
-                    }}
-                  >
-                    <MenuItem disabled>
-                      <Typography variant="body2">
-                        {user?.fullName || user?.username}
-                      </Typography>
-                    </MenuItem>
-                    <MenuItem disabled>
-                      <Typography variant="caption" color="textSecondary">
-                        {user?.hasPaidFee ? '已繳會費' : '未繳會費'}
-                      </Typography>
-                    </MenuItem>
-                    <MenuItem onClick={handleLogout}>
-                      <ListItemIcon>
-                        <LogoutIcon fontSize="small" />
-                      </ListItemIcon>
-                      登出
-                    </MenuItem>
-                  </Menu>
-                </>
-              ) : (
-                <Button
-                  variant="contained"
-                  size="small"
-                  startIcon={<LoginIcon />}
-                  onClick={() => navigate('/login')}
-                  sx={{
-                    backgroundColor: 'primary.main',
-                    color: 'white',
-                    fontWeight: 600,
-                    px: 2,
-                    py: 0.5,
-                    borderRadius: 2,
-                    textTransform: 'none',
-                    fontSize: '0.875rem',
-                    '&:hover': {
-                      backgroundColor: 'primary.dark',
-                    },
-                  }}
-                >
-                  登入/註冊
-                </Button>
-              )}
             </Box>
+          )}
+          {isMobile && isAuthenticated && (
+            <IconButton onClick={handleUserMenuOpen} sx={{ ml: 'auto', p: 0.5 }}>
+              <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: '0.85rem' }}>
+                {user?.username?.charAt(0).toUpperCase()}
+              </Avatar>
+            </IconButton>
           )}
         </Toolbar>
       </AppBar>
@@ -450,13 +400,12 @@ const Header = () => {
           variant="temporary"
           open={mobileOpen}
           onClose={handleDrawerToggle}
-          ModalProps={{
-            keepMounted: true,
-          }}
+          ModalProps={{ keepMounted: true }}
           sx={{
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
-              width: 250,
+              width: 280,
+              border: 'none',
             },
           }}
         >
