@@ -11,6 +11,32 @@ const CATEGORY_META = {
 
 const CHANGELOG = [
   {
+    version: '1.6.7',
+    date: '2026-05-10',
+    title: '上傳考古、行事曆、品牌調校',
+    highlights: [
+      '新增考古題上傳頁，含規則說明與表單嵌入',
+      '首頁加入台大行事曆，可點日期同步滾動近期行程',
+      '系學會 logo 串入 Header，關於我們 hero 重設計',
+    ],
+    changes: {
+      新功能: [
+        { text: '考古題上傳頁（/upload-exam）：規則卡、流程 stepper、Google Form 嵌入' },
+        { text: '台大行事曆：月份切換、可滾動近期行程、點日期同步滾到對應事項' },
+        { text: '考古題庫排序：最新上傳 / 下載次數 / 課程名稱' },
+      ],
+      優化: [
+        { text: '關於我們頁：左 logo + 右標題的 hero 排版' },
+        { text: 'Header 加入系學會方形 logo' },
+        { text: 'Google Workspace 按鈕：四色 G logo + 字樣' },
+        { text: 'Tab hover 滑順化（移除 reflow）' },
+        { text: '行事曆顏色：假日紅字、重要截止紅圈不撞色' },
+        { text: '用戶下拉選單瘦身、表單嵌入版面修正' },
+      ],
+      修復: [{ text: '手機右上頭像點不開' }],
+    },
+  },
+  {
     version: '1.6.0',
     date: '2026-05-10',
     title: '前端介面重構',
