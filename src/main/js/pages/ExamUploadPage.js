@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
@@ -14,11 +14,16 @@ import {
   Step,
   StepLabel,
   Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  IconButton,
 } from '@mui/material';
 import {
   Quiz as QuizIcon,
   Description as DescriptionIcon,
-  PictureAsPdf as PdfIcon,
+  MenuBook as MenuBookIcon,
+  Close as CloseIcon,
   OpenInNew as OpenInNewIcon,
   CloudUpload as UploadIcon,
   AccessTime as TimeIcon,
@@ -37,8 +42,6 @@ const GOOGLE_FORM_OPEN_URL =
 
 const SHEET_URL =
   'https://docs.google.com/spreadsheets/d/1iTkjNC3meJ4e0EhR9zWprI39XiA6xrlQmMqWIODcWSE/edit?gid=996157442#gid=996157442';
-
-const PDF_URL = '/docs/exam-upload-rules.pdf';
 
 // 一目了然的數字統計
 const QUICK_STATS = [
@@ -211,6 +214,7 @@ const CategoryCard = ({ icon: Icon, accent, title, desc, bullets }) => (
 const ExamUploadPage = () => {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
+  const [rulesOpen, setRulesOpen] = useState(false);
 
   // 未登入：請先登入
   if (!isAuthenticated) {
@@ -265,12 +269,10 @@ const ExamUploadPage = () => {
           <Button
             variant="outlined"
             size="small"
-            startIcon={<PdfIcon />}
-            href={PDF_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+            startIcon={<MenuBookIcon />}
+            onClick={() => setRulesOpen(true)}
           >
-            下載完整規範 PDF
+            查看完整規範
           </Button>
         </Stack>
       </Stack>
@@ -473,6 +475,247 @@ const ExamUploadPage = () => {
           填寫過程可在表單內滾動；若內容過長或顯示異常，請點右上角「在新分頁開啟」。
         </Typography>
       </Box>
+
+      {/* 完整規範 Dialog */}
+      <Dialog
+        open={rulesOpen}
+        onClose={() => setRulesOpen(false)}
+        maxWidth="md"
+        fullWidth
+        scroll="paper"
+        PaperProps={{ sx: { borderRadius: 2 } }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+            <Box>
+              <Typography variant="h5" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+                資管系考古上傳規範
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                114-1 起適用
+              </Typography>
+            </Box>
+            <IconButton onClick={() => setRulesOpen(false)} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Stack>
+        </DialogTitle>
+        <DialogContent dividers sx={{ px: { xs: 2.5, sm: 4 }, py: 3 }}>
+          <Stack spacing={3.5}>
+            {/* 一、可上傳項目 */}
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                一、可上傳<Box component="span" sx={{ color: '#dc2626' }}>五年內</Box>之
+              </Typography>
+              <Stack spacing={1} sx={{ pl: 0.5 }}>
+                <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
+                  ・<strong>考古題 / 大抄</strong>：限課程（必修 / 選修 / 通識）之
+                  <Box component="span" sx={{ color: '#dc2626', fontWeight: 700 }}>
+                    期中 / 期末考
+                  </Box>
+                </Typography>
+                <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
+                  ・<strong>微積分</strong>：僅限上傳
+                  <Box component="span" sx={{ color: '#dc2626', fontWeight: 700 }}>
+                    小考
+                  </Box>
+                  考古題
+                </Typography>
+              </Stack>
+            </Box>
+
+            {/* 二、五年範圍 */}
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                二、五年內 = <Box component="span" sx={{ color: '#dc2626' }}>含當前學期</Box>往前推五年
+              </Typography>
+              <Stack spacing={1.5} sx={{ pl: 0.5 }}>
+                <Box
+                  sx={{
+                    p: 1.5,
+                    borderLeft: '3px solid #059669',
+                    bgcolor: 'rgba(5, 150, 105, 0.06)',
+                    borderRadius: '0 6px 6px 0',
+                  }}
+                >
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: '#059669', mb: 0.25 }}>
+                    例子一 ✌
+                  </Typography>
+                  <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
+                    現在 114-1（認可 110~114 之考古），融融上傳 111~114 年的統計學考古共 4 份
+                    → 通過審核，拿到回饋獎勵 <strong>NT$ 250</strong>
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    p: 1.5,
+                    borderLeft: '3px solid #dc2626',
+                    bgcolor: 'rgba(220, 38, 38, 0.06)',
+                    borderRadius: '0 6px 6px 0',
+                  }}
+                >
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: '#dc2626', mb: 0.25 }}>
+                    例子二 ✗
+                  </Typography>
+                  <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
+                    現在 114-1，某同學上傳 1993~1996 年的資結考古共 4 份 → 因
+                    <strong>超過規定時間</strong>，拿不到回饋獎勵
+                  </Typography>
+                </Box>
+              </Stack>
+            </Box>
+
+            <Divider />
+
+            {/* 三、注意事項與獎勵 */}
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                三、注意事項與獎勵
+              </Typography>
+              <Stack spacing={1} sx={{ pl: 0.5 }}>
+                <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
+                  ・<strong>解答規範</strong>：若有解答請一併附上；
+                  <Box component="span" sx={{ color: '#dc2626' }}>
+                    請勿自行撰寫答案
+                  </Box>
+                  （若確定滿分例外）
+                </Typography>
+                <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
+                  ・<strong>回饋獎勵</strong>：每次上傳
+                  <strong>4 份考古題 / 大抄</strong>（不含系訂必修），待審核通過即可獲得
+                  <strong> NT$ 250 </strong>獎勵
+                </Typography>
+              </Stack>
+            </Box>
+
+            {/* 四、上限 */}
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                四、上傳份數 / 回饋上限 ⚠
+              </Typography>
+              <Typography variant="body2" sx={{ lineHeight: 1.7, pl: 0.5, mb: 1 }}>
+                為了讓每位同學都有公平繳交考古題的機會，每位同學在累積繳交滿{' '}
+                <Box component="span" sx={{ color: '#dc2626', fontWeight: 700 }}>
+                  32 份
+                </Box>{' '}
+                並獲得{' '}
+                <Box component="span" sx={{ color: '#dc2626', fontWeight: 700 }}>
+                  NT$ 2000
+                </Box>{' '}
+                獎金後，將不再繼續發放獎金。
+              </Typography>
+              <Box
+                sx={{
+                  p: 1.5,
+                  ml: 0.5,
+                  borderLeft: '3px solid #d97706',
+                  bgcolor: 'rgba(217, 119, 6, 0.06)',
+                  borderRadius: '0 6px 6px 0',
+                }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 600, color: '#92400e', mb: 0.25 }}>
+                  例子
+                </Typography>
+                <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
+                  吱吱上傳 110~114 年共 99 份考古 + 課程評價 → 雖通過審核，但因回饋獎勵
+                  <strong>上限僅能拿到 NT$ 2000</strong>
+                </Typography>
+              </Box>
+            </Box>
+
+            <Divider />
+
+            {/* 五、上傳格式 */}
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                五、上傳格式
+              </Typography>
+              <Stack spacing={2}>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#0891b2', mb: 0.5 }}>
+                    考古題
+                  </Typography>
+                  <Stack spacing={0.5} sx={{ pl: 0.5 }}>
+                    <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
+                      ・<strong>形式</strong>：原始考題電子檔及題目掃描為主，整理後以 PDF 上傳
+                    </Typography>
+                    <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
+                      ・<strong>要求</strong>：清晰且可辨識文字
+                    </Typography>
+                  </Stack>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#059669', mb: 0.5 }}>
+                    大抄
+                  </Typography>
+                  <Stack spacing={0.5} sx={{ pl: 0.5 }}>
+                    <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
+                      ・<strong>形式</strong>：不限手寫或打字，整理後以 PDF 上傳
+                    </Typography>
+                    <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
+                      ・<strong>要求</strong>：清晰整齊且可辨識文字，有助同學複習考試（學術部會再審核）
+                    </Typography>
+                  </Stack>
+                </Box>
+              </Stack>
+            </Box>
+
+            <Divider />
+
+            {/* 六、上傳流程 */}
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                六、上傳流程
+              </Typography>
+              <Stack spacing={1.5}>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.25 }}>
+                    1. 檢視已上傳之考古
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7, pl: 1.5 }}>
+                    為避免重複上傳，請先點擊上方流程區的「檢視已上傳清單」按鈕，至 Google Sheet 確認
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.25 }}>
+                    2. 填寫表單
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7, pl: 1.5 }}>
+                    使用台大信箱（@ntu.edu.tw）填寫；檔案命名：
+                    <Box
+                      component="code"
+                      sx={{
+                        ml: 0.5,
+                        px: 0.75,
+                        py: 0.25,
+                        bgcolor: 'rgba(15, 23, 42, 0.06)',
+                        borderRadius: 0.5,
+                        fontFamily: 'ui-monospace, "SF Mono", Consolas, monospace',
+                        fontSize: '0.85em',
+                      }}
+                    >
+                      年份_學期_科目名_考試類別
+                    </Box>
+                    （例：112-1_程式設計_期末.pdf）。
+                    <Box component="span" sx={{ color: '#dc2626' }}>
+                      未依命名格式者不做計算
+                    </Box>
+                    ；若考題與答案分開，請分成兩個檔案上傳
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.25 }}>
+                    3. 等待審核
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7, pl: 1.5 }}>
+                    待審核通過 & 累積達 4 份後，學術部將於統一時間通知並發放回饋獎勵
+                  </Typography>
+                </Box>
+              </Stack>
+            </Box>
+          </Stack>
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };
