@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -52,6 +52,11 @@ const dotColorFor = (kind) => {
 const NTUCalendar = () => {
   const today = useMemo(() => startOfDay(new Date()), []);
   const [viewDate, setViewDate] = useState(today);
+  const [selectedDate, setSelectedDate] = useState(null); // 點月曆後存 ISO 字串
+
+  // 滾動容器與每筆事項的 DOM 參考，用來實作「點日期 → 滾到對應事項」
+  const scrollRef = useRef(null);
+  const itemRefs = useRef({});
 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
@@ -97,6 +102,28 @@ const NTUCalendar = () => {
       .filter((e) => e.date >= todayISO)
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [today]);
+
+  // 點月曆後，平滑滾動右側列表到第一個 date >= selectedDate 的事項
+  const scrollToDate = useCallback(
+    (iso) => {
+      if (!iso || !scrollRef.current) return;
+      const targetIdx = upcoming.findIndex((e) => e.date >= iso);
+      if (targetIdx < 0) return;
+      const el = itemRefs.current[targetIdx];
+      if (!el) return;
+      const containerTop = scrollRef.current.getBoundingClientRect().top;
+      const elTop = el.getBoundingClientRect().top;
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollTop + (elTop - containerTop) - 4,
+        behavior: 'smooth',
+      });
+    },
+    [upcoming]
+  );
+
+  useEffect(() => {
+    if (selectedDate) scrollToDate(selectedDate);
+  }, [selectedDate, scrollToDate]);
 
   const goPrev = () => setViewDate(new Date(year, month - 1, 1));
   const goNext = () => setViewDate(new Date(year, month + 1, 1));
@@ -223,9 +250,17 @@ const NTUCalendar = () => {
                     ? `1.5px solid ${HOLIDAY_RED}`
                     : '1.5px solid transparent';
 
+                const isSelected = cell.iso === selectedDate && !cell.isToday;
+                const cellBg = cell.isToday
+                  ? 'primary.main'
+                  : isSelected
+                  ? 'rgba(25, 118, 210, 0.12)'
+                  : 'transparent';
+
                 return (
                   <Box
                     key={cell.iso}
+                    onClick={() => setSelectedDate(cell.iso)}
                     sx={{
                       position: 'relative',
                       aspectRatio: '1 / 1',
@@ -234,10 +269,17 @@ const NTUCalendar = () => {
                       justifyContent: 'center',
                       borderRadius: '50%',
                       border: criticalRing,
-                      bgcolor: cell.isToday ? 'primary.main' : 'transparent',
+                      bgcolor: cellBg,
                       color: cell.isToday ? 'primary.contrastText' : textColor,
                       fontWeight:
                         cell.isToday || isCriticalDay ? 700 : 500,
+                      cursor: 'pointer',
+                      transition: 'background-color 120ms ease',
+                      '&:hover': {
+                        bgcolor: cell.isToday
+                          ? 'primary.dark'
+                          : 'rgba(15, 23, 42, 0.05)',
+                      },
                     }}
                   >
                     <Typography
@@ -349,11 +391,13 @@ const NTUCalendar = () => {
               </Typography>
             ) : (
               <Stack
+                ref={scrollRef}
                 sx={{
                   flex: 1,
                   overflowY: 'auto',
                   px: { xs: 2, sm: 2.5 },
                   pb: { xs: 2, sm: 2.5 },
+                  scrollBehavior: 'smooth',
                   // 細緻 scrollbar
                   '&::-webkit-scrollbar': { width: 6 },
                   '&::-webkit-scrollbar-track': { background: 'transparent' },
@@ -384,17 +428,27 @@ const NTUCalendar = () => {
                     ? HOLIDAY_RED
                     : 'text.primary';
 
+                  const isMatched =
+                    selectedDate && event.date === selectedDate;
                   return (
                     <Stack
                       key={`${event.date}-${idx}`}
+                      ref={(el) => {
+                        if (el) itemRefs.current[idx] = el;
+                      }}
                       direction="row"
                       spacing={1.5}
                       alignItems="flex-start"
                       sx={{
                         py: 1,
+                        px: 0.75,
                         borderRadius: 1,
-                        transition: 'background-color 120ms ease',
-                        '&:hover': { bgcolor: 'grey.50' },
+                        transition:
+                          'background-color 200ms ease, box-shadow 200ms ease',
+                        bgcolor: isMatched
+                          ? 'rgba(25, 118, 210, 0.08)'
+                          : 'transparent',
+                        '&:hover': { bgcolor: isMatched ? 'rgba(25, 118, 210, 0.12)' : 'grey.50' },
                       }}
                     >
                       <Box sx={{ minWidth: 52, flexShrink: 0, pt: 0.25 }}>
