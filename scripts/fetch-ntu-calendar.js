@@ -23,7 +23,10 @@ const OUTPUT = path.join(
 );
 
 const FETCH_TIMEOUT_MS = 10000;
-const MAX_EVENTS = 30; // 保留未來最多 30 件，前端再決定要顯示幾筆
+// 寫入兩份資料：
+// - upcoming：未來最近 N 件（給「近期行程」列表）
+// - all：未來所有事件（給月曆格子標點，含跨月份切換）
+const UPCOMING_MAX = 30;
 
 function fetchURL(url) {
   return new Promise((resolve, reject) => {
@@ -94,14 +97,34 @@ function parseICS(text) {
 }
 
 function classifyEvent(title) {
+  // 補課日 — 雖然名稱含「假」字但其實要上課，不算放假
+  if (/補課/.test(title) || /影響.*課程/.test(title)) return 'highlight';
+
   // 學生最重要：選課與學籍相關截止（不能錯過）
   if (/(停修|加退選|補選|休學|退學)/.test(title)) return 'critical';
-  // 放假
-  if (/放假/.test(title)) return 'holiday';
+
+  // 「假期」：國定假日 + 寒暑假 + 春節 + 補假
+  // 1. 標明 (放假日)
+  // 2. 補假
+  // 3. 春節相關（除夕、小年夜、年初一/二/三放假）
+  // 4. 寒休、調整放假、連假
+  // 5. 寒暑假開始
+  const isHoliday =
+    /\(放假日\)/.test(title) ||
+    /補假/.test(title) ||
+    /年初[一二三四五]放假/.test(title) ||
+    /(除夕|小年夜)/.test(title) ||
+    /^寒休/.test(title) ||
+    /^調整放假/.test(title) ||
+    /連假/.test(title) ||
+    /(暑假|寒假).*開始/.test(title);
+  if (isHoliday) return 'holiday';
+
   // 重要學期事件
-  if (/(期中考|期末考|期中|期末|考試開始|畢業典禮|開學|新生.*典禮|上課.*(開始|結束)|學期.*(開始|結束))/.test(title)) {
+  if (/(期中考|期末考|考試開始|畢業典禮|開學|新生.*典禮|上課.*(開始|結束)|學期.*(開始|結束))/.test(title)) {
     return 'highlight';
   }
+
   // 一般申請截止（次要）
   if (/(申請截止|報名截止|繳費截止|繳交.*截止)/.test(title)) return 'highlight';
   return 'normal';
@@ -132,28 +155,33 @@ async function main() {
   const allEvents = parseICS(raw);
   const today = todayISO();
 
-  const upcoming = allEvents
+  const futureSorted = allEvents
     .filter((e) => e.date >= today)
     .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, MAX_EVENTS)
     .map((e) => ({
       date: e.date,
       title: e.title,
       kind: classifyEvent(e.title),
     }));
 
+  const upcoming = futureSorted.slice(0, UPCOMING_MAX);
+
   fs.mkdirSync(path.dirname(OUTPUT), { recursive: true });
   fs.writeFileSync(
     OUTPUT,
     JSON.stringify(
-      { updatedAt: new Date().toISOString(), events: upcoming },
+      {
+        updatedAt: new Date().toISOString(),
+        events: futureSorted, // 完整未來事件（給月曆使用）
+        upcoming, // 近期前 N 件（給列表使用）
+      },
       null,
       2
     )
   );
 
   console.log(
-    `[ntu-cal] 完成：解析 ${allEvents.length} 件、保留近期 ${upcoming.length} 件 → ${OUTPUT}`
+    `[ntu-cal] 完成：解析 ${allEvents.length} 件、未來 ${futureSorted.length} 件、近期列表 ${upcoming.length} 件 → ${OUTPUT}`
   );
 }
 

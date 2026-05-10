@@ -19,7 +19,7 @@ const CALENDAR_URL =
   'https://mail.ntu.edu.tw/owa/calendar/231111d435d54d41908fa9c59d0812a3@ntu.edu.tw/4576890d12e040bab4ab864c413aa2be12994112486015644960/calendar.html';
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
-const CRITICAL_RED = '#dc2626';
+const HOLIDAY_RED = '#dc2626'; // 國定假日 / 寒暑假 / 週末：傳統紅
 
 const toISO = (d) => {
   const y = d.getFullYear();
@@ -44,10 +44,9 @@ const pickTopKind = (events) =>
   );
 
 const dotColorFor = (kind) => {
-  if (kind === 'critical') return CRITICAL_RED;
+  if (kind === 'holiday') return HOLIDAY_RED;
   if (kind === 'highlight') return '#1976d2';
-  if (kind === 'holiday') return '#94a3b8';
-  return '#cbd5e1';
+  return '#94a3b8';
 };
 
 const NTUCalendar = ({ upcomingLimit = 7 }) => {
@@ -57,7 +56,7 @@ const NTUCalendar = ({ upcomingLimit = 7 }) => {
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
 
-  // ISO date → events[]
+  // ISO date → events[]（給月曆格子標點）
   const eventsByDate = useMemo(() => {
     const m = {};
     for (const e of calendarData.events || []) {
@@ -89,10 +88,11 @@ const NTUCalendar = ({ upcomingLimit = 7 }) => {
     return list;
   }, [year, month, today, eventsByDate]);
 
-  // 近期事項（依 kind 排序，重要的優先；同 kind 依日期）
+  // 近期事項（優先用 upcoming，沒有就退回 events）
   const upcoming = useMemo(() => {
     const todayISO = toISO(today);
-    return (calendarData.events || [])
+    const source = calendarData.upcoming || calendarData.events || [];
+    return source
       .filter((e) => e.date >= todayISO)
       .slice(0, upcomingLimit);
   }, [today, upcomingLimit]);
@@ -184,7 +184,7 @@ const NTUCalendar = ({ upcomingLimit = 7 }) => {
                   sx={{
                     textAlign: 'center',
                     fontWeight: 600,
-                    color: i === 0 || i === 6 ? CRITICAL_RED : 'text.secondary',
+                    color: i === 0 || i === 6 ? HOLIDAY_RED : 'text.secondary',
                     py: 0.5,
                   }}
                 >
@@ -203,15 +203,24 @@ const NTUCalendar = ({ upcomingLimit = 7 }) => {
             >
               {cells.map((cell) => {
                 const isWeekend = cell.weekday === 0 || cell.weekday === 6;
+                const isHolidayDay = cell.topKind === 'holiday';
                 const isCriticalDay = cell.topKind === 'critical';
 
-                const baseColor = cell.isOtherMonth
-                  ? 'text.disabled'
-                  : isCriticalDay
-                  ? CRITICAL_RED
-                  : isWeekend
-                  ? CRITICAL_RED
-                  : 'text.primary';
+                // 文字顏色：放假/週末 → 紅；其他 → 深色（critical 用粗體區別，不用色）
+                let textColor;
+                if (cell.isOtherMonth) {
+                  textColor = 'text.disabled';
+                } else if (isHolidayDay || isWeekend) {
+                  textColor = HOLIDAY_RED;
+                } else {
+                  textColor = 'text.primary';
+                }
+
+                // critical 用紅色 outline 圈住數字（跟假日紅字明顯不同）
+                const criticalRing =
+                  isCriticalDay && !cell.isOtherMonth && !cell.isToday
+                    ? `1.5px solid ${HOLIDAY_RED}`
+                    : '1.5px solid transparent';
 
                 return (
                   <Box
@@ -223,13 +232,11 @@ const NTUCalendar = ({ upcomingLimit = 7 }) => {
                       alignItems: 'center',
                       justifyContent: 'center',
                       borderRadius: '50%',
-                      bgcolor: cell.isToday
-                        ? 'primary.main'
-                        : isCriticalDay && !cell.isOtherMonth
-                        ? 'rgba(220, 38, 38, 0.08)'
-                        : 'transparent',
-                      color: cell.isToday ? 'primary.contrastText' : baseColor,
-                      fontWeight: cell.isToday || isCriticalDay ? 700 : 500,
+                      border: criticalRing,
+                      bgcolor: cell.isToday ? 'primary.main' : 'transparent',
+                      color: cell.isToday ? 'primary.contrastText' : textColor,
+                      fontWeight:
+                        cell.isToday || isCriticalDay ? 700 : 500,
                     }}
                   >
                     <Typography
@@ -242,13 +249,14 @@ const NTUCalendar = ({ upcomingLimit = 7 }) => {
                     >
                       {cell.day}
                     </Typography>
-                    {cell.topKind && (
+                    {/* 假期 / 學期事件 顯示底部小點 */}
+                    {(isHolidayDay || cell.topKind === 'highlight') && (
                       <Box
                         sx={{
                           position: 'absolute',
                           bottom: 2,
-                          width: cell.topKind === 'critical' ? 5 : 4,
-                          height: cell.topKind === 'critical' ? 5 : 4,
+                          width: 4,
+                          height: 4,
                           borderRadius: '50%',
                           bgcolor: cell.isToday
                             ? 'primary.contrastText'
@@ -273,21 +281,28 @@ const NTUCalendar = ({ upcomingLimit = 7 }) => {
               useFlexGap
             >
               <Stack direction="row" spacing={0.5} alignItems="center">
-                <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: CRITICAL_RED }} />
+                <Box
+                  sx={{
+                    width: 12,
+                    height: 12,
+                    borderRadius: '50%',
+                    border: `1.5px solid ${HOLIDAY_RED}`,
+                  }}
+                />
                 <Typography variant="caption" color="text.secondary">
-                  重要
+                  重要截止
+                </Typography>
+              </Stack>
+              <Stack direction="row" spacing={0.5} alignItems="center">
+                <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: HOLIDAY_RED }} />
+                <Typography variant="caption" color="text.secondary">
+                  假期
                 </Typography>
               </Stack>
               <Stack direction="row" spacing={0.5} alignItems="center">
                 <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#1976d2' }} />
                 <Typography variant="caption" color="text.secondary">
                   學期事件
-                </Typography>
-              </Stack>
-              <Stack direction="row" spacing={0.5} alignItems="center">
-                <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#94a3b8' }} />
-                <Typography variant="caption" color="text.secondary">
-                  放假
                 </Typography>
               </Stack>
             </Stack>
@@ -331,14 +346,14 @@ const NTUCalendar = ({ upcomingLimit = 7 }) => {
                   const isHoliday = event.kind === 'holiday';
                   const isHighlight = event.kind === 'highlight';
 
-                  const dateColor = isCritical || isHoliday
-                    ? CRITICAL_RED
+                  const dateColor = isHoliday
+                    ? HOLIDAY_RED
                     : isHighlight
                     ? 'primary.main'
                     : 'text.secondary';
 
-                  const titleColor = isCritical
-                    ? CRITICAL_RED
+                  const titleColor = isHoliday
+                    ? HOLIDAY_RED
                     : 'text.primary';
 
                   return (
@@ -374,17 +389,44 @@ const NTUCalendar = ({ upcomingLimit = 7 }) => {
                           週{weekday}
                         </Typography>
                       </Box>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          flex: 1,
-                          lineHeight: 1.55,
-                          fontWeight: isCritical ? 600 : 500,
-                          color: titleColor,
-                        }}
+                      <Stack
+                        direction="row"
+                        spacing={0.75}
+                        alignItems="center"
+                        sx={{ flex: 1, minWidth: 0 }}
                       >
-                        {event.title}
-                      </Typography>
+                        {isCritical && (
+                          <Box
+                            sx={{
+                              width: 16,
+                              height: 16,
+                              borderRadius: '50%',
+                              border: `1.5px solid ${HOLIDAY_RED}`,
+                              color: HOLIDAY_RED,
+                              fontSize: '0.65rem',
+                              fontWeight: 700,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                              lineHeight: 1,
+                            }}
+                          >
+                            !
+                          </Box>
+                        )}
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            flex: 1,
+                            lineHeight: 1.55,
+                            fontWeight: isCritical ? 700 : 500,
+                            color: titleColor,
+                          }}
+                        >
+                          {event.title}
+                        </Typography>
+                      </Stack>
                     </Stack>
                   );
                 })}
