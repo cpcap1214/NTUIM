@@ -440,7 +440,7 @@ const ExamUploadPage = () => {
             sx={{
               display: 'flex',
               justifyContent: 'center',
-              py: { xs: 2, md: 3 },
+              py: { xs: 1.5, md: 2 },
               px: { xs: 1, md: 2 },
             }}
           >
@@ -460,7 +460,7 @@ const ExamUploadPage = () => {
                 loading="lazy"
                 style={{
                   width: '100%',
-                  height: 1600,
+                  height: 720,
                   border: 0,
                   display: 'block',
                 }}
@@ -476,7 +476,7 @@ const ExamUploadPage = () => {
           color="text.disabled"
           sx={{ display: 'block', textAlign: 'center', mt: 1.5 }}
         >
-          表單由 Google Forms 提供。若無法載入或顯示異常，請點右上角「在新分頁開啟」。
+          填寫過程可在表單內滾動；若內容過長或顯示異常，請點右上角「在新分頁開啟」。
         </Typography>
       </Box>
     </Box>
