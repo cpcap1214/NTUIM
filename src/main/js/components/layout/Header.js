@@ -329,28 +329,47 @@ const Header = () => {
           <Box
             sx={{
               display: 'flex',
-              flexDirection: 'column',
+              alignItems: 'center',
+              gap: { xs: 1, md: 1.25 },
               cursor: 'pointer',
               minWidth: 0,
               mr: { md: 2 },
             }}
             onClick={() => navigate('/')}
           >
-            <Typography
-              variant="subtitle1"
-              sx={{ fontWeight: 700, color: 'primary.main', lineHeight: 1.2 }}
-              noWrap
-            >
-              {APP_CONFIG.name}
-            </Typography>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ display: { xs: 'none', sm: 'block' }, lineHeight: 1.2 }}
-              noWrap
-            >
-              {APP_CONFIG.englishName}
-            </Typography>
+            {/* IMSA 標誌 — 找不到圖片就只顯示文字（fallback 到原版） */}
+            <Box
+              component="img"
+              src="/images/branding/imsa-logo.png"
+              alt=""
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+              sx={{
+                width: { xs: 30, md: 36 },
+                height: { xs: 30, md: 36 },
+                borderRadius: 1,
+                objectFit: 'contain',
+                flexShrink: 0,
+              }}
+            />
+            <Box sx={{ minWidth: 0 }}>
+              <Typography
+                variant="subtitle1"
+                sx={{ fontWeight: 700, color: 'primary.main', lineHeight: 1.2 }}
+                noWrap
+              >
+                {APP_CONFIG.name}
+              </Typography>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: { xs: 'none', sm: 'block' }, lineHeight: 1.2 }}
+                noWrap
+              >
+                {APP_CONFIG.englishName}
+              </Typography>
+            </Box>
           </Box>
 
           {!isMobile && (
