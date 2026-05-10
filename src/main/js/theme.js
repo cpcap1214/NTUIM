@@ -249,6 +249,9 @@ const theme = createTheme({
       },
     },
     MuiTab: {
+      defaultProps: {
+        disableRipple: true,
+      },
       styleOverrides: {
         root: {
           textTransform: 'none',
@@ -257,9 +260,15 @@ const theme = createTheme({
           fontWeight: 500,
           fontSize: '0.875rem',
           color: '#64748b',
+          // 只 transition color，避免其他屬性參與 reflow
+          transition: 'color 160ms ease',
+          '&:hover': {
+            color: '#0f172a',
+          },
           '&.Mui-selected': {
-            fontWeight: 600,
             color: '#1976d2',
+            // 用 text-shadow 模擬粗體，不改 fontWeight 就不會造成寬度變化 / reflow
+            textShadow: '0 0 0.5px currentColor',
           },
         },
       },
