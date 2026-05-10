@@ -49,6 +49,7 @@ const ExamArchivePage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [examTypeFilter, setExamTypeFilter] = useState('all');
   const [yearFilter, setYearFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('latest');
   const [viewMode, setViewMode] = useState('card');
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -82,7 +83,18 @@ const ExamArchivePage = () => {
       const matchesYear = yearFilter === 'all' || exam.year === parseInt(yearFilter);
       return matchesSearch && matchesType && matchesYear;
     })
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'latest':
+          return new Date(b.created_at) - new Date(a.created_at);
+        case 'downloads':
+          return (b.downloadCount || 0) - (a.downloadCount || 0);
+        case 'course':
+          return a.courseName.localeCompare(b.courseName);
+        default:
+          return 0;
+      }
+    });
 
   const availableYears = [...new Set(exams.map((exam) => exam.year))].sort((a, b) => b - a);
   const examTypes = [...new Set(exams.map((exam) => exam.examType))];
@@ -193,7 +205,7 @@ const ExamArchivePage = () => {
               }}
             />
           </Grid>
-          <Grid item xs={6} md={3}>
+          <Grid item xs={6} md={2}>
             <FormControl fullWidth size="small">
               <InputLabel>考試類型</InputLabel>
               <Select
@@ -210,7 +222,7 @@ const ExamArchivePage = () => {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={6} md={3}>
+          <Grid item xs={6} md={2}>
             <FormControl fullWidth size="small">
               <InputLabel>年份</InputLabel>
               <Select value={yearFilter} label="年份" onChange={(e) => setYearFilter(e.target.value)}>
@@ -220,6 +232,16 @@ const ExamArchivePage = () => {
                     {year - 1911} 學年
                   </MenuItem>
                 ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={2}>
+            <FormControl fullWidth size="small">
+              <InputLabel>排序</InputLabel>
+              <Select value={sortBy} label="排序" onChange={(e) => setSortBy(e.target.value)}>
+                <MenuItem value="latest">最新上傳</MenuItem>
+                <MenuItem value="downloads">下載次數</MenuItem>
+                <MenuItem value="course">課程名稱</MenuItem>
               </Select>
             </FormControl>
           </Grid>
