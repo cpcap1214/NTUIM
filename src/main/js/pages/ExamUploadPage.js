@@ -36,7 +36,8 @@ const GOOGLE_FORM_EMBED_URL =
 const GOOGLE_FORM_OPEN_URL =
   'https://docs.google.com/forms/d/e/1FAIpQLSekqRvdjYQSCRSEnChyq6uczb8K0NFcGMPY02oAutRn6eZu1A/viewform';
 
-const SHEET_URL = 'https://docs.google.com/spreadsheets';
+const SHEET_URL =
+  'https://docs.google.com/spreadsheets/d/1iTkjNC3meJ4e0EhR9zWprI39XiA6xrlQmMqWIODcWSE/edit?gid=996157442#gid=996157442';
 
 const PDF_URL = '/docs/exam-upload-rules.pdf';
 
@@ -426,40 +427,69 @@ const ExamUploadPage = () => {
           <Typography variant="h3" component="h2" sx={{ fontWeight: 700 }}>
             上傳表單
           </Typography>
-          <Typography variant="caption" color="text.secondary">
-            直接於頁內填寫送出
-          </Typography>
+          <Button
+            size="small"
+            startIcon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
+            href={GOOGLE_FORM_OPEN_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{ color: 'primary.main' }}
+          >
+            在新分頁開啟
+          </Button>
         </Stack>
-        <Card>
+
+        {/* 將表單放在帶柔和背景的容器中、寬度限制至 Google Form 自然尺寸並置中 */}
+        <Card
+          sx={{
+            bgcolor: 'grey.50',
+            border: '1px solid',
+            borderColor: 'divider',
+            overflow: 'hidden',
+            '&:hover': { boxShadow: 'none', borderColor: 'divider' },
+          }}
+        >
           <Box
             sx={{
-              position: 'relative',
-              width: '100%',
-              minHeight: 1400,
-              bgcolor: 'background.paper',
+              display: 'flex',
+              justifyContent: 'center',
+              py: { xs: 2, md: 3 },
+              px: { xs: 1, md: 2 },
             }}
           >
-            <iframe
-              src={GOOGLE_FORM_EMBED_URL}
-              title="資管考古上傳表單"
-              loading="lazy"
-              style={{
+            <Box
+              sx={{
                 width: '100%',
-                height: 1500,
-                border: 0,
-                display: 'block',
+                maxWidth: 760,
+                bgcolor: 'background.paper',
+                borderRadius: 2,
+                overflow: 'hidden',
+                boxShadow: '0 1px 3px rgba(15, 23, 42, 0.06)',
               }}
             >
-              載入中…
-            </iframe>
+              <iframe
+                src={GOOGLE_FORM_EMBED_URL}
+                title="資管考古上傳表單"
+                loading="lazy"
+                style={{
+                  width: '100%',
+                  height: 1600,
+                  border: 0,
+                  display: 'block',
+                }}
+              >
+                載入中…
+              </iframe>
+            </Box>
           </Box>
         </Card>
+
         <Typography
           variant="caption"
           color="text.disabled"
           sx={{ display: 'block', textAlign: 'center', mt: 1.5 }}
         >
-          表單由 Google Forms 提供。若無法載入，請點上方「在新分頁開啟表單」。
+          表單由 Google Forms 提供。若無法載入或顯示異常，請點右上角「在新分頁開啟」。
         </Typography>
       </Box>
     </Box>
