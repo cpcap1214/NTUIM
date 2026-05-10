@@ -49,7 +49,7 @@ const dotColorFor = (kind) => {
   return '#94a3b8';
 };
 
-const NTUCalendar = ({ upcomingLimit = 7 }) => {
+const NTUCalendar = () => {
   const today = useMemo(() => startOfDay(new Date()), []);
   const [viewDate, setViewDate] = useState(today);
 
@@ -88,14 +88,15 @@ const NTUCalendar = ({ upcomingLimit = 7 }) => {
     return list;
   }, [year, month, today, eventsByDate]);
 
-  // 近期事項（優先用 upcoming，沒有就退回 events）
+  // 所有未來事項（執行時再 filter 一次今日之後，不限數量；過期不顯示）
   const upcoming = useMemo(() => {
     const todayISO = toISO(today);
-    const source = calendarData.upcoming || calendarData.events || [];
+    // 用 events（完整未來清單）而非 upcoming（前 30 件 cap）
+    const source = calendarData.events || [];
     return source
       .filter((e) => e.date >= todayISO)
-      .slice(0, upcomingLimit);
-  }, [today, upcomingLimit]);
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [today]);
 
   const goPrev = () => setViewDate(new Date(year, month - 1, 1));
   const goNext = () => setViewDate(new Date(year, month + 1, 1));
@@ -308,26 +309,36 @@ const NTUCalendar = ({ upcomingLimit = 7 }) => {
             </Stack>
           </Box>
 
-          {/* 右：近期重要行程 — flex 1.618 */}
+          {/* 右：近期行程 — flex 1.618、可滾動瀏覽全部未來事項 */}
           <Box
             sx={{
               flex: { md: '1.618 1 0' },
               minWidth: 0,
-              p: { xs: 2, sm: 2.5 },
+              display: 'flex',
+              flexDirection: 'column',
+              maxHeight: { xs: 380, md: 480 },
             }}
           >
-            <Typography
-              variant="overline"
-              color="text.secondary"
+            <Box
               sx={{
-                display: 'block',
-                mb: 1,
-                fontWeight: 600,
-                letterSpacing: '0.1em',
+                px: { xs: 2, sm: 2.5 },
+                pt: { xs: 2, sm: 2.5 },
+                pb: 0.75,
+                flexShrink: 0,
               }}
             >
-              近期行程
-            </Typography>
+              <Typography
+                variant="overline"
+                color="text.secondary"
+                sx={{
+                  display: 'block',
+                  fontWeight: 600,
+                  letterSpacing: '0.1em',
+                }}
+              >
+                近期行程
+              </Typography>
+            </Box>
             {upcoming.length === 0 ? (
               <Typography
                 variant="body2"
@@ -337,7 +348,24 @@ const NTUCalendar = ({ upcomingLimit = 7 }) => {
                 近期沒有重要事項
               </Typography>
             ) : (
-              <Stack sx={{ mt: 0.5 }}>
+              <Stack
+                sx={{
+                  flex: 1,
+                  overflowY: 'auto',
+                  px: { xs: 2, sm: 2.5 },
+                  pb: { xs: 2, sm: 2.5 },
+                  // 細緻 scrollbar
+                  '&::-webkit-scrollbar': { width: 6 },
+                  '&::-webkit-scrollbar-track': { background: 'transparent' },
+                  '&::-webkit-scrollbar-thumb': {
+                    backgroundColor: 'rgba(15, 23, 42, 0.12)',
+                    borderRadius: 3,
+                  },
+                  '&::-webkit-scrollbar-thumb:hover': {
+                    backgroundColor: 'rgba(15, 23, 42, 0.24)',
+                  },
+                }}
+              >
                 {upcoming.map((event, idx) => {
                   const d = new Date(event.date);
                   const md = `${d.getMonth() + 1}/${d.getDate()}`;

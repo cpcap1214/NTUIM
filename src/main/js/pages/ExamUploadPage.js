@@ -388,16 +388,6 @@ const ExamUploadPage = () => {
               >
                 檢視已上傳清單（Google Sheet）
               </Button>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
-                href={GOOGLE_FORM_OPEN_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                在新分頁開啟表單
-              </Button>
             </Stack>
           </CardContent>
         </Card>
