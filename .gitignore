@@ -74,3 +74,6 @@ tools/
 docs/
 
 src/backend/database/ntuim.db
+
+# 使用者上傳/seed 假資料
+uploads/

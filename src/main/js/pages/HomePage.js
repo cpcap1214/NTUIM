@@ -345,7 +345,7 @@ const HomePage = () => {
 
       {/* NTU Calendar */}
       <Box sx={{ mb: { xs: 3, md: 4 } }}>
-        <NTUCalendar limit={6} />
+        <NTUCalendar />
       </Box>
     </Box>
   );
