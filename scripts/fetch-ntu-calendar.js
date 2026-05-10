@@ -94,9 +94,16 @@ function parseICS(text) {
 }
 
 function classifyEvent(title) {
+  // 學生最重要：選課與學籍相關截止（不能錯過）
+  if (/(停修|加退選|補選|休學|退學)/.test(title)) return 'critical';
+  // 放假
   if (/放假/.test(title)) return 'holiday';
-  if (/(期中|期末|考試|甄試|甄選|學測|繳交)/.test(title)) return 'highlight';
-  if (/(開學|畢業|典禮|開始|結束)/.test(title)) return 'highlight';
+  // 重要學期事件
+  if (/(期中考|期末考|期中|期末|考試開始|畢業典禮|開學|新生.*典禮|上課.*(開始|結束)|學期.*(開始|結束))/.test(title)) {
+    return 'highlight';
+  }
+  // 一般申請截止（次要）
+  if (/(申請截止|報名截止|繳費截止|繳交.*截止)/.test(title)) return 'highlight';
   return 'normal';
 }
 
