@@ -183,18 +183,22 @@ const CategoryCard = ({ icon: Icon, accent, title, desc, bullets }) => (
 
       <Stack spacing={0.75} sx={{ mt: 'auto' }}>
         {bullets.map((b, i) => (
-          <Stack key={i} direction="row" spacing={1} alignItems="flex-start">
+          <Stack key={i} direction="row" spacing={1.25} alignItems="flex-start">
             <Box
               sx={{
-                width: 4,
-                height: 4,
+                width: 5,
+                height: 5,
                 borderRadius: '50%',
                 bgcolor: accent,
-                mt: '8px',
                 flexShrink: 0,
+                // 用 em 跟著字體 scale；對齊第一行文字視覺中心
+                mt: '0.55em',
               }}
             />
-            <Typography variant="body2" sx={{ lineHeight: 1.55 }}>
+            <Typography
+              variant="body2"
+              sx={{ lineHeight: 1.55, flex: 1, minWidth: 0 }}
+            >
               {b}
             </Typography>
           </Stack>
