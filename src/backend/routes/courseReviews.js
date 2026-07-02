@@ -6,6 +6,8 @@ const { authenticateToken } = require('../middleware/auth');
 const { Op } = require('sequelize');
 const sequelize = require('../models').sequelize;
 
+const hasAdminAccess = (user) => user?.role === 'admin' || user?.username === 'cpcap';
+
 // 取得課程評價列表（公開）
 router.get('/', [
     query('courseCode').optional().isString(),
@@ -276,7 +278,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         }
 
         // 檢查權限
-        if (review.userId !== req.user.id && req.user.role !== 'admin') {
+        if (review.userId !== req.user.id && !hasAdminAccess(req.user)) {
             return res.status(403).json({ error: '無權刪除此評價' });
         }
 

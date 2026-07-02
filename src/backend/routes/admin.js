@@ -4,8 +4,10 @@ const bcrypt = require('bcryptjs');
 const { User } = require('../models');
 const jwt = require('jsonwebtoken');
 
-// 中介軟體：驗證是否為 cpcap 用戶
-const verifyCpcap = async (req, res, next) => {
+const hasAdminAccess = (user) => user?.role === 'admin' || user?.username === 'cpcap';
+
+// 中介軟體：驗證是否可進入管理後台
+const verifyAdminAccess = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     
@@ -16,7 +18,7 @@ const verifyCpcap = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default-secret');
     const user = await User.findByPk(decoded.userId);
     
-    if (!user || user.username !== 'cpcap') {
+    if (!hasAdminAccess(user)) {
       return res.status(403).json({ error: '權限不足' });
     }
     
@@ -29,7 +31,7 @@ const verifyCpcap = async (req, res, next) => {
 };
 
 // 獲取所有用戶資料
-router.get('/users', verifyCpcap, async (req, res) => {
+router.get('/users', verifyAdminAccess, async (req, res) => {
   try {
     const users = await User.findAll({
       attributes: [
@@ -64,7 +66,7 @@ router.get('/users', verifyCpcap, async (req, res) => {
 });
 
 // 更新用戶資料
-router.put('/users/:id', verifyCpcap, async (req, res) => {
+router.put('/users/:id', verifyAdminAccess, async (req, res) => {
   try {
     const { id } = req.params;
     const { username, email, studentId, fullName, hasPaidFee, role } = req.body;
@@ -93,7 +95,7 @@ router.put('/users/:id', verifyCpcap, async (req, res) => {
 });
 
 // 更新用戶密碼
-router.put('/users/:id/password', verifyCpcap, async (req, res) => {
+router.put('/users/:id/password', verifyAdminAccess, async (req, res) => {
   try {
     const { id } = req.params;
     const { password } = req.body;
@@ -124,7 +126,7 @@ router.put('/users/:id/password', verifyCpcap, async (req, res) => {
 });
 
 // 刪除用戶（可選功能）
-router.delete('/users/:id', verifyCpcap, async (req, res) => {
+router.delete('/users/:id', verifyAdminAccess, async (req, res) => {
   try {
     const { id } = req.params;
 

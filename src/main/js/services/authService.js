@@ -108,7 +108,7 @@ const authService = {
     // 檢查是否為管理員
     isAdmin() {
         const user = this.getCurrentUser();
-        return user?.role === 'admin';
+        return user?.role === 'admin' || user?.username === 'cpcap';
     },
 
     // 檢查是否已繳費

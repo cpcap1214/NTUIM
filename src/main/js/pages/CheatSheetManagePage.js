@@ -41,7 +41,7 @@ import cheatSheetService from '../services/cheatSheetService';
 import EditCheatSheetDialog from '../components/EditCheatSheetDialog';
 
 const CheatSheetManagePage = () => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [cheatSheets, setCheatSheets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -218,7 +218,7 @@ const CheatSheetManagePage = () => {
   );
 
   // 檢查是否為管理員
-  if (!user || user.role !== 'admin') {
+  if (!user || !isAdmin) {
     return (
       <Container maxWidth="lg">
         <Box sx={{ py: 4, textAlign: 'center' }}>

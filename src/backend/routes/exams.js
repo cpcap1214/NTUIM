@@ -8,6 +8,8 @@ const { authenticateToken, requirePaidMember, requireAdmin } = require('../middl
 const { upload, adminUpload, handleUploadError } = require('../middleware/upload');
 const { Op } = require('sequelize');
 
+const hasAdminAccess = (user) => user?.role === 'admin' || user?.username === 'cpcap';
+
 // 取得考古題列表（公開）
 router.get('/', [
     query('courseCode').optional().isString(),
@@ -337,7 +339,7 @@ router.put('/:id',
             }
 
             // 檢查權限
-            if (exam.uploadedBy !== req.user.id && req.user.role !== 'admin') {
+            if (exam.uploadedBy !== req.user.id && !hasAdminAccess(req.user)) {
                 return res.status(403).json({ error: '無權修改此考古題' });
             }
 
@@ -396,7 +398,7 @@ router.put('/:id/files',
             }
 
             // 檢查權限
-            if (exam.uploadedBy !== req.user.id && req.user.role !== 'admin') {
+            if (exam.uploadedBy !== req.user.id && !hasAdminAccess(req.user)) {
                 // 清理上傳的檔案
                 if (req.files) {
                     Object.values(req.files).flat().forEach(file => {
@@ -476,7 +478,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         }
 
         // 檢查權限
-        if (exam.uploadedBy !== req.user.id && req.user.role !== 'admin') {
+        if (exam.uploadedBy !== req.user.id && !hasAdminAccess(req.user)) {
             return res.status(403).json({ error: '無權刪除此考古題' });
         }
 

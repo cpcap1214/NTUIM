@@ -8,6 +8,8 @@ const { authenticateToken, requirePaidMember, requireAdmin } = require('../middl
 const { upload, adminUpload, handleUploadError } = require('../middleware/upload');
 const { Op } = require('sequelize');
 
+const hasAdminAccess = (user) => user?.role === 'admin' || user?.username === 'cpcap';
+
 // 取得大抄列表（公開）
 router.get('/', [
     query('courseCode').optional().isString(),
@@ -256,7 +258,7 @@ router.put('/:id',
             }
 
             // 檢查權限
-            if (cheatSheet.uploadedBy !== req.user.id && req.user.role !== 'admin') {
+            if (cheatSheet.uploadedBy !== req.user.id && !hasAdminAccess(req.user)) {
                 return res.status(403).json({ error: '無權修改此大抄' });
             }
 
@@ -299,7 +301,7 @@ router.put('/:id/file',
             }
 
             // 檢查權限
-            if (cheatSheet.uploadedBy !== req.user.id && req.user.role !== 'admin') {
+            if (cheatSheet.uploadedBy !== req.user.id && !hasAdminAccess(req.user)) {
                 // 清理上傳的檔案
                 if (req.file && fs.existsSync(req.file.path)) {
                     fs.unlinkSync(req.file.path);
@@ -349,7 +351,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         }
 
         // 檢查權限
-        if (cheatSheet.uploadedBy !== req.user.id && req.user.role !== 'admin') {
+        if (cheatSheet.uploadedBy !== req.user.id && !hasAdminAccess(req.user)) {
             return res.status(403).json({ error: '無權刪除此大抄' });
         }
 

@@ -139,21 +139,23 @@ export const AuthProvider = ({ children }) => {
         authService.updateLocalUser(updatedUser);
     };
 
+    const isAdminUser = user?.role === 'admin' || user?.username === 'cpcap';
+
     // 檢查權限
     const hasPermission = (permission) => {
         if (!user) return false;
 
         switch (permission) {
             case 'admin':
-                return user.role === 'admin';
+                return isAdminUser;
             case 'member':
-                return user.role === 'member' || user.role === 'admin';
+                return user.role === 'member' || isAdminUser;
             case 'paid':
-                return user.hasPaidFee || user.role === 'admin';
+                return user.hasPaidFee || isAdminUser;
             case 'upload':
-                return user.hasPaidFee || user.role === 'admin';
+                return user.hasPaidFee || isAdminUser;
             case 'download':
-                return user.hasPaidFee || user.role === 'admin';
+                return user.hasPaidFee || isAdminUser;
             default:
                 return false;
         }
@@ -162,7 +164,7 @@ export const AuthProvider = ({ children }) => {
     // 取得會費狀態訊息
     const getFeeStatusMessage = () => {
         if (!user) return '請先登入';
-        if (user.role === 'admin') return '管理員身份';
+        if (isAdminUser) return '管理員身份';
         if (user.hasPaidFee) return '已繳交系學會費';
         return '尚未繳交系學會費';
     };
@@ -179,9 +181,9 @@ export const AuthProvider = ({ children }) => {
         getFeeStatusMessage,
         // 便利方法
         isAuthenticated: !!user,
-        isAdmin: user?.role === 'admin',
-        isMember: user?.role === 'member' || user?.role === 'admin',
-        hasPaidFee: user?.hasPaidFee || user?.role === 'admin'
+        isAdmin: isAdminUser,
+        isMember: user?.role === 'member' || isAdminUser,
+        hasPaidFee: user?.hasPaidFee || isAdminUser
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -38,7 +38,7 @@ import examService from '../services/examService';
 import EditExamDialog from '../components/EditExamDialog';
 
 const ExamManagePage = () => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -202,7 +202,7 @@ const ExamManagePage = () => {
   );
 
   // 檢查是否為管理員
-  if (!user || user.role !== 'admin') {
+  if (!user || !isAdmin) {
     return (
       <Container maxWidth="lg">
         <Box sx={{ py: 4, textAlign: 'center' }}>

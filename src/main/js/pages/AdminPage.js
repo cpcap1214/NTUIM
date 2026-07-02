@@ -136,14 +136,16 @@ const AdminPage = () => {
       return;
     }
     
-    if (user.username !== 'cpcap') {
-      console.log('User is not cpcap, redirecting to home');
-      alert('您沒有權限訪問此頁面，只有 cpcap 用戶可以訪問');
+    const hasAdminAccess = user.username === 'cpcap' || user.role === 'admin';
+
+    if (!hasAdminAccess) {
+      console.log('User does not have admin access, redirecting to home');
+      alert('您沒有權限訪問此頁面，只有管理員或 cpcap 用戶可以訪問');
       navigate('/');
       return;
     }
     
-    console.log('User is cpcap, fetching users...');
+    console.log('User has admin access, fetching users...');
     fetchUsers();
     
     // 如果是管理分頁，載入對應資料
