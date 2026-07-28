@@ -13,8 +13,8 @@ const authenticateToken = async (req, res, next) => {
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default-secret');
-        
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
         // 從資料庫獲取使用者資訊
         const user = await User.findByPk(decoded.userId, {
             attributes: ['id', 'username', 'email', 'role', 'hasPaidFee']
@@ -76,7 +76,7 @@ const generateToken = (user) => {
 
     return jwt.sign(
         payload,
-        process.env.JWT_SECRET || 'default-secret',
+        process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRE || '7d' }
     );
 };
@@ -90,7 +90,7 @@ const refreshToken = async (req, res) => {
     }
 
     try {
-        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || 'refresh-secret');
+        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
         const user = await User.findByPk(decoded.userId);
 
         if (!user) {
