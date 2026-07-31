@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     Dialog,
     DialogTitle,
@@ -20,14 +21,15 @@ import RatingDisplay from './RatingDisplay';
 import ReviewCard from './ReviewCard';
 import courseReviewService from '../../services/courseReviewService';
 
-const metricFields = [
-    { key: 'avgQuality', label: '課程品質' },
-    { key: 'avgDifficulty', label: '難易度' },
-    { key: 'avgSweetness', label: '給分高低' },
-    { key: 'avgUsefulness', label: '實用性' },
+const METRIC_FIELDS = [
+    { groupKey: 'avgQuality', metricKey: 'quality' },
+    { groupKey: 'avgDifficulty', metricKey: 'difficulty' },
+    { groupKey: 'avgSweetness', metricKey: 'sweetness' },
+    { groupKey: 'avgUsefulness', metricKey: 'usefulness' },
 ];
 
 const CourseDetailDialog = ({ open, course, currentUserId, canWrite, onClose, onWriteReview, onEditReview, onDeleteReview }) => {
+    const { t } = useTranslation();
     const [byProfessor, setByProfessor] = useState([]);
 
     useEffect(() => {
@@ -53,16 +55,16 @@ const CourseDetailDialog = ({ open, course, currentUserId, canWrite, onClose, on
             </DialogTitle>
             <DialogContent>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    共 {course.count} 則評價
+                    {t('courseReview.totalReviewCount', { count: course.count })}
                 </Typography>
                 <Grid container spacing={2} sx={{ mb: 2 }}>
-                    {metricFields.map((m) => (
-                        <Grid item xs={6} sm={3} key={m.key}>
+                    {METRIC_FIELDS.map((m) => (
+                        <Grid item xs={6} sm={3} key={m.groupKey}>
                             <Stack spacing={0.25}>
                                 <Typography variant="caption" color="text.secondary">
-                                    {m.label}
+                                    {t(`courseReview.metrics.${m.metricKey}`)}
                                 </Typography>
-                                <RatingDisplay value={course[m.key]} size="medium" />
+                                <RatingDisplay value={course[m.groupKey]} size="medium" />
                             </Stack>
                         </Grid>
                     ))}
@@ -71,29 +73,29 @@ const CourseDetailDialog = ({ open, course, currentUserId, canWrite, onClose, on
                 {byProfessor.length > 0 && (
                     <Box sx={{ mb: 2 }}>
                         <Typography variant="subtitle2" gutterBottom>
-                            依教授分組
+                            {t('courseReview.byProfessor')}
                         </Typography>
                         <Table size="small">
                             <TableHead>
                                 <TableRow>
-                                    <TableCell>教授</TableCell>
-                                    {metricFields.map((m) => (
-                                        <TableCell align="right" key={m.key}>{m.label}</TableCell>
+                                    <TableCell>{t('courseReview.professorColumn')}</TableCell>
+                                    {METRIC_FIELDS.map((m) => (
+                                        <TableCell align="right" key={m.groupKey}>{t(`courseReview.metrics.${m.metricKey}`)}</TableCell>
                                     ))}
-                                    <TableCell align="right">則數</TableCell>
+                                    <TableCell align="right">{t('courseReview.countColumn')}</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
                                 {byProfessor.map((prof) => (
                                     <TableRow key={prof.professor}>
                                         <TableCell>{prof.professor}</TableCell>
-                                        {metricFields.map((m) => (
-                                            <TableCell align="right" key={m.key}>
+                                        {METRIC_FIELDS.map((m) => (
+                                            <TableCell align="right" key={m.groupKey}>
                                                 <Typography
                                                     variant="caption"
-                                                    sx={{ color: courseReviewService.getRatingColor(prof[m.key]), fontWeight: 600 }}
+                                                    sx={{ color: courseReviewService.getRatingColor(prof[m.groupKey]), fontWeight: 600 }}
                                                 >
-                                                    {prof[m.key]}
+                                                    {prof[m.groupKey]}
                                                 </Typography>
                                             </TableCell>
                                         ))}
@@ -124,10 +126,10 @@ const CourseDetailDialog = ({ open, course, currentUserId, canWrite, onClose, on
             <DialogActions>
                 {canWrite && (
                     <Button variant="contained" onClick={() => onWriteReview(course)} sx={{ mr: 'auto' }}>
-                        新增評價
+                        {t('courseReview.newReview')}
                     </Button>
                 )}
-                <Button onClick={onClose}>關閉</Button>
+                <Button onClick={onClose}>{t('common.close')}</Button>
             </DialogActions>
         </Dialog>
     );

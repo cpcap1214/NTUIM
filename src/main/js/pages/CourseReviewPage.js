@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Box, Typography, Stack, ToggleButton, ToggleButtonGroup, Alert } from '@mui/material';
 import {
     ViewModule as CoursesIcon,
@@ -7,6 +8,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import courseReviewService from '../services/courseReviewService';
+import { translateApiError } from '../utils';
 import CourseListView from '../components/courseReview/CourseListView';
 import ReviewFeedView from '../components/courseReview/ReviewFeedView';
 import MyReviewsView from '../components/courseReview/MyReviewsView';
@@ -16,6 +18,7 @@ import WriteReviewDialog from '../components/courseReview/WriteReviewDialog';
 const average = (list, field) => list.reduce((sum, item) => sum + Number(item[field] || 0), 0) / list.length;
 
 const CourseReviewPage = () => {
+    const { t } = useTranslation();
     const { user } = useAuth();
 
     const [reviews, setReviews] = useState([]);
@@ -54,10 +57,11 @@ const CourseReviewPage = () => {
                 setMyReviews([]);
             }
         } catch (err) {
-            setError(err.error || '載入課程評價失敗');
+            setError(translateApiError(err, t('errors.FETCH_FAILED')));
         } finally {
             setLoading(false);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
     useEffect(() => {
@@ -127,7 +131,7 @@ const CourseReviewPage = () => {
             await courseReviewService.deleteReview(reviewId);
             await loadData();
         } catch (err) {
-            setError(err.error || '刪除評價失敗');
+            setError(translateApiError(err, t('errors.DELETE_FAILED')));
         }
     };
 
@@ -139,11 +143,11 @@ const CourseReviewPage = () => {
     };
 
     const viewOptions = [
-        { value: 'courses', label: '課程總覽', icon: <CoursesIcon fontSize="small" sx={{ mr: 0.5 }} /> },
-        { value: 'feed', label: '動態牆', icon: <FeedIcon fontSize="small" sx={{ mr: 0.5 }} /> },
+        { value: 'courses', label: t('courseReview.viewMode.courses'), icon: <CoursesIcon fontSize="small" sx={{ mr: 0.5 }} /> },
+        { value: 'feed', label: t('courseReview.viewMode.feed'), icon: <FeedIcon fontSize="small" sx={{ mr: 0.5 }} /> },
     ];
     if (user) {
-        viewOptions.push({ value: 'mine', label: '我的評價', icon: <PersonIcon fontSize="small" sx={{ mr: 0.5 }} /> });
+        viewOptions.push({ value: 'mine', label: t('courseReview.viewMode.mine'), icon: <PersonIcon fontSize="small" sx={{ mr: 0.5 }} /> });
     }
 
     return (
@@ -151,10 +155,10 @@ const CourseReviewPage = () => {
             <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ md: 'center' }} spacing={2} sx={{ mb: 3 }}>
                 <Box>
                     <Typography variant="h2" component="h1" sx={{ fontWeight: 700, mb: 0.5 }}>
-                        課程評價
+                        {t('courseReview.pageTitle')}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                        {loading ? '載入中…' : `共 ${reviews.length} 則評價 · 涵蓋 ${courseGroups.length} 門課程`}
+                        {loading ? t('common.loading') : t('courseReview.summary', { count: reviews.length, courseCount: courseGroups.length })}
                     </Typography>
                 </Box>
 
@@ -192,7 +196,7 @@ const CourseReviewPage = () => {
             {loading && (
                 <Box sx={{ textAlign: 'center', py: 8 }}>
                     <Typography variant="body2" color="text.secondary">
-                        載入課程評價中…
+                        {t('courseReview.loadingReviews')}
                     </Typography>
                 </Box>
             )}

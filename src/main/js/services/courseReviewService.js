@@ -1,4 +1,13 @@
 import api from './api';
+import i18n from '../i18n';
+
+// 獨立函式而非物件方法：好幾個元件會把 getQualityText 等函式當成裸函式參照傳遞
+// （例如 textFn: courseReviewService.getQualityText），若內部依賴 this 會在那種
+// 呼叫方式下丟失綁定，所以這裡刻意不用 this。
+const metricText = (metric, value) => {
+    const index = Math.min(5, Math.max(1, Math.round(value)));
+    return i18n.t(`courseReview.metricTexts.${metric}.${index}`, { defaultValue: i18n.t('common.unknown') });
+};
 
 const courseReviewService = {
     // 取得課程評價列表
@@ -85,8 +94,7 @@ const courseReviewService = {
 
     // 審核狀態標籤
     getStatusLabel(status) {
-        const labels = { pending: '待審核', approved: '已核准', rejected: '已拒絕' };
-        return labels[status] || status;
+        return i18n.t(`courseReview.status.${status}`, { defaultValue: status });
     },
 
     // 審核狀態顏色（對應 MUI Chip 的 color prop）
@@ -98,16 +106,16 @@ const courseReviewService = {
     // 西元年+學期 轉成民國學年期顯示格式（例如 2026, '2' → '115-2'；2026, 'summer' → '115-暑'）
     getAcademicTermLabel(year, semester) {
         const rocYear = parseInt(year, 10) - 1911;
-        const suffix = semester === 'summer' ? '暑' : semester;
+        const suffix = i18n.t(`courseReview.academicTermSuffix.${semester}`, { defaultValue: semester });
         return `${rocYear}-${suffix}`;
     },
 
     // 學期選項
     getSemesterOptions() {
         return [
-            { value: '1', label: '上學期' },
-            { value: '2', label: '下學期' },
-            { value: 'summer', label: '暑期' }
+            { value: '1', label: i18n.t('courseReview.semester.1') },
+            { value: '2', label: i18n.t('courseReview.semester.2') },
+            { value: 'summer', label: i18n.t('courseReview.semester.summer') }
         ];
     },
 
@@ -126,32 +134,17 @@ const courseReviewService = {
     },
 
     // 四個指標的分數是 1~5 的連續值（含 0.5），文字說明取最接近的整數對應
-    // 取得課程品質文字
     getQualityText(quality) {
-        const texts = ['', '非常差', '差', '普通', '好', '非常好'];
-        const index = Math.min(5, Math.max(1, Math.round(quality)));
-        return texts[index] ?? '未知';
+        return metricText('quality', quality);
     },
-
-    // 取得難易度文字
     getDifficultyText(difficulty) {
-        const texts = ['', '非常簡單', '簡單', '普通', '困難', '非常困難'];
-        const index = Math.min(5, Math.max(1, Math.round(difficulty)));
-        return texts[index] ?? '未知';
+        return metricText('difficulty', difficulty);
     },
-
-    // 取得給分高低文字（甜度）
     getSweetnessText(sweetness) {
-        const texts = ['', '非常硬', '硬', '普通', '甜', '非常甜'];
-        const index = Math.min(5, Math.max(1, Math.round(sweetness)));
-        return texts[index] ?? '未知';
+        return metricText('sweetness', sweetness);
     },
-
-    // 取得實用性文字
     getUsefulnessText(usefulness) {
-        const texts = ['', '沒什麼用', '不太有用', '普通', '有用', '非常有用'];
-        const index = Math.min(5, Math.max(1, Math.round(usefulness)));
-        return texts[index] ?? '未知';
+        return metricText('usefulness', usefulness);
     }
 };
 

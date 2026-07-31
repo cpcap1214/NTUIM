@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     Box,
     Grid,
@@ -36,6 +37,7 @@ const ReviewFeedView = ({
     canWrite,
     onWriteReview,
 }) => {
+    const { t } = useTranslation();
     const professors = useMemo(
         () => [...new Set(reviews.map((r) => r.professor))].sort(),
         [reviews]
@@ -74,7 +76,7 @@ const ReviewFeedView = ({
                     <Grid item xs={12} md={5}>
                         <TextField
                             fullWidth
-                            placeholder="搜尋課程或教授…"
+                            placeholder={t('courseReview.searchPlaceholder.feed')}
                             value={searchTerm}
                             onChange={(e) => onSearchChange(e.target.value)}
                             InputProps={{
@@ -88,20 +90,20 @@ const ReviewFeedView = ({
                     </Grid>
                     <Grid item xs={6} md={2}>
                         <FormControl fullWidth size="small">
-                            <InputLabel>學期</InputLabel>
-                            <Select value={semesterFilter} label="學期" onChange={(e) => onSemesterFilterChange(e.target.value)}>
-                                <MenuItem value="all">全部</MenuItem>
-                                <MenuItem value="1">上學期</MenuItem>
-                                <MenuItem value="2">下學期</MenuItem>
-                                <MenuItem value="summer">暑期</MenuItem>
+                            <InputLabel>{t('courseReview.form.semester')}</InputLabel>
+                            <Select value={semesterFilter} label={t('courseReview.form.semester')} onChange={(e) => onSemesterFilterChange(e.target.value)}>
+                                <MenuItem value="all">{t('common.all')}</MenuItem>
+                                <MenuItem value="1">{t('courseReview.semester.1')}</MenuItem>
+                                <MenuItem value="2">{t('courseReview.semester.2')}</MenuItem>
+                                <MenuItem value="summer">{t('courseReview.semester.summer')}</MenuItem>
                             </Select>
                         </FormControl>
                     </Grid>
                     <Grid item xs={6} md={2}>
                         <FormControl fullWidth size="small">
-                            <InputLabel>教授</InputLabel>
-                            <Select value={professorFilter} label="教授" onChange={(e) => onProfessorFilterChange(e.target.value)}>
-                                <MenuItem value="all">全部</MenuItem>
+                            <InputLabel>{t('courseReview.professorFilterLabel')}</InputLabel>
+                            <Select value={professorFilter} label={t('courseReview.professorFilterLabel')} onChange={(e) => onProfessorFilterChange(e.target.value)}>
+                                <MenuItem value="all">{t('common.all')}</MenuItem>
                                 {professors.map((professor) => (
                                     <MenuItem key={professor} value={professor}>
                                         {professor}
@@ -112,11 +114,11 @@ const ReviewFeedView = ({
                     </Grid>
                     <Grid item xs={12} md={3}>
                         <FormControl fullWidth size="small">
-                            <InputLabel>排序</InputLabel>
-                            <Select value={sortBy} label="排序" onChange={(e) => onSortChange(e.target.value)}>
-                                <MenuItem value="latest">最新發表</MenuItem>
-                                <MenuItem value="highest">評分最高</MenuItem>
-                                <MenuItem value="lowest">評分最低</MenuItem>
+                            <InputLabel>{t('common.sort')}</InputLabel>
+                            <Select value={sortBy} label={t('common.sort')} onChange={(e) => onSortChange(e.target.value)}>
+                                <MenuItem value="latest">{t('courseReview.sort.latestPost')}</MenuItem>
+                                <MenuItem value="highest">{t('courseReview.sort.ratingHighest')}</MenuItem>
+                                <MenuItem value="lowest">{t('courseReview.sort.ratingLowest')}</MenuItem>
                             </Select>
                         </FormControl>
                     </Grid>
@@ -125,15 +127,15 @@ const ReviewFeedView = ({
 
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
                 <Typography variant="body2" color="text.secondary">
-                    共 {filtered.length} 則評價
+                    {t('courseReview.totalReviewCount', { count: filtered.length })}
                 </Typography>
                 {canWrite ? (
                     <Button variant="contained" size="small" onClick={() => onWriteReview()}>
-                        寫評價
+                        {t('courseReview.writeReview')}
                     </Button>
                 ) : (
                     <Typography variant="caption" color="text.disabled">
-                        登入後即可分享你的課程心得
+                        {t('courseReview.emptyState.loginToWrite')}
                     </Typography>
                 )}
             </Stack>
@@ -142,10 +144,10 @@ const ReviewFeedView = ({
                 <Box sx={{ textAlign: 'center', py: 8 }}>
                     <RateReviewIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 1.5 }} />
                     <Typography variant="subtitle1" color="text.secondary" gutterBottom>
-                        {reviews.length === 0 ? '目前還沒有任何課程評價' : '沒有找到符合條件的評價'}
+                        {reviews.length === 0 ? t('courseReview.emptyState.noReviewsYet') : t('courseReview.emptyState.noMatchingReviews')}
                     </Typography>
                     <Typography variant="body2" color="text.disabled">
-                        {reviews.length === 0 ? '成為第一個分享課程心得的人吧' : '請嘗試調整搜尋或篩選條件'}
+                        {reviews.length === 0 ? t('courseReview.emptyState.beFirst') : t('courseReview.emptyState.adjustSearchOrFilter')}
                     </Typography>
                 </Box>
             )}

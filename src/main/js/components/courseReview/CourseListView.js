@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     Box,
     Grid,
@@ -19,14 +20,15 @@ import {
 import { Search as SearchIcon, MenuBook as MenuBookIcon, RateReview as RateReviewIcon } from '@mui/icons-material';
 import RatingDisplay from './RatingDisplay';
 
-const metricFields = [
-    { key: 'avgQuality', label: '課程品質' },
-    { key: 'avgDifficulty', label: '難易度' },
-    { key: 'avgSweetness', label: '給分高低' },
-    { key: 'avgUsefulness', label: '實用性' },
+const METRIC_FIELDS = [
+    { groupKey: 'avgQuality', metricKey: 'quality' },
+    { groupKey: 'avgDifficulty', metricKey: 'difficulty' },
+    { groupKey: 'avgSweetness', metricKey: 'sweetness' },
+    { groupKey: 'avgUsefulness', metricKey: 'usefulness' },
 ];
 
 const CourseListView = ({ courseGroups, searchTerm, onSearchChange, sortBy, onSortChange, onSelectCourse }) => {
+    const { t } = useTranslation();
     const filtered = useMemo(() => {
         const keyword = searchTerm.trim().toLowerCase();
         const list = courseGroups.filter((group) => {
@@ -58,7 +60,7 @@ const CourseListView = ({ courseGroups, searchTerm, onSearchChange, sortBy, onSo
                     <Grid item xs={12} md={8}>
                         <TextField
                             fullWidth
-                            placeholder="搜尋課程代碼、名稱或教授…"
+                            placeholder={t('courseReview.searchPlaceholder.courses')}
                             value={searchTerm}
                             onChange={(e) => onSearchChange(e.target.value)}
                             InputProps={{
@@ -72,11 +74,11 @@ const CourseListView = ({ courseGroups, searchTerm, onSearchChange, sortBy, onSo
                     </Grid>
                     <Grid item xs={12} md={4}>
                         <FormControl fullWidth size="small">
-                            <InputLabel>排序</InputLabel>
-                            <Select value={sortBy} label="排序" onChange={(e) => onSortChange(e.target.value)}>
-                                <MenuItem value="latest">最新評價</MenuItem>
-                                <MenuItem value="rating">評分最高</MenuItem>
-                                <MenuItem value="count">評價最多</MenuItem>
+                            <InputLabel>{t('common.sort')}</InputLabel>
+                            <Select value={sortBy} label={t('common.sort')} onChange={(e) => onSortChange(e.target.value)}>
+                                <MenuItem value="latest">{t('courseReview.sort.latestReview')}</MenuItem>
+                                <MenuItem value="rating">{t('courseReview.sort.ratingHighest')}</MenuItem>
+                                <MenuItem value="count">{t('courseReview.sort.mostReviewed')}</MenuItem>
                             </Select>
                         </FormControl>
                     </Grid>
@@ -87,10 +89,10 @@ const CourseListView = ({ courseGroups, searchTerm, onSearchChange, sortBy, onSo
                 <Box sx={{ textAlign: 'center', py: 8 }}>
                     <RateReviewIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 1.5 }} />
                     <Typography variant="subtitle1" color="text.secondary" gutterBottom>
-                        {courseGroups.length === 0 ? '目前還沒有任何課程評價' : '沒有找到符合條件的課程'}
+                        {courseGroups.length === 0 ? t('courseReview.emptyState.noCoursesYet') : t('courseReview.emptyState.noMatchingCourses')}
                     </Typography>
                     <Typography variant="body2" color="text.disabled">
-                        {courseGroups.length === 0 ? '成為第一個分享課程心得的人吧' : '請嘗試調整搜尋條件'}
+                        {courseGroups.length === 0 ? t('courseReview.emptyState.beFirst') : t('courseReview.emptyState.adjustSearch')}
                     </Typography>
                 </Box>
             )}
@@ -124,7 +126,7 @@ const CourseListView = ({ courseGroups, searchTerm, onSearchChange, sortBy, onSo
                                             {group.courseName}
                                         </Typography>
                                         <Typography variant="caption" color="text.secondary">
-                                            {group.courseCode} · {group.count} 則評價
+                                            {group.courseCode} · {t('courseReview.reviewCountLabel', { count: group.count })}
                                         </Typography>
                                     </Box>
                                 </Stack>
@@ -138,13 +140,13 @@ const CourseListView = ({ courseGroups, searchTerm, onSearchChange, sortBy, onSo
                                 <Divider sx={{ my: 1.5 }} />
 
                                 <Grid container spacing={1}>
-                                    {metricFields.map((m) => (
-                                        <Grid item xs={6} sm={3} key={m.key}>
+                                    {METRIC_FIELDS.map((m) => (
+                                        <Grid item xs={6} sm={3} key={m.groupKey}>
                                             <Stack spacing={0.25}>
                                                 <Typography variant="caption" color="text.secondary">
-                                                    {m.label}
+                                                    {t(`courseReview.metrics.${m.metricKey}`)}
                                                 </Typography>
-                                                <RatingDisplay value={group[m.key]} size="small" />
+                                                <RatingDisplay value={group[m.groupKey]} size="small" />
                                             </Stack>
                                         </Grid>
                                     ))}

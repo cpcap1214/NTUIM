@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     Card,
     CardContent,
@@ -20,19 +21,15 @@ import {
 import RatingDisplay from './RatingDisplay';
 import courseReviewService from '../../services/courseReviewService';
 
-const metricFields = [
-    { key: 'quality', label: '課程品質', textFn: courseReviewService.getQualityText },
-    { key: 'difficulty', label: '難易度', textFn: courseReviewService.getDifficultyText },
-    { key: 'sweetness', label: '給分高低', textFn: courseReviewService.getSweetnessText },
-    { key: 'usefulness', label: '實用性', textFn: courseReviewService.getUsefulnessText },
-];
+const METRIC_KEYS = ['quality', 'difficulty', 'sweetness', 'usefulness'];
 
 const ReviewCard = ({ review, showCourse = false, showStatus = false, currentUserId, onEdit, onDelete }) => {
+    const { t } = useTranslation();
     const isOwner = currentUserId && review.userId === currentUserId;
-    const reviewerName = review.reviewer ? review.reviewer.fullName : '未知';
+    const reviewerName = review.reviewer ? review.reviewer.fullName : t('common.unknown');
 
     const handleDelete = () => {
-        if (window.confirm('確定要刪除這則評價嗎？')) {
+        if (window.confirm(t('courseReview.confirmDeleteReview'))) {
             onDelete(review.id);
         }
     };
@@ -73,7 +70,7 @@ const ReviewCard = ({ review, showCourse = false, showStatus = false, currentUse
                         )}
                         {showStatus && review.reviewedByUser && (
                             <Typography variant="caption" color="text.secondary" display="block">
-                                審核人：{review.reviewedByUser.fullName}
+                                {t('courseReview.reviewedBy', { name: review.reviewedByUser.fullName })}
                             </Typography>
                         )}
                     </Box>
@@ -99,7 +96,7 @@ const ReviewCard = ({ review, showCourse = false, showStatus = false, currentUse
                     <Stack direction="row" spacing={0.75} alignItems="flex-start" sx={{ mb: 1.5 }}>
                         <WarningIcon sx={{ fontSize: 16, color: 'error.main', mt: 0.25 }} />
                         <Typography variant="caption" color="error.main">
-                            拒絕原因：{review.rejectReason}
+                            {t('courseReview.rejectReasonLabel', { reason: review.rejectReason })}
                         </Typography>
                     </Stack>
                 )}
@@ -107,13 +104,13 @@ const ReviewCard = ({ review, showCourse = false, showStatus = false, currentUse
                 <Divider sx={{ my: 1.5 }} />
 
                 <Grid container spacing={1}>
-                    {metricFields.map((m) => (
-                        <Grid item xs={6} sm={3} key={m.key}>
+                    {METRIC_KEYS.map((key) => (
+                        <Grid item xs={6} sm={3} key={key}>
                             <Stack spacing={0.25}>
                                 <Typography variant="caption" color="text.secondary">
-                                    {m.label}
+                                    {t(`courseReview.metrics.${key}`)}
                                 </Typography>
-                                <RatingDisplay value={review[m.key]} size="small" />
+                                <RatingDisplay value={review[key]} size="small" />
                             </Stack>
                         </Grid>
                     ))}
