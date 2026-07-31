@@ -61,15 +61,45 @@ const courseReviewService = {
         }
     },
 
-    // 評分選項
-    getRatingOptions() {
-        return [
-            { value: 1, label: '1 - 非常差' },
-            { value: 2, label: '2 - 差' },
-            { value: 3, label: '3 - 普通' },
-            { value: 4, label: '4 - 好' },
-            { value: 5, label: '5 - 非常好' }
-        ];
+    // 取得評價列表供管理員審核/管理（不帶 status 回傳全部）
+    async getAdminReviews(status) {
+        try {
+            const response = await api.get('/course-reviews/admin/reviews', {
+                params: status ? { status } : {}
+            });
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error;
+        }
+    },
+
+    // 審核評價：核准或拒絕（管理員）
+    async reviewStatus(id, { status, rejectReason }) {
+        try {
+            const response = await api.patch(`/course-reviews/${id}/status`, { status, rejectReason });
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error;
+        }
+    },
+
+    // 審核狀態標籤
+    getStatusLabel(status) {
+        const labels = { pending: '待審核', approved: '已核准', rejected: '已拒絕' };
+        return labels[status] || status;
+    },
+
+    // 審核狀態顏色（對應 MUI Chip 的 color prop）
+    getStatusColor(status) {
+        const colors = { pending: 'warning', approved: 'success', rejected: 'error' };
+        return colors[status] || 'default';
+    },
+
+    // 西元年+學期 轉成民國學年期顯示格式（例如 2026, '2' → '115-2'；2026, 'summer' → '115-暑'）
+    getAcademicTermLabel(year, semester) {
+        const rocYear = parseInt(year, 10) - 1911;
+        const suffix = semester === 'summer' ? '暑' : semester;
+        return `${rocYear}-${suffix}`;
     },
 
     // 學期選項
@@ -95,22 +125,33 @@ const courseReviewService = {
         return '#f44336'; // 紅色
     },
 
-    // 取得難度文字
-    getDifficultyText(difficulty) {
-        const texts = ['', '很簡單', '簡單', '普通', '困難', '很困難'];
-        return texts[difficulty] || '未知';
+    // 四個指標的分數是 1~5 的連續值（含 0.5），文字說明取最接近的整數對應
+    // 取得課程品質文字
+    getQualityText(quality) {
+        const texts = ['', '非常差', '差', '普通', '好', '非常好'];
+        const index = Math.min(5, Math.max(1, Math.round(quality)));
+        return texts[index] ?? '未知';
     },
 
-    // 取得作業量文字
-    getWorkloadText(workload) {
-        const texts = ['', '很輕鬆', '輕鬆', '普通', '繁重', '很繁重'];
-        return texts[workload] || '未知';
+    // 取得難易度文字
+    getDifficultyText(difficulty) {
+        const texts = ['', '非常簡單', '簡單', '普通', '困難', '非常困難'];
+        const index = Math.min(5, Math.max(1, Math.round(difficulty)));
+        return texts[index] ?? '未知';
+    },
+
+    // 取得給分高低文字（甜度）
+    getSweetnessText(sweetness) {
+        const texts = ['', '非常硬', '硬', '普通', '甜', '非常甜'];
+        const index = Math.min(5, Math.max(1, Math.round(sweetness)));
+        return texts[index] ?? '未知';
     },
 
     // 取得實用性文字
     getUsefulnessText(usefulness) {
-        const texts = ['', '沒用', '不太有用', '普通', '有用', '非常有用'];
-        return texts[usefulness] || '未知';
+        const texts = ['', '沒什麼用', '不太有用', '普通', '有用', '非常有用'];
+        const index = Math.min(5, Math.max(1, Math.round(usefulness)));
+        return texts[index] ?? '未知';
     }
 };
 

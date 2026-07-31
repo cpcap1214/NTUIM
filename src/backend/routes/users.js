@@ -286,7 +286,7 @@ router.get('/:id/contributions', async (req, res) => {
         // 取得課程評價
         const reviews = await CourseReview.findAll({
             where: { userId: userId },
-            attributes: ['id', 'courseCode', 'courseName', 'professor', 'overallRating', 'created_at'],
+            attributes: ['id', 'courseCode', 'courseName', 'professor', 'quality', 'difficulty', 'sweetness', 'usefulness', 'created_at'],
             order: [['created_at', 'DESC']],
             limit: 10
         });

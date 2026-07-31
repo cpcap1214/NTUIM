@@ -57,16 +57,21 @@ CREATE TABLE course_reviews (
     professor VARCHAR(50),
     year INTEGER NOT NULL,
     semester VARCHAR(10) NOT NULL CHECK(semester IN ('1', '2', 'summer')),
-    overall_rating DECIMAL(2,1) NOT NULL CHECK(overall_rating >= 1 AND overall_rating <= 5),
-    difficulty INTEGER NOT NULL CHECK(difficulty >= 1 AND difficulty <= 5),
-    workload INTEGER NOT NULL CHECK(workload >= 1 AND workload <= 5),
-    usefulness INTEGER NOT NULL CHECK(usefulness >= 1 AND usefulness <= 5),
-    comment TEXT,
+    quality DECIMAL(2,1) NOT NULL CHECK(quality >= 1 AND quality <= 5),
+    difficulty DECIMAL(2,1) NOT NULL CHECK(difficulty >= 1 AND difficulty <= 5),
+    sweetness DECIMAL(2,1) NOT NULL CHECK(sweetness >= 1 AND sweetness <= 5),
+    usefulness DECIMAL(2,1) NOT NULL CHECK(usefulness >= 1 AND usefulness <= 5),
+    comment TEXT NOT NULL,
     user_id INTEGER NOT NULL,
     is_anonymous BOOLEAN DEFAULT FALSE,
+    -- 課程評價有金錢回饋，發布前須經管理員審核
+    status VARCHAR(10) NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected')),
+    reject_reason TEXT,
+    reviewed_by INTEGER,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (reviewed_by) REFERENCES users(id)
 );
 
 -- 課程資訊表 (選擇性，用於資料正規化)
@@ -93,6 +98,7 @@ CREATE INDEX idx_cheat_sheets_uploaded_by ON cheat_sheets(uploaded_by);
 
 CREATE INDEX idx_course_reviews_course ON course_reviews(course_code, year, semester);
 CREATE INDEX idx_course_reviews_user ON course_reviews(user_id);
+CREATE INDEX idx_course_reviews_status ON course_reviews(status);
 
 -- 建立觸發器來自動更新 updated_at
 CREATE TRIGGER update_users_timestamp 

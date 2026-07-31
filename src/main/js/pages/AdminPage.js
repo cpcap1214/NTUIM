@@ -32,9 +32,13 @@ import {
   InputAdornment,
   Avatar,
   DialogContentText,
-  Divider
+  Divider,
+  ToggleButton,
+  ToggleButtonGroup
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import RateReviewIcon from '@mui/icons-material/RateReview';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -53,6 +57,8 @@ import LockResetIcon from '@mui/icons-material/LockReset';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import courseReviewService from '../services/courseReviewService';
+import ReviewCard from '../components/courseReview/ReviewCard';
 
 const AdminPage = () => {
   const { user, loading: authLoading, updateUser } = useAuth();
@@ -91,7 +97,18 @@ const AdminPage = () => {
   const [cheatSheetDeleteDialog, setCheatSheetDeleteDialog] = useState(false);
   const [cheatSheetToDelete, setCheatSheetToDelete] = useState(null);
   const [cheatSheetLoading, setCheatSheetLoading] = useState(false);
-  
+
+  // 課程評價管理相關狀態
+  const [courseReviews, setCourseReviews] = useState([]);
+  const [courseReviewSearchTerm, setCourseReviewSearchTerm] = useState('');
+  const [courseReviewFilter, setCourseReviewFilter] = useState('pending');
+  const [courseReviewLoading, setCourseReviewLoading] = useState(false);
+  const [courseReviewRejectDialog, setCourseReviewRejectDialog] = useState(false);
+  const [reviewToReject, setReviewToReject] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [courseReviewDeleteDialog, setCourseReviewDeleteDialog] = useState(false);
+  const [reviewToDelete, setReviewToDelete] = useState(null);
+
   // 考古題表單狀態
   const [examForm, setExamForm] = useState({
     courseCode: '',
@@ -153,8 +170,83 @@ const AdminPage = () => {
       fetchExams();
     } else if (activeTab === 4) {
       fetchCheatSheets();
+    } else if (activeTab === 5) {
+      fetchCourseReviews();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, navigate, authLoading, activeTab]);
+
+  // 課程評價的篩選條件變更時重新載入
+  useEffect(() => {
+    if (activeTab === 5) {
+      fetchCourseReviews();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courseReviewFilter]);
+
+  const fetchCourseReviews = async () => {
+    try {
+      setCourseReviewLoading(true);
+      const result = await courseReviewService.getAdminReviews(courseReviewFilter === 'all' ? undefined : courseReviewFilter);
+      setCourseReviews(result.data || []);
+    } catch (err) {
+      console.error('取得課程評價錯誤:', err);
+      setError(err.error || '取得課程評價失敗');
+    } finally {
+      setCourseReviewLoading(false);
+    }
+  };
+
+  const handleApproveCourseReview = async (review) => {
+    try {
+      await courseReviewService.reviewStatus(review.id, { status: 'approved' });
+      await fetchCourseReviews();
+      setSuccess('評價已核准並公開顯示');
+    } catch (err) {
+      setError(err.error || '核准失敗');
+    }
+  };
+
+  const openRejectDialog = (review) => {
+    setReviewToReject(review);
+    setRejectReason('');
+    setCourseReviewRejectDialog(true);
+  };
+
+  const handleRejectCourseReview = async () => {
+    if (!rejectReason.trim()) return;
+    try {
+      await courseReviewService.reviewStatus(reviewToReject.id, {
+        status: 'rejected',
+        rejectReason: rejectReason.trim(),
+      });
+      setCourseReviewRejectDialog(false);
+      setReviewToReject(null);
+      await fetchCourseReviews();
+      setSuccess('評價已拒絕');
+    } catch (err) {
+      setError(err.error || '拒絕失敗');
+    }
+  };
+
+  const handleDeleteCourseReviewClick = (review) => {
+    setReviewToDelete(review);
+    setCourseReviewDeleteDialog(true);
+  };
+
+  const handleDeleteCourseReviewConfirm = async () => {
+    if (!reviewToDelete) return;
+    try {
+      await courseReviewService.deleteReview(reviewToDelete.id);
+      await fetchCourseReviews();
+      setSuccess('評價已刪除');
+    } catch (err) {
+      setError(err.error || '刪除失敗');
+    } finally {
+      setCourseReviewDeleteDialog(false);
+      setReviewToDelete(null);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -661,7 +753,15 @@ const AdminPage = () => {
     (exam.professor && exam.professor.toLowerCase().includes(examSearchTerm.toLowerCase()))
   );
 
-  const filteredCheatSheets = cheatSheets.filter(sheet => 
+  const pendingCourseReviewCount = courseReviews.filter((r) => r.status === 'pending').length;
+
+  const filteredCourseReviews = courseReviews.filter((review) =>
+    review.courseName.toLowerCase().includes(courseReviewSearchTerm.toLowerCase()) ||
+    review.courseCode.toLowerCase().includes(courseReviewSearchTerm.toLowerCase()) ||
+    (review.professor && review.professor.toLowerCase().includes(courseReviewSearchTerm.toLowerCase()))
+  );
+
+  const filteredCheatSheets = cheatSheets.filter(sheet =>
     sheet.title.toLowerCase().includes(cheatSheetSearchTerm.toLowerCase()) ||
     sheet.courseName.toLowerCase().includes(cheatSheetSearchTerm.toLowerCase()) ||
     (sheet.description && sheet.description.toLowerCase().includes(cheatSheetSearchTerm.toLowerCase()))
@@ -697,6 +797,7 @@ const AdminPage = () => {
     { label: '用戶管理', description: '查詢、編輯、重設密碼', value: 0 },
     { label: '上傳考古題', description: '新增題目與答案檔案', value: 1 },
     { label: '上傳大抄', description: '建立課程重點整理', value: 2 },
+    { label: '課程評價管理', description: '審核、刪除評價，檢視上傳者與審核人', value: 5 },
     { label: '考古題管理', description: '搜尋、預覽、刪除', value: 3 },
     { label: '大抄管理', description: '檢視內容與清理資料', value: 4 },
   ];
@@ -736,15 +837,15 @@ const AdminPage = () => {
             {adminSections.map((section) => (
               <Grid item xs={12} sm={6} md={4} key={section.value}>
                 <Paper
-                  onClick={() => setActiveTab(section.value)}
+                  onClick={() => (section.path ? navigate(section.path) : setActiveTab(section.value))}
                   sx={{
                     p: 2,
                     height: '100%',
                     cursor: 'pointer',
                     borderRadius: 3,
                     border: '1px solid',
-                    borderColor: activeTab === section.value ? 'primary.main' : 'divider',
-                    bgcolor: activeTab === section.value ? 'primary.50' : 'background.paper',
+                    borderColor: !section.path && activeTab === section.value ? 'primary.main' : 'divider',
+                    bgcolor: !section.path && activeTab === section.value ? 'primary.50' : 'background.paper',
                     transition: 'all 0.2s ease',
                     '&:hover': {
                       borderColor: 'primary.main',
@@ -1883,6 +1984,125 @@ const AdminPage = () => {
         </Paper>
       )}
 
+      {/* 課程評價管理分頁 */}
+      {activeTab === 5 && (
+        <Paper sx={{ p: 2 }}>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 1 }}>
+            課程評價管理
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            撰寫課程評價有金錢回饋，所有評價須經審核通過後才會公開顯示；也可在此刪除任何評價
+          </Typography>
+
+          {/* 搜尋欄 */}
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <TextField
+              fullWidth
+              placeholder="搜尋課程名稱、代碼或教授..."
+              value={courseReviewSearchTerm}
+              onChange={(e) => setCourseReviewSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Paper>
+
+          <ToggleButtonGroup
+            value={courseReviewFilter}
+            exclusive
+            size="small"
+            onChange={(_, v) => v && setCourseReviewFilter(v)}
+            sx={{ mb: 3 }}
+          >
+            <ToggleButton value="all">全部</ToggleButton>
+            <ToggleButton value="pending">
+              待審核
+              {pendingCourseReviewCount > 0 && (
+                <Chip label={pendingCourseReviewCount} size="small" color="warning" sx={{ ml: 1 }} />
+              )}
+            </ToggleButton>
+            <ToggleButton value="approved">已核准</ToggleButton>
+            <ToggleButton value="rejected">已拒絕</ToggleButton>
+          </ToggleButtonGroup>
+
+          {courseReviewLoading && (
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <Typography variant="h6" color="text.secondary">
+                載入評價中...
+              </Typography>
+            </Box>
+          )}
+
+          {!courseReviewLoading && filteredCourseReviews.length === 0 && (
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <RateReviewIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+              <Typography variant="h6" color="text.secondary">
+                {courseReviews.length === 0 ? '沒有符合條件的評價' : '沒有找到符合搜尋條件的評價'}
+              </Typography>
+            </Box>
+          )}
+
+          {!courseReviewLoading && filteredCourseReviews.length > 0 && (
+            <Stack spacing={2}>
+              <Typography variant="body2" color="text.secondary">
+                共 {filteredCourseReviews.length} 則
+              </Typography>
+              {filteredCourseReviews.map((review) => (
+                <Paper key={review.id} variant="outlined" sx={{ p: 2 }}>
+                  <Stack spacing={1.5}>
+                    <Typography variant="caption" color="text.secondary">
+                      投稿時間：{review.created_at ? new Date(review.created_at).toLocaleString('zh-TW') : '未知'}
+                    </Typography>
+                    <ReviewCard
+                      review={review}
+                      showCourse
+                      showStatus
+                      currentUserId={null}
+                      onEdit={() => {}}
+                      onDelete={() => {}}
+                    />
+                    <Stack direction="row" spacing={1} justifyContent="flex-end">
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        startIcon={<DeleteIcon />}
+                        onClick={() => handleDeleteCourseReviewClick(review)}
+                      >
+                        刪除
+                      </Button>
+                      {review.status === 'pending' && (
+                        <>
+                          <Button
+                            variant="outlined"
+                            color="warning"
+                            startIcon={<CancelIcon />}
+                            onClick={() => openRejectDialog(review)}
+                          >
+                            拒絕
+                          </Button>
+                          <Button
+                            variant="contained"
+                            color="success"
+                            startIcon={<CheckCircleIcon />}
+                            onClick={() => handleApproveCourseReview(review)}
+                          >
+                            核准
+                          </Button>
+                        </>
+                      )}
+                    </Stack>
+                  </Stack>
+                </Paper>
+              ))}
+            </Stack>
+          )}
+        </Paper>
+      )}
+
       {/* 上傳訊息 */}
       {uploadMessage.text && (
         <Alert 
@@ -1987,6 +2207,52 @@ const AdminPage = () => {
             取消
           </Button>
           <Button onClick={handleCheatSheetDeleteConfirm} color="error" variant="contained">
+            確認刪除
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 拒絕課程評價對話框 */}
+      <Dialog open={courseReviewRejectDialog} onClose={() => setCourseReviewRejectDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>拒絕此評價</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            multiline
+            rows={3}
+            autoFocus
+            label="拒絕原因"
+            required
+            sx={{ mt: 1 }}
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            helperText="會顯示給投稿者，讓對方知道需要修改的地方"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCourseReviewRejectDialog(false)}>取消</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleRejectCourseReview}
+            disabled={!rejectReason.trim()}
+          >
+            確認拒絕
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 刪除課程評價對話框 */}
+      <Dialog open={courseReviewDeleteDialog} onClose={() => setCourseReviewDeleteDialog(false)}>
+        <DialogTitle>刪除這則評價？</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            此操作無法復原，評價內容將永久刪除。
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCourseReviewDeleteDialog(false)}>取消</Button>
+          <Button onClick={handleDeleteCourseReviewConfirm} color="error" variant="contained">
             確認刪除
           </Button>
         </DialogActions>

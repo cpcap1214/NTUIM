@@ -249,25 +249,24 @@ const CourseReview = sequelize.define('CourseReview', {
         type: DataTypes.ENUM('1', '2', 'summer'),
         allowNull: false
     },
-    overallRating: {
+    quality: {
         type: DataTypes.DECIMAL(2, 1),
         allowNull: false,
-        field: 'overall_rating',
         validate: {
             min: 1,
             max: 5
         }
     },
     difficulty: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.DECIMAL(2, 1),
         allowNull: false,
         validate: {
             min: 1,
             max: 5
         }
     },
-    workload: {
-        type: DataTypes.INTEGER,
+    sweetness: {
+        type: DataTypes.DECIMAL(2, 1),
         allowNull: false,
         validate: {
             min: 1,
@@ -275,7 +274,7 @@ const CourseReview = sequelize.define('CourseReview', {
         }
     },
     usefulness: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.DECIMAL(2, 1),
         allowNull: false,
         validate: {
             min: 1,
@@ -283,7 +282,11 @@ const CourseReview = sequelize.define('CourseReview', {
         }
     },
     comment: {
-        type: DataTypes.TEXT
+        type: DataTypes.TEXT,
+        allowNull: false,
+        validate: {
+            len: [50, 1000]
+        }
     },
     userId: {
         type: DataTypes.INTEGER,
@@ -294,6 +297,19 @@ const CourseReview = sequelize.define('CourseReview', {
         type: DataTypes.BOOLEAN,
         defaultValue: false,
         field: 'is_anonymous'
+    },
+    status: {
+        type: DataTypes.ENUM('pending', 'approved', 'rejected'),
+        allowNull: false,
+        defaultValue: 'pending'
+    },
+    rejectReason: {
+        type: DataTypes.TEXT,
+        field: 'reject_reason'
+    },
+    reviewedBy: {
+        type: DataTypes.INTEGER,
+        field: 'reviewed_by'
     }
 }, {
     tableName: 'course_reviews',
@@ -343,6 +359,7 @@ CheatSheet.belongsTo(User, { foreignKey: 'uploaded_by', as: 'uploader' });
 
 User.hasMany(CourseReview, { foreignKey: 'user_id', as: 'reviews' });
 CourseReview.belongsTo(User, { foreignKey: 'user_id', as: 'reviewer' });
+CourseReview.belongsTo(User, { foreignKey: 'reviewed_by', as: 'reviewedByUser' });
 
 // 測試連接
 async function testConnection() {

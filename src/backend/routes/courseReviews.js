@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { body, validationResult, query } = require('express-validator');
 const { CourseReview, User, Course } = require('../models');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { Op } = require('sequelize');
 const sequelize = require('../models').sequelize;
 
@@ -32,8 +32,8 @@ router.get('/', [
             limit = 20
         } = req.query;
 
-        // 建立查詢條件
-        const where = {};
+        // 建立查詢條件（公開列表只顯示已核准的評價，有金錢回饋，未審核前不對外顯示）
+        const where = { status: 'approved' };
         if (courseCode) where.courseCode = { [Op.like]: `%${courseCode}%` };
         if (professor) where.professor = { [Op.like]: `%${professor}%` };
         if (year) where.year = year;
@@ -83,43 +83,50 @@ router.get('/statistics/:courseCode', async (req, res) => {
     try {
         const { courseCode } = req.params;
 
-        // 計算平均評分
+        // 計算平均評分（只統計已核准的評價）
         const stats = await CourseReview.findOne({
-            where: { courseCode },
+            where: { courseCode, status: 'approved' },
             attributes: [
-                [sequelize.fn('AVG', sequelize.col('overall_rating')), 'avgOverallRating'],
+                [sequelize.fn('AVG', sequelize.col('quality')), 'avgQuality'],
                 [sequelize.fn('AVG', sequelize.col('difficulty')), 'avgDifficulty'],
-                [sequelize.fn('AVG', sequelize.col('workload')), 'avgWorkload'],
+                [sequelize.fn('AVG', sequelize.col('sweetness')), 'avgSweetness'],
                 [sequelize.fn('AVG', sequelize.col('usefulness')), 'avgUsefulness'],
                 [sequelize.fn('COUNT', sequelize.col('id')), 'totalReviews']
             ],
             raw: true
         });
 
-        // 依教授分組統計
+        // 依教授分組統計（四指標分開列出，不計算任何綜合分數；只統計已核准的評價）
         const professorStats = await CourseReview.findAll({
-            where: { courseCode },
+            where: { courseCode, status: 'approved' },
             attributes: [
                 'professor',
-                [sequelize.fn('AVG', sequelize.col('overall_rating')), 'avgRating'],
+                [sequelize.fn('AVG', sequelize.col('quality')), 'avgQuality'],
+                [sequelize.fn('AVG', sequelize.col('difficulty')), 'avgDifficulty'],
+                [sequelize.fn('AVG', sequelize.col('sweetness')), 'avgSweetness'],
+                [sequelize.fn('AVG', sequelize.col('usefulness')), 'avgUsefulness'],
                 [sequelize.fn('COUNT', sequelize.col('id')), 'reviewCount']
             ],
             group: ['professor'],
+            order: [['professor', 'ASC']],
             raw: true
         });
 
         res.json({
             courseCode,
             overall: {
-                avgOverallRating: parseFloat(stats.avgOverallRating || 0).toFixed(1),
+                avgQuality: parseFloat(stats.avgQuality || 0).toFixed(1),
                 avgDifficulty: parseFloat(stats.avgDifficulty || 0).toFixed(1),
-                avgWorkload: parseFloat(stats.avgWorkload || 0).toFixed(1),
+                avgSweetness: parseFloat(stats.avgSweetness || 0).toFixed(1),
                 avgUsefulness: parseFloat(stats.avgUsefulness || 0).toFixed(1),
                 totalReviews: parseInt(stats.totalReviews || 0)
             },
             byProfessor: professorStats.map(prof => ({
                 professor: prof.professor,
-                avgRating: parseFloat(prof.avgRating).toFixed(1),
+                avgQuality: parseFloat(prof.avgQuality).toFixed(1),
+                avgDifficulty: parseFloat(prof.avgDifficulty).toFixed(1),
+                avgSweetness: parseFloat(prof.avgSweetness).toFixed(1),
+                avgUsefulness: parseFloat(prof.avgUsefulness).toFixed(1),
                 reviewCount: parseInt(prof.reviewCount)
             }))
         });
@@ -138,11 +145,11 @@ router.post('/',
         body('professor').notEmpty().withMessage('授課教授為必填'),
         body('year').isInt({ min: 2000, max: 2100 }).withMessage('請輸入有效年份'),
         body('semester').isIn(['1', '2', 'summer']).withMessage('請選擇學期'),
-        body('overallRating').isFloat({ min: 1, max: 5 }).withMessage('整體評分須為1-5'),
-        body('difficulty').isInt({ min: 1, max: 5 }).withMessage('難度須為1-5'),
-        body('workload').isInt({ min: 1, max: 5 }).withMessage('作業量須為1-5'),
-        body('usefulness').isInt({ min: 1, max: 5 }).withMessage('實用性須為1-5'),
-        body('comment').optional().isString(),
+        body('quality').isFloat({ min: 1, max: 5 }).withMessage('課程品質須為1-5'),
+        body('difficulty').isFloat({ min: 1, max: 5 }).withMessage('難易度須為1-5'),
+        body('sweetness').isFloat({ min: 1, max: 5 }).withMessage('給分高低須為1-5'),
+        body('usefulness').isFloat({ min: 1, max: 5 }).withMessage('實用性須為1-5'),
+        body('comment').trim().isLength({ min: 50, max: 1000 }).withMessage('心得為必填，請填寫 50-1000 字'),
         body('isAnonymous').optional().isBoolean()
     ],
     async (req, res) => {
@@ -158,9 +165,9 @@ router.post('/',
                 professor,
                 year,
                 semester,
-                overallRating,
+                quality,
                 difficulty,
-                workload,
+                sweetness,
                 usefulness,
                 comment,
                 isAnonymous = false
@@ -183,20 +190,21 @@ router.post('/',
                 });
             }
 
-            // 建立評價
+            // 建立評價（狀態一律從 pending 開始，需經管理員審核後才會公開顯示）
             const review = await CourseReview.create({
                 courseCode,
                 courseName,
                 professor,
                 year: parseInt(year),
                 semester,
-                overallRating: parseFloat(overallRating),
-                difficulty: parseInt(difficulty),
-                workload: parseInt(workload),
-                usefulness: parseInt(usefulness),
+                quality: parseFloat(quality),
+                difficulty: parseFloat(difficulty),
+                sweetness: parseFloat(sweetness),
+                usefulness: parseFloat(usefulness),
                 comment,
                 userId: req.user.id,
-                isAnonymous
+                isAnonymous,
+                status: 'pending'
             });
 
             // 更新或建立課程資訊
@@ -206,7 +214,7 @@ router.post('/',
             });
 
             res.status(201).json({
-                message: '評價新增成功',
+                message: '評價已送出，待管理員審核後將公開顯示',
                 data: review
             });
         } catch (error) {
@@ -220,11 +228,11 @@ router.post('/',
 router.put('/:id',
     authenticateToken,
     [
-        body('overallRating').optional().isFloat({ min: 1, max: 5 }),
-        body('difficulty').optional().isInt({ min: 1, max: 5 }),
-        body('workload').optional().isInt({ min: 1, max: 5 }),
-        body('usefulness').optional().isInt({ min: 1, max: 5 }),
-        body('comment').optional().isString(),
+        body('quality').optional().isFloat({ min: 1, max: 5 }),
+        body('difficulty').optional().isFloat({ min: 1, max: 5 }),
+        body('sweetness').optional().isFloat({ min: 1, max: 5 }),
+        body('usefulness').optional().isFloat({ min: 1, max: 5 }),
+        body('comment').optional().trim().isLength({ min: 50, max: 1000 }).withMessage('心得請填寫 50-1000 字'),
         body('isAnonymous').optional().isBoolean()
     ],
     async (req, res) => {
@@ -247,7 +255,7 @@ router.put('/:id',
 
             // 更新評價
             const updates = {};
-            const allowedFields = ['overallRating', 'difficulty', 'workload', 'usefulness', 'comment', 'isAnonymous'];
+            const allowedFields = ['quality', 'difficulty', 'sweetness', 'usefulness', 'comment', 'isAnonymous'];
             
             allowedFields.forEach(field => {
                 if (req.body[field] !== undefined) {
@@ -255,10 +263,14 @@ router.put('/:id',
                 }
             });
 
+            // 內容有異動就代表需要重新審核（尤其是被拒絕後修改重新送出的情況）
+            updates.status = 'pending';
+            updates.rejectReason = null;
+
             await review.update(updates);
 
             res.json({
-                message: '評價更新成功',
+                message: '評價已更新，將重新進入審核',
                 data: review
             });
         } catch (error) {
@@ -305,5 +317,90 @@ router.get('/my-reviews', authenticateToken, async (req, res) => {
         res.status(500).json({ error: '取得評價失敗' });
     }
 });
+
+// 取得評價列表供管理員審核/管理（管理員）
+// 不帶 status 就回傳全部，帶 status 則只回傳該狀態（pending/approved/rejected）
+router.get('/admin/reviews', authenticateToken, requireAdmin, [
+    query('status').optional().isIn(['pending', 'approved', 'rejected'])
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+        const { status } = req.query;
+        const where = status ? { status } : {};
+
+        const reviews = await CourseReview.findAll({
+            where,
+            include: [
+                {
+                    model: User,
+                    as: 'reviewer',
+                    attributes: ['username', 'fullName', 'studentId']
+                },
+                {
+                    model: User,
+                    as: 'reviewedByUser',
+                    attributes: ['username', 'fullName']
+                }
+            ],
+            // pending 的排最前面（優先處理），同狀態內新的排前面
+            order: [
+                [sequelize.literal("CASE WHEN status = 'pending' THEN 0 ELSE 1 END"), 'ASC'],
+                ['created_at', 'DESC']
+            ]
+        });
+
+        res.json({ data: reviews });
+    } catch (error) {
+        console.error('取得評價列表錯誤:', error);
+        res.status(500).json({ error: '取得評價列表失敗' });
+    }
+});
+
+// 審核評價（核准或拒絕，管理員）
+router.patch('/:id/status',
+    authenticateToken,
+    requireAdmin,
+    [
+        body('status').isIn(['approved', 'rejected']).withMessage('狀態須為 approved 或 rejected'),
+        body('rejectReason').optional().isString()
+    ],
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        try {
+            const { status, rejectReason } = req.body;
+
+            if (status === 'rejected' && !rejectReason?.trim()) {
+                return res.status(400).json({ error: '拒絕時請填寫拒絕原因' });
+            }
+
+            const review = await CourseReview.findByPk(req.params.id);
+
+            if (!review) {
+                return res.status(404).json({ error: '評價不存在' });
+            }
+
+            review.status = status;
+            review.rejectReason = status === 'rejected' ? rejectReason.trim() : null;
+            review.reviewedBy = req.user.id;
+            await review.save();
+
+            res.json({
+                message: status === 'approved' ? '評價已核准' : '評價已拒絕',
+                data: review
+            });
+        } catch (error) {
+            console.error('審核評價錯誤:', error);
+            res.status(500).json({ error: '審核評價失敗' });
+        }
+    }
+);
 
 module.exports = router;
