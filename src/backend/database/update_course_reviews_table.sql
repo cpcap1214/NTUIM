@@ -6,6 +6,8 @@
 -- 因為撰寫課程評價有金錢回饋，評價發布前須經管理員審核，並記錄是哪位管理員審核的
 -- 新增課程內容說明欄位：course_content（必填）、teaching_method / assignment_exam_format /
 -- grading_breakdown（選填），讓評價除了主觀心得之外也能記錄課程本身的客觀資訊
+-- course_code / professor 改用 COLLATE NOCASE，並新增 UNIQUE(course_code, professor, year,
+-- semester, user_id)：避免同一人對同一堂課因為大小寫或連點送出兩次而留下重複評價
 --
 -- 注意：此腳本會「直接刪除」現有的 course_reviews 資料表與其中所有資料。
 -- 課程評價功能截至目前為止尚未有正式使用者資料，因此不需要保留舊資料的搬遷步驟。
@@ -20,9 +22,9 @@ DROP TABLE IF EXISTS course_reviews;
 
 CREATE TABLE course_reviews (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    course_code VARCHAR(20) NOT NULL,
+    course_code VARCHAR(20) COLLATE NOCASE NOT NULL,
     course_name VARCHAR(100) NOT NULL,
-    professor VARCHAR(50),
+    professor VARCHAR(50) COLLATE NOCASE,
     year INTEGER NOT NULL,
     semester VARCHAR(10) NOT NULL CHECK(semester IN ('1', '2', 'summer')),
     quality DECIMAL(2,1) NOT NULL CHECK(quality >= 0.5 AND quality <= 5),
@@ -41,6 +43,7 @@ CREATE TABLE course_reviews (
     reviewed_by INTEGER,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(course_code, professor, year, semester, user_id),
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (reviewed_by) REFERENCES users(id)
 );

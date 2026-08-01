@@ -20,10 +20,10 @@ const courseReviewService = {
         }
     },
 
-    // 取得課程統計
-    async getCourseStatistics(courseCode) {
+    // 取得篩選選項（目前實際存在哪些學年期、哪些教授），給「所有評價」分頁的篩選下拉選單用
+    async getFilterOptions() {
         try {
-            const response = await api.get(`/course-reviews/statistics/${courseCode}`);
+            const response = await api.get('/course-reviews/filters');
             return response.data;
         } catch (error) {
             throw error.response?.data || error;

@@ -52,9 +52,11 @@ CREATE TABLE cheat_sheets (
 -- 課程評價資料表
 CREATE TABLE course_reviews (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    course_code VARCHAR(20) NOT NULL,
+    -- COLLATE NOCASE：讓比對/分組/唯一性約束忽略大小寫（例如 "Prof. Wang" 跟 "prof. wang"
+    -- 視為同一堂課、同一位教授），但實際存進去的原始大小寫仍會保留、顯示時不受影響
+    course_code VARCHAR(20) COLLATE NOCASE NOT NULL,
     course_name VARCHAR(100) NOT NULL,
-    professor VARCHAR(50),
+    professor VARCHAR(50) COLLATE NOCASE,
     year INTEGER NOT NULL,
     semester VARCHAR(10) NOT NULL CHECK(semester IN ('1', '2', 'summer')),
     quality DECIMAL(2,1) NOT NULL CHECK(quality >= 0.5 AND quality <= 5),
@@ -74,6 +76,9 @@ CREATE TABLE course_reviews (
     reviewed_by INTEGER,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    -- 同一個人對同一堂課（同課號、同教授、同學年期）只能留一則評價；
+    -- 應用層已經有預先檢查，這裡是資料庫層的最後防線，避免連點送出或雙分頁同時送出造成重複
+    UNIQUE(course_code, professor, year, semester, user_id),
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (reviewed_by) REFERENCES users(id)
 );

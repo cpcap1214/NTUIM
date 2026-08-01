@@ -12,14 +12,16 @@ const hasAdminAccess = (user) => user?.role === 'admin' || user?.username === 'c
 // 的 errors 區塊）負責翻譯；error 欄位保留中文純文字作為未支援 i18n 的舊客戶端 fallback。
 const errorResponse = (errorCode, message) => ({ error: message, errorCode });
 
-// 取得課程評價列表（公開）
+// 取得課程評價列表（公開，支援分頁、關鍵字搜尋、篩選、排序）
 router.get('/', [
     query('courseCode').optional().isString(),
     query('professor').optional().isString(),
+    query('search').optional().isString(),
     query('year').optional().isInt(),
     query('semester').optional().isIn(['1', '2', 'summer']),
+    query('sortBy').optional().isIn(['latest', 'highest', 'lowest']),
     query('page').optional().isInt({ min: 1 }),
-    query('limit').optional().isInt({ min: 1, max: 10000 })
+    query('limit').optional().isInt({ min: 1, max: 50 })
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -30,18 +32,35 @@ router.get('/', [
         const {
             courseCode,
             professor,
+            search,
             year,
             semester,
+            sortBy = 'latest',
             page = 1,
-            limit = 20
+            limit = 12
         } = req.query;
 
         // 建立查詢條件（公開列表只顯示已核准的評價，有金錢回饋，未審核前不對外顯示）
         const where = { status: 'approved' };
         if (courseCode) where.courseCode = { [Op.like]: `%${courseCode}%` };
-        if (professor) where.professor = { [Op.like]: `%${professor}%` };
+        if (professor) where.professor = { [Op.like]: professor };
         if (year) where.year = year;
         if (semester) where.semester = semester;
+        // search 是搜尋框用的模糊比對，同時比對課程名稱/代碼/教授；
+        // 跟上面的 courseCode/professor（給其他 API 使用者的精準篩選）是不同用途，可以同時套用
+        if (search) {
+            const keyword = `%${search}%`;
+            where[Op.or] = [
+                { courseName: { [Op.like]: keyword } },
+                { courseCode: { [Op.like]: keyword } },
+                { professor: { [Op.like]: keyword } }
+            ];
+        }
+
+        // 排序：最新發表用建立時間；評分最高/最低用四指標平均分（不落地成欄位，查詢時即時計算）
+        const order = sortBy === 'highest' || sortBy === 'lowest'
+            ? [[sequelize.literal('(quality + difficulty + sweetness + usefulness) / 4'), sortBy === 'highest' ? 'DESC' : 'ASC']]
+            : [['created_at', 'DESC']];
 
         // 查詢評價
         const { count, rows } = await CourseReview.findAndCountAll({
@@ -51,7 +70,7 @@ router.get('/', [
                 as: 'reviewer',
                 attributes: ['username', 'fullName']
             }],
-            order: [['created_at', 'DESC']],
+            order,
             limit: parseInt(limit),
             offset: (parseInt(page) - 1) * parseInt(limit)
         });
@@ -73,7 +92,8 @@ router.get('/', [
             pagination: {
                 total: count,
                 page: parseInt(page),
-                pages: Math.ceil(count / limit)
+                pages: Math.ceil(count / limit),
+                limit: parseInt(limit)
             }
         });
     } catch (error) {
@@ -82,61 +102,32 @@ router.get('/', [
     }
 });
 
-// 取得課程統計資料（公開）
-router.get('/statistics/:courseCode', async (req, res) => {
+// 取得篩選選項（公開）：目前實際存在哪些學年期、哪些教授有已核准的評價，
+// 給前端的篩選下拉選單使用；跟分頁後的評價列表分開查，選單才不會只反映當前那一頁的資料
+router.get('/filters', async (req, res) => {
     try {
-        const { courseCode } = req.params;
-
-        // 計算平均評分（只統計已核准的評價）
-        const stats = await CourseReview.findOne({
-            where: { courseCode, status: 'approved' },
-            attributes: [
-                [sequelize.fn('AVG', sequelize.col('quality')), 'avgQuality'],
-                [sequelize.fn('AVG', sequelize.col('difficulty')), 'avgDifficulty'],
-                [sequelize.fn('AVG', sequelize.col('sweetness')), 'avgSweetness'],
-                [sequelize.fn('AVG', sequelize.col('usefulness')), 'avgUsefulness'],
-                [sequelize.fn('COUNT', sequelize.col('id')), 'totalReviews']
-            ],
+        const terms = await CourseReview.findAll({
+            where: { status: 'approved' },
+            attributes: ['year', 'semester'],
+            group: ['year', 'semester'],
             raw: true
         });
 
-        // 依教授分組統計（四指標分開列出，不計算任何綜合分數；只統計已核准的評價）
-        const professorStats = await CourseReview.findAll({
-            where: { courseCode, status: 'approved' },
-            attributes: [
-                'professor',
-                [sequelize.fn('AVG', sequelize.col('quality')), 'avgQuality'],
-                [sequelize.fn('AVG', sequelize.col('difficulty')), 'avgDifficulty'],
-                [sequelize.fn('AVG', sequelize.col('sweetness')), 'avgSweetness'],
-                [sequelize.fn('AVG', sequelize.col('usefulness')), 'avgUsefulness'],
-                [sequelize.fn('COUNT', sequelize.col('id')), 'reviewCount']
-            ],
+        const professorRows = await CourseReview.findAll({
+            where: { status: 'approved' },
+            attributes: ['professor'],
             group: ['professor'],
             order: [['professor', 'ASC']],
             raw: true
         });
 
         res.json({
-            courseCode,
-            overall: {
-                avgQuality: parseFloat(stats.avgQuality || 0).toFixed(1),
-                avgDifficulty: parseFloat(stats.avgDifficulty || 0).toFixed(1),
-                avgSweetness: parseFloat(stats.avgSweetness || 0).toFixed(1),
-                avgUsefulness: parseFloat(stats.avgUsefulness || 0).toFixed(1),
-                totalReviews: parseInt(stats.totalReviews || 0)
-            },
-            byProfessor: professorStats.map(prof => ({
-                professor: prof.professor,
-                avgQuality: parseFloat(prof.avgQuality).toFixed(1),
-                avgDifficulty: parseFloat(prof.avgDifficulty).toFixed(1),
-                avgSweetness: parseFloat(prof.avgSweetness).toFixed(1),
-                avgUsefulness: parseFloat(prof.avgUsefulness).toFixed(1),
-                reviewCount: parseInt(prof.reviewCount)
-            }))
+            academicTerms: terms.map(t => ({ year: t.year, semester: t.semester })),
+            professors: professorRows.map(p => p.professor)
         });
     } catch (error) {
-        console.error('取得課程統計錯誤:', error);
-        res.status(500).json(errorResponse('FETCH_STATS_FAILED', '取得統計資料失敗'));
+        console.error('取得篩選選項錯誤:', error);
+        res.status(500).json(errorResponse('FETCH_FAILED', '取得篩選選項失敗'));
     }
 });
 
@@ -144,9 +135,9 @@ router.get('/statistics/:courseCode', async (req, res) => {
 router.post('/',
     authenticateToken,
     [
-        body('courseCode').notEmpty().withMessage({ code: 'COURSE_CODE_REQUIRED', message: '課程代碼為必填' }),
-        body('courseName').notEmpty().withMessage({ code: 'COURSE_NAME_REQUIRED', message: '課程名稱為必填' }),
-        body('professor').notEmpty().withMessage({ code: 'PROFESSOR_REQUIRED', message: '授課教授為必填' }),
+        body('courseCode').trim().notEmpty().withMessage({ code: 'COURSE_CODE_REQUIRED', message: '課程代碼為必填' }),
+        body('courseName').trim().notEmpty().withMessage({ code: 'COURSE_NAME_REQUIRED', message: '課程名稱為必填' }),
+        body('professor').trim().notEmpty().withMessage({ code: 'PROFESSOR_REQUIRED', message: '授課教授為必填' }),
         body('year').isInt({ min: 2000, max: 2100 }).withMessage({ code: 'YEAR_INVALID', message: '請輸入有效年份' }),
         body('semester').isIn(['1', '2', 'summer']).withMessage({ code: 'SEMESTER_REQUIRED', message: '請選擇學期' }),
         body('quality').isFloat({ min: 0.5, max: 5 }).withMessage({ code: 'QUALITY_RANGE', message: '課程品質須為0.5-5' }),
@@ -232,6 +223,11 @@ router.post('/',
                 data: review
             });
         } catch (error) {
+            // 資料庫的 UNIQUE 約束是重複評價檢查的最後一道防線（例如連點兩下送出鍵、
+            // 或開兩個分頁同時送出，都可能繞過前面 findOne 的預先檢查）
+            if (error.name === 'SequelizeUniqueConstraintError') {
+                return res.status(400).json(errorResponse('DUPLICATE_REVIEW', '您已評價過此課程（同學期、同教授）'));
+            }
             console.error('新增評價錯誤:', error);
             res.status(500).json(errorResponse('CREATE_FAILED', '新增評價失敗'));
         }

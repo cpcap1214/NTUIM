@@ -254,6 +254,12 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
             <DialogTitle>{isEditing ? t('courseReview.editReview') : t('courseReview.newReviewTitle')}</DialogTitle>
             <DialogContent>
+                {isResubmit && review.rejectReason && (
+                    <Alert severity="warning" sx={{ mb: 2 }}>
+                        {t('courseReview.rejectReasonLabel', { reason: review.rejectReason })}
+                    </Alert>
+                )}
+
                 {error && (
                     <Alert severity="error" sx={{ mb: 2 }}>
                         {error}
