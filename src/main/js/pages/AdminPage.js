@@ -105,6 +105,8 @@ const AdminPage = () => {
   const [courseReviews, setCourseReviews] = useState([]);
   const [courseReviewSearchTerm, setCourseReviewSearchTerm] = useState('');
   const [courseReviewFilter, setCourseReviewFilter] = useState('pending');
+  const [courseReviewTermFilter, setCourseReviewTermFilter] = useState('all');
+  const [courseReviewProfessorFilter, setCourseReviewProfessorFilter] = useState('all');
   const [courseReviewLoading, setCourseReviewLoading] = useState(false);
   const [courseReviewRejectDialog, setCourseReviewRejectDialog] = useState(false);
   const [reviewToReject, setReviewToReject] = useState(null);
@@ -758,11 +760,28 @@ const AdminPage = () => {
 
   const pendingCourseReviewCount = courseReviews.filter((r) => r.status === 'pending').length;
 
-  const filteredCourseReviews = courseReviews.filter((review) =>
-    review.courseName.toLowerCase().includes(courseReviewSearchTerm.toLowerCase()) ||
-    review.courseCode.toLowerCase().includes(courseReviewSearchTerm.toLowerCase()) ||
-    (review.professor && review.professor.toLowerCase().includes(courseReviewSearchTerm.toLowerCase()))
-  );
+  const courseReviewTermRank = { '1': 1, '2': 2, summer: 3 };
+  const courseReviewTermOptions = [...new Map(
+    courseReviews.map((r) => [`${r.year}-${r.semester}`, {
+      value: `${r.year}-${r.semester}`,
+      label: courseReviewService.getAcademicTermLabel(r.year, r.semester),
+      year: r.year,
+      semester: r.semester,
+    }])
+  ).values()].sort((a, b) => b.year - a.year || courseReviewTermRank[b.semester] - courseReviewTermRank[a.semester]);
+
+  const courseReviewProfessorOptions = [...new Set(courseReviews.map((r) => r.professor).filter(Boolean))].sort();
+
+  const filteredCourseReviews = courseReviews.filter((review) => {
+    const keyword = courseReviewSearchTerm.toLowerCase();
+    const matchesKeyword =
+      review.courseName.toLowerCase().includes(keyword) ||
+      review.courseCode.toLowerCase().includes(keyword) ||
+      (review.professor && review.professor.toLowerCase().includes(keyword));
+    const matchesTerm = courseReviewTermFilter === 'all' || `${review.year}-${review.semester}` === courseReviewTermFilter;
+    const matchesProfessor = courseReviewProfessorFilter === 'all' || review.professor === courseReviewProfessorFilter;
+    return matchesKeyword && matchesTerm && matchesProfessor;
+  });
 
   const filteredCheatSheets = cheatSheets.filter(sheet =>
     sheet.title.toLowerCase().includes(cheatSheetSearchTerm.toLowerCase()) ||
@@ -1997,21 +2016,59 @@ const AdminPage = () => {
             {t('courseReview.admin.description')}
           </Typography>
 
-          {/* 搜尋欄 */}
+          {/* 搜尋欄與篩選 */}
           <Paper sx={{ p: 2, mb: 3 }}>
-            <TextField
-              fullWidth
-              placeholder={t('courseReview.admin.searchPlaceholder')}
-              value={courseReviewSearchTerm}
-              onChange={(e) => setCourseReviewSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon color="action" />
-                  </InputAdornment>
-                ),
-              }}
-            />
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  placeholder={t('courseReview.admin.searchPlaceholder')}
+                  value={courseReviewSearchTerm}
+                  onChange={(e) => setCourseReviewSearchTerm(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+              <Grid item xs={6} md={3}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>{t('courseReview.form.academicTerm')}</InputLabel>
+                  <Select
+                    value={courseReviewTermFilter}
+                    label={t('courseReview.form.academicTerm')}
+                    onChange={(e) => setCourseReviewTermFilter(e.target.value)}
+                  >
+                    <MenuItem value="all">{t('common.all')}</MenuItem>
+                    {courseReviewTermOptions.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={6} md={3}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>{t('courseReview.professorFilterLabel')}</InputLabel>
+                  <Select
+                    value={courseReviewProfessorFilter}
+                    label={t('courseReview.professorFilterLabel')}
+                    onChange={(e) => setCourseReviewProfessorFilter(e.target.value)}
+                  >
+                    <MenuItem value="all">{t('common.all')}</MenuItem>
+                    {courseReviewProfessorOptions.map((professor) => (
+                      <MenuItem key={professor} value={professor}>
+                        {professor}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
           </Paper>
 
           <ToggleButtonGroup
@@ -2050,58 +2107,75 @@ const AdminPage = () => {
           )}
 
           {!courseReviewLoading && filteredCourseReviews.length > 0 && (
-            <Stack spacing={2}>
-              <Typography variant="body2" color="text.secondary">
+            <Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 {t('courseReview.admin.countLabel', { count: filteredCourseReviews.length })}
               </Typography>
-              {filteredCourseReviews.map((review) => (
-                <Paper key={review.id} variant="outlined" sx={{ p: 2 }}>
-                  <Stack spacing={1.5}>
-                    <Typography variant="caption" color="text.secondary">
-                      {t('courseReview.admin.submittedAt', { time: review.created_at ? new Date(review.created_at).toLocaleString('zh-TW') : t('common.unknown') })}
-                    </Typography>
-                    <ReviewCard
-                      review={review}
-                      showCourse
-                      showStatus
-                      currentUserId={null}
-                      onEdit={() => {}}
-                      onDelete={() => {}}
-                    />
-                    <Stack direction="row" spacing={1} justifyContent="flex-end">
-                      <Button
-                        variant="outlined"
-                        color="error"
-                        startIcon={<DeleteIcon />}
-                        onClick={() => handleDeleteCourseReviewClick(review)}
+              <Grid container spacing={2}>
+                {filteredCourseReviews.map((review) => (
+                  <Grid item xs={12} md={6} key={review.id}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                      <ReviewCard
+                        review={review}
+                        showStatus
+                        hideReviewedBy
+                        currentUserId={null}
+                        onEdit={() => {}}
+                        onDelete={() => {}}
+                      />
+                      <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="center"
+                        flexWrap="wrap"
+                        sx={{ mt: 1, rowGap: 1 }}
                       >
-                        {t('common.delete')}
-                      </Button>
-                      {review.status === 'pending' && (
-                        <>
+                        <Stack spacing={0.25}>
+                          <Typography variant="caption" color="text.secondary">
+                            {t('courseReview.admin.submittedAt', { time: review.created_at ? new Date(review.created_at).toLocaleString('zh-TW') : t('common.unknown') })}
+                          </Typography>
+                          {review.reviewedByUser && (
+                            <Typography variant="caption" color="text.secondary">
+                              {t('courseReview.reviewedBy', { name: review.reviewedByUser.fullName })}
+                            </Typography>
+                          )}
+                        </Stack>
+                        <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ rowGap: 1 }}>
                           <Button
                             variant="outlined"
-                            color="warning"
-                            startIcon={<CancelIcon />}
-                            onClick={() => openRejectDialog(review)}
+                            color="error"
+                            startIcon={<DeleteIcon />}
+                            onClick={() => handleDeleteCourseReviewClick(review)}
                           >
-                            {t('common.reject')}
+                            {t('common.delete')}
                           </Button>
-                          <Button
-                            variant="contained"
-                            color="success"
-                            startIcon={<CheckCircleIcon />}
-                            onClick={() => handleApproveCourseReview(review)}
-                          >
-                            {t('common.approve')}
-                          </Button>
-                        </>
-                      )}
-                    </Stack>
-                  </Stack>
-                </Paper>
-              ))}
-            </Stack>
+                          {review.status === 'pending' && (
+                            <>
+                              <Button
+                                variant="outlined"
+                                color="warning"
+                                startIcon={<CancelIcon />}
+                                onClick={() => openRejectDialog(review)}
+                              >
+                                {t('common.reject')}
+                              </Button>
+                              <Button
+                                variant="contained"
+                                color="success"
+                                startIcon={<CheckCircleIcon />}
+                                onClick={() => handleApproveCourseReview(review)}
+                              >
+                                {t('common.approve')}
+                              </Button>
+                            </>
+                          )}
+                        </Stack>
+                      </Stack>
+                    </Box>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
           )}
         </Paper>
       )}

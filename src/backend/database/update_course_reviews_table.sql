@@ -1,9 +1,11 @@
 -- 重建 course_reviews 資料表
 -- 四項評分欄位（課程品質 quality / 難易度 difficulty / 給分高低 sweetness / 實用性 usefulness）
--- 分數區間為 1~5，保留 0.5 精度（DECIMAL(2,1)）
+-- 分數區間為 0.5~5，精度 0.5（DECIMAL(2,1)）
 -- 心得（comment）改為必填
 -- 新增 status（pending/approved/rejected）、reject_reason、reviewed_by 欄位：
 -- 因為撰寫課程評價有金錢回饋，評價發布前須經管理員審核，並記錄是哪位管理員審核的
+-- 新增課程內容說明欄位：course_content（必填）、teaching_method / assignment_exam_format /
+-- grading_breakdown（選填），讓評價除了主觀心得之外也能記錄課程本身的客觀資訊
 --
 -- 注意：此腳本會「直接刪除」現有的 course_reviews 資料表與其中所有資料。
 -- 課程評價功能截至目前為止尚未有正式使用者資料，因此不需要保留舊資料的搬遷步驟。
@@ -23,10 +25,14 @@ CREATE TABLE course_reviews (
     professor VARCHAR(50),
     year INTEGER NOT NULL,
     semester VARCHAR(10) NOT NULL CHECK(semester IN ('1', '2', 'summer')),
-    quality DECIMAL(2,1) NOT NULL CHECK(quality >= 1 AND quality <= 5),
-    difficulty DECIMAL(2,1) NOT NULL CHECK(difficulty >= 1 AND difficulty <= 5),
-    sweetness DECIMAL(2,1) NOT NULL CHECK(sweetness >= 1 AND sweetness <= 5),
-    usefulness DECIMAL(2,1) NOT NULL CHECK(usefulness >= 1 AND usefulness <= 5),
+    quality DECIMAL(2,1) NOT NULL CHECK(quality >= 0.5 AND quality <= 5),
+    difficulty DECIMAL(2,1) NOT NULL CHECK(difficulty >= 0.5 AND difficulty <= 5),
+    sweetness DECIMAL(2,1) NOT NULL CHECK(sweetness >= 0.5 AND sweetness <= 5),
+    usefulness DECIMAL(2,1) NOT NULL CHECK(usefulness >= 0.5 AND usefulness <= 5),
+    course_content TEXT NOT NULL,
+    teaching_method TEXT,
+    assignment_exam_format TEXT,
+    grading_breakdown TEXT,
     comment TEXT NOT NULL,
     user_id INTEGER NOT NULL,
     is_anonymous BOOLEAN DEFAULT FALSE,

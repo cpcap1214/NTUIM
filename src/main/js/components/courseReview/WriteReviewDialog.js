@@ -32,6 +32,10 @@ const emptyForm = {
     difficulty: null,
     sweetness: null,
     usefulness: null,
+    courseContent: '',
+    teachingMethod: '',
+    assignmentExamFormat: '',
+    gradingBreakdown: '',
     comment: '',
     isAnonymous: false,
 };
@@ -68,12 +72,16 @@ const BASE_ACADEMIC_TERM_OPTIONS = buildAcademicTermOptions();
 
 const hasDraftContent = (data) =>
     (data.comment && data.comment.trim().length > 0) ||
+    (data.courseContent && data.courseContent.trim().length > 0) ||
+    (data.teachingMethod && data.teachingMethod.trim().length > 0) ||
+    (data.assignmentExamFormat && data.assignmentExamFormat.trim().length > 0) ||
+    (data.gradingBreakdown && data.gradingBreakdown.trim().length > 0) ||
     data.quality !== null ||
     data.difficulty !== null ||
     data.sweetness !== null ||
     data.usefulness !== null;
 
-const WriteReviewDialog = ({ open, onClose, review, initialCourse, onSaved }) => {
+const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
     const { t } = useTranslation();
     const [formData, setFormData] = useState(emptyForm);
     const [loading, setLoading] = useState(false);
@@ -81,6 +89,8 @@ const WriteReviewDialog = ({ open, onClose, review, initialCourse, onSaved }) =>
     const [draftRestored, setDraftRestored] = useState(false);
 
     const isEditing = !!review;
+    // 被拒絕的評價修改後其實是「重新送出」而不是單純存檔，按鈕文字要對應改變，讓使用者清楚知道這是要重新進入審核
+    const isResubmit = isEditing && review?.status === 'rejected';
     const draftKey = review ? `courseReviewDraft:edit:${review.id}` : 'courseReviewDraft:new';
 
     const buildBaseFormData = () => {
@@ -95,26 +105,39 @@ const WriteReviewDialog = ({ open, onClose, review, initialCourse, onSaved }) =>
                 difficulty: review.difficulty !== undefined ? parseFloat(review.difficulty) : null,
                 sweetness: review.sweetness !== undefined ? parseFloat(review.sweetness) : null,
                 usefulness: review.usefulness !== undefined ? parseFloat(review.usefulness) : null,
+                courseContent: review.courseContent || '',
+                teachingMethod: review.teachingMethod || '',
+                assignmentExamFormat: review.assignmentExamFormat || '',
+                gradingBreakdown: review.gradingBreakdown || '',
                 comment: review.comment || '',
                 isAnonymous: !!review.isAnonymous,
             };
         }
-        return {
-            ...emptyForm,
-            courseCode: initialCourse?.courseCode || '',
-            courseName: initialCourse?.courseName || '',
-        };
+        return emptyForm;
     };
 
+    // 草稿暫存只用在「新增」：編輯既有評價時內容本來就存在伺服器上，
+    // 不需要、也不應該套用本機殘留的草稿（草稿可能是很久以前寫到一半的舊內容）。
     useEffect(() => {
         if (!open) return;
         const base = buildBaseFormData();
+
+        if (isEditing) {
+            setFormData(base);
+            setDraftRestored(false);
+            setError('');
+            return;
+        }
+
         try {
             const saved = localStorage.getItem(draftKey);
             if (saved) {
                 const parsed = JSON.parse(saved);
-                setFormData(parsed);
-                setDraftRestored(hasDraftContent(parsed));
+                // 跟 base 合併，避免舊版（欄位改動前）存的草稿缺少新欄位，
+                // 導致還原後 formData 裡有 undefined，畫面 .trim() 時整個炸掉
+                const merged = { ...base, ...parsed };
+                setFormData(merged);
+                setDraftRestored(hasDraftContent(merged));
             } else {
                 setFormData(base);
                 setDraftRestored(false);
@@ -125,11 +148,11 @@ const WriteReviewDialog = ({ open, onClose, review, initialCourse, onSaved }) =>
         }
         setError('');
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [review, initialCourse, open]);
+    }, [review, open]);
 
-    // 自動暫存草稿（防抖 500ms），避免使用者不小心跳開頁面後心得整篇消失
+    // 自動暫存草稿（防抖 500ms），避免使用者不小心跳開頁面後心得整篇消失；只在新增時啟用
     useEffect(() => {
-        if (!open) return;
+        if (!open || isEditing) return;
         const timer = setTimeout(() => {
             try {
                 localStorage.setItem(draftKey, JSON.stringify(formData));
@@ -175,6 +198,11 @@ const WriteReviewDialog = ({ open, onClose, review, initialCourse, onSaved }) =>
             setError(t('courseReview.form.ratingsIncomplete'));
             return;
         }
+        const courseContentLength = formData.courseContent.trim().length;
+        if (courseContentLength < 5 || courseContentLength > 1000) {
+            setError(t('errors.COURSE_CONTENT_REQUIRED'));
+            return;
+        }
         const commentLength = formData.comment.trim().length;
         if (commentLength < 50 || commentLength > 1000) {
             setError(t('errors.COMMENT_LENGTH'));
@@ -190,6 +218,10 @@ const WriteReviewDialog = ({ open, onClose, review, initialCourse, onSaved }) =>
                     difficulty: formData.difficulty,
                     sweetness: formData.sweetness,
                     usefulness: formData.usefulness,
+                    courseContent: formData.courseContent,
+                    teachingMethod: formData.teachingMethod,
+                    assignmentExamFormat: formData.assignmentExamFormat,
+                    gradingBreakdown: formData.gradingBreakdown,
                     comment: formData.comment,
                     isAnonymous: formData.isAnonymous,
                 });
@@ -290,6 +322,59 @@ const WriteReviewDialog = ({ open, onClose, review, initialCourse, onSaved }) =>
                         </TextField>
                     </Grid>
 
+                    <Grid item xs={12}>
+                        <TextField
+                            fullWidth
+                            multiline
+                            rows={3}
+                            label={t('courseReview.form.courseContent')}
+                            required
+                            value={formData.courseContent}
+                            onChange={(e) => handleChange('courseContent', e.target.value)}
+                            inputProps={{ maxLength: 1000 }}
+                            helperText={t('courseReview.form.courseContentHelper', { count: formData.courseContent.trim().length })}
+                        />
+                    </Grid>
+
+                    <Grid item xs={12}>
+                        <TextField
+                            fullWidth
+                            multiline
+                            rows={2}
+                            label={t('courseReview.form.teachingMethod')}
+                            value={formData.teachingMethod}
+                            onChange={(e) => handleChange('teachingMethod', e.target.value)}
+                            inputProps={{ maxLength: 1000 }}
+                            helperText={t('courseReview.form.optionalFieldHelper', { count: formData.teachingMethod.trim().length })}
+                        />
+                    </Grid>
+
+                    <Grid item xs={12}>
+                        <TextField
+                            fullWidth
+                            multiline
+                            rows={2}
+                            label={t('courseReview.form.assignmentExamFormat')}
+                            value={formData.assignmentExamFormat}
+                            onChange={(e) => handleChange('assignmentExamFormat', e.target.value)}
+                            inputProps={{ maxLength: 1000 }}
+                            helperText={t('courseReview.form.optionalFieldHelper', { count: formData.assignmentExamFormat.trim().length })}
+                        />
+                    </Grid>
+
+                    <Grid item xs={12}>
+                        <TextField
+                            fullWidth
+                            multiline
+                            rows={2}
+                            label={t('courseReview.form.gradingBreakdown')}
+                            value={formData.gradingBreakdown}
+                            onChange={(e) => handleChange('gradingBreakdown', e.target.value)}
+                            inputProps={{ maxLength: 1000 }}
+                            helperText={t('courseReview.form.optionalFieldHelper', { count: formData.gradingBreakdown.trim().length })}
+                        />
+                    </Grid>
+
                     {METRIC_KEYS.map((key) => (
                         <Grid item xs={12} sm={6} key={key}>
                             <Typography variant="subtitle2" gutterBottom>
@@ -346,7 +431,11 @@ const WriteReviewDialog = ({ open, onClose, review, initialCourse, onSaved }) =>
             <DialogActions>
                 <Button onClick={onClose}>{t('common.cancel')}</Button>
                 <Button variant="contained" onClick={handleSubmit} disabled={loading}>
-                    {isEditing ? t('courseReview.form.saveChanges') : t('courseReview.form.submitReview')}
+                    {isResubmit
+                        ? t('courseReview.form.resubmit')
+                        : isEditing
+                            ? t('courseReview.form.saveChanges')
+                            : t('courseReview.form.submitReview')}
                 </Button>
             </DialogActions>
         </Dialog>

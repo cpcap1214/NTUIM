@@ -253,7 +253,7 @@ const CourseReview = sequelize.define('CourseReview', {
         type: DataTypes.DECIMAL(2, 1),
         allowNull: false,
         validate: {
-            min: 1,
+            min: 0.5,
             max: 5
         }
     },
@@ -261,7 +261,7 @@ const CourseReview = sequelize.define('CourseReview', {
         type: DataTypes.DECIMAL(2, 1),
         allowNull: false,
         validate: {
-            min: 1,
+            min: 0.5,
             max: 5
         }
     },
@@ -269,7 +269,7 @@ const CourseReview = sequelize.define('CourseReview', {
         type: DataTypes.DECIMAL(2, 1),
         allowNull: false,
         validate: {
-            min: 1,
+            min: 0.5,
             max: 5
         }
     },
@@ -277,8 +277,40 @@ const CourseReview = sequelize.define('CourseReview', {
         type: DataTypes.DECIMAL(2, 1),
         allowNull: false,
         validate: {
-            min: 1,
+            min: 0.5,
             max: 5
+        }
+    },
+    courseContent: {
+        type: DataTypes.TEXT,
+        allowNull: false,
+        field: 'course_content',
+        validate: {
+            len: [5, 1000]
+        }
+    },
+    teachingMethod: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        field: 'teaching_method',
+        validate: {
+            len: [0, 1000]
+        }
+    },
+    assignmentExamFormat: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        field: 'assignment_exam_format',
+        validate: {
+            len: [0, 1000]
+        }
+    },
+    gradingBreakdown: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        field: 'grading_breakdown',
+        validate: {
+            len: [0, 1000]
         }
     },
     comment: {

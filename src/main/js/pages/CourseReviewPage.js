@@ -2,20 +2,14 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Box, Typography, Stack, ToggleButton, ToggleButtonGroup, Alert } from '@mui/material';
 import {
-    ViewModule as CoursesIcon,
     DynamicFeed as FeedIcon,
     Person as PersonIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import courseReviewService from '../services/courseReviewService';
 import { translateApiError } from '../utils';
-import CourseListView from '../components/courseReview/CourseListView';
 import ReviewFeedView from '../components/courseReview/ReviewFeedView';
-import MyReviewsView from '../components/courseReview/MyReviewsView';
-import CourseDetailDialog from '../components/courseReview/CourseDetailDialog';
 import WriteReviewDialog from '../components/courseReview/WriteReviewDialog';
-
-const average = (list, field) => list.reduce((sum, item) => sum + Number(item[field] || 0), 0) / list.length;
 
 const CourseReviewPage = () => {
     const { t } = useTranslation();
@@ -26,22 +20,22 @@ const CourseReviewPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    const [viewMode, setViewMode] = useState('courses');
+    const [viewMode, setViewMode] = useState('feed');
 
-    // 課程總覽的搜尋/排序
-    const [courseSearchTerm, setCourseSearchTerm] = useState('');
-    const [courseSortBy, setCourseSortBy] = useState('latest');
-
-    // 動態牆的搜尋/篩選/排序
+    // 所有評價分頁的搜尋/篩選/排序
     const [feedSearchTerm, setFeedSearchTerm] = useState('');
-    const [semesterFilter, setSemesterFilter] = useState('all');
-    const [professorFilter, setProfessorFilter] = useState('all');
+    const [feedTermFilter, setFeedTermFilter] = useState('all');
+    const [feedProfessorFilter, setFeedProfessorFilter] = useState('all');
     const [feedSortBy, setFeedSortBy] = useState('latest');
 
-    const [selectedCourse, setSelectedCourse] = useState(null);
+    // 我的評價分頁的搜尋/篩選/排序（跟所有評價分頁互相獨立）
+    const [mineSearchTerm, setMineSearchTerm] = useState('');
+    const [mineTermFilter, setMineTermFilter] = useState('all');
+    const [mineProfessorFilter, setMineProfessorFilter] = useState('all');
+    const [mineSortBy, setMineSortBy] = useState('latest');
+
     const [writeDialogOpen, setWriteDialogOpen] = useState(false);
     const [editingReview, setEditingReview] = useState(null);
-    const [initialCourse, setInitialCourse] = useState(null);
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -68,61 +62,24 @@ const CourseReviewPage = () => {
         loadData();
     }, [loadData]);
 
-    const courseGroups = useMemo(() => {
-        const map = new Map();
-        reviews.forEach((review) => {
-            if (!map.has(review.courseCode)) {
-                map.set(review.courseCode, {
-                    courseCode: review.courseCode,
-                    courseName: review.courseName,
-                    reviews: [],
-                });
-            }
-            map.get(review.courseCode).reviews.push(review);
-        });
-
-        return [...map.values()].map((group) => {
-            const avgQuality = average(group.reviews, 'quality');
-            const avgDifficulty = average(group.reviews, 'difficulty');
-            const avgSweetness = average(group.reviews, 'sweetness');
-            const avgUsefulness = average(group.reviews, 'usefulness');
-            return {
-                ...group,
-                count: group.reviews.length,
-                avgQuality,
-                avgDifficulty,
-                avgSweetness,
-                avgUsefulness,
-                // 只給「評分最高」排序用，不會被渲染成任何畫面上的指標
-                avgOfFour: (avgQuality + avgDifficulty + avgSweetness + avgUsefulness) / 4,
-                professors: [...new Set(group.reviews.map((r) => r.professor))],
-                latestCreatedAt: group.reviews.reduce(
-                    (latest, r) => (new Date(r.created_at) > new Date(latest) ? r.created_at : latest),
-                    group.reviews[0].created_at
-                ),
-            };
-        });
-    }, [reviews]);
-
-    // 課程詳情彈窗開著時，評價異動後同步刷新裡面顯示的資料
-    useEffect(() => {
-        setSelectedCourse((prev) => {
-            if (!prev) return prev;
-            return courseGroups.find((g) => g.courseCode === prev.courseCode) || null;
-        });
-    }, [courseGroups]);
+    // GET /my-reviews 沒有 include reviewer，這裡自己補上目前使用者的資料才能正確顯示名字
+    const enrichedMyReviews = useMemo(() => {
+        if (!user) return [];
+        return myReviews.map((review) => ({
+            ...review,
+            reviewer: { username: user.username, fullName: user.fullName },
+        }));
+    }, [myReviews, user]);
 
     const canWrite = !!user;
 
-    const handleWriteReview = (course) => {
+    const handleWriteReview = () => {
         setEditingReview(null);
-        setInitialCourse(course || null);
         setWriteDialogOpen(true);
     };
 
     const handleEditReview = (review) => {
         setEditingReview(review);
-        setInitialCourse(null);
         setWriteDialogOpen(true);
     };
 
@@ -138,12 +95,10 @@ const CourseReviewPage = () => {
     const handleSaved = async () => {
         setWriteDialogOpen(false);
         setEditingReview(null);
-        setInitialCourse(null);
         await loadData();
     };
 
     const viewOptions = [
-        { value: 'courses', label: t('courseReview.viewMode.courses'), icon: <CoursesIcon fontSize="small" sx={{ mr: 0.5 }} /> },
         { value: 'feed', label: t('courseReview.viewMode.feed'), icon: <FeedIcon fontSize="small" sx={{ mr: 0.5 }} /> },
     ];
     if (user) {
@@ -156,9 +111,6 @@ const CourseReviewPage = () => {
                 <Box>
                     <Typography variant="h2" component="h1" sx={{ fontWeight: 700, mb: 0.5 }}>
                         {t('courseReview.pageTitle')}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                        {loading ? t('common.loading') : t('courseReview.summary', { count: reviews.length, courseCount: courseGroups.length })}
                     </Typography>
                 </Box>
 
@@ -201,26 +153,15 @@ const CourseReviewPage = () => {
                 </Box>
             )}
 
-            {!loading && viewMode === 'courses' && (
-                <CourseListView
-                    courseGroups={courseGroups}
-                    searchTerm={courseSearchTerm}
-                    onSearchChange={setCourseSearchTerm}
-                    sortBy={courseSortBy}
-                    onSortChange={setCourseSortBy}
-                    onSelectCourse={setSelectedCourse}
-                />
-            )}
-
             {!loading && viewMode === 'feed' && (
                 <ReviewFeedView
                     reviews={reviews}
                     searchTerm={feedSearchTerm}
                     onSearchChange={setFeedSearchTerm}
-                    semesterFilter={semesterFilter}
-                    onSemesterFilterChange={setSemesterFilter}
-                    professorFilter={professorFilter}
-                    onProfessorFilterChange={setProfessorFilter}
+                    academicTermFilter={feedTermFilter}
+                    onAcademicTermFilterChange={setFeedTermFilter}
+                    professorFilter={feedProfessorFilter}
+                    onProfessorFilterChange={setFeedProfessorFilter}
                     sortBy={feedSortBy}
                     onSortChange={setFeedSortBy}
                     currentUserId={user?.id}
@@ -228,35 +169,34 @@ const CourseReviewPage = () => {
                     onDelete={handleDeleteReview}
                     canWrite={canWrite}
                     onWriteReview={handleWriteReview}
+                    variant="all"
                 />
             )}
 
             {!loading && viewMode === 'mine' && user && (
-                <MyReviewsView
-                    myReviews={myReviews}
-                    currentUser={user}
+                <ReviewFeedView
+                    reviews={enrichedMyReviews}
+                    searchTerm={mineSearchTerm}
+                    onSearchChange={setMineSearchTerm}
+                    academicTermFilter={mineTermFilter}
+                    onAcademicTermFilterChange={setMineTermFilter}
+                    professorFilter={mineProfessorFilter}
+                    onProfessorFilterChange={setMineProfessorFilter}
+                    sortBy={mineSortBy}
+                    onSortChange={setMineSortBy}
+                    currentUserId={user.id}
                     onEdit={handleEditReview}
                     onDelete={handleDeleteReview}
+                    canWrite
                     onWriteReview={handleWriteReview}
+                    variant="mine"
                 />
             )}
-
-            <CourseDetailDialog
-                open={!!selectedCourse}
-                course={selectedCourse}
-                currentUserId={user?.id}
-                canWrite={canWrite}
-                onClose={() => setSelectedCourse(null)}
-                onWriteReview={handleWriteReview}
-                onEditReview={handleEditReview}
-                onDeleteReview={handleDeleteReview}
-            />
 
             <WriteReviewDialog
                 open={writeDialogOpen}
                 onClose={() => setWriteDialogOpen(false)}
                 review={editingReview}
-                initialCourse={initialCourse}
                 onSaved={handleSaved}
             />
         </Box>

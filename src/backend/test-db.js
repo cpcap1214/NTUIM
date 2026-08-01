@@ -87,6 +87,7 @@ async function testDatabase() {
                 difficulty: 2.5,
                 sweetness: 3,
                 usefulness: 5,
+                courseContent: '涵蓋資訊管理基礎理論與實務案例',
                 comment: '很棒的入門課程',
                 userId: testUser[0].id,
                 isAnonymous: false

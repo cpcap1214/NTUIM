@@ -149,10 +149,14 @@ router.post('/',
         body('professor').notEmpty().withMessage({ code: 'PROFESSOR_REQUIRED', message: '授課教授為必填' }),
         body('year').isInt({ min: 2000, max: 2100 }).withMessage({ code: 'YEAR_INVALID', message: '請輸入有效年份' }),
         body('semester').isIn(['1', '2', 'summer']).withMessage({ code: 'SEMESTER_REQUIRED', message: '請選擇學期' }),
-        body('quality').isFloat({ min: 1, max: 5 }).withMessage({ code: 'QUALITY_RANGE', message: '課程品質須為1-5' }),
-        body('difficulty').isFloat({ min: 1, max: 5 }).withMessage({ code: 'DIFFICULTY_RANGE', message: '難易度須為1-5' }),
-        body('sweetness').isFloat({ min: 1, max: 5 }).withMessage({ code: 'SWEETNESS_RANGE', message: '給分高低須為1-5' }),
-        body('usefulness').isFloat({ min: 1, max: 5 }).withMessage({ code: 'USEFULNESS_RANGE', message: '實用性須為1-5' }),
+        body('quality').isFloat({ min: 0.5, max: 5 }).withMessage({ code: 'QUALITY_RANGE', message: '課程品質須為0.5-5' }),
+        body('difficulty').isFloat({ min: 0.5, max: 5 }).withMessage({ code: 'DIFFICULTY_RANGE', message: '難易度須為0.5-5' }),
+        body('sweetness').isFloat({ min: 0.5, max: 5 }).withMessage({ code: 'SWEETNESS_RANGE', message: '給分高低須為0.5-5' }),
+        body('usefulness').isFloat({ min: 0.5, max: 5 }).withMessage({ code: 'USEFULNESS_RANGE', message: '實用性須為0.5-5' }),
+        body('courseContent').trim().isLength({ min: 5, max: 1000 }).withMessage({ code: 'COURSE_CONTENT_REQUIRED', message: '課程內容為必填，請填寫至少 5 字' }),
+        body('teachingMethod').optional({ checkFalsy: true }).trim().isLength({ max: 1000 }).withMessage({ code: 'TEACHING_METHOD_TOO_LONG', message: '教學方式請勿超過 1000 字' }),
+        body('assignmentExamFormat').optional({ checkFalsy: true }).trim().isLength({ max: 1000 }).withMessage({ code: 'ASSIGNMENT_EXAM_FORMAT_TOO_LONG', message: '作業與考試形式請勿超過 1000 字' }),
+        body('gradingBreakdown').optional({ checkFalsy: true }).trim().isLength({ max: 1000 }).withMessage({ code: 'GRADING_BREAKDOWN_TOO_LONG', message: '評分佔比請勿超過 1000 字' }),
         body('comment').trim().isLength({ min: 50, max: 1000 }).withMessage({ code: 'COMMENT_LENGTH', message: '心得為必填，請填寫 50-1000 字' }),
         body('isAnonymous').optional().isBoolean()
     ],
@@ -173,6 +177,10 @@ router.post('/',
                 difficulty,
                 sweetness,
                 usefulness,
+                courseContent,
+                teachingMethod,
+                assignmentExamFormat,
+                gradingBreakdown,
                 comment,
                 isAnonymous = false
             } = req.body;
@@ -203,6 +211,10 @@ router.post('/',
                 difficulty: parseFloat(difficulty),
                 sweetness: parseFloat(sweetness),
                 usefulness: parseFloat(usefulness),
+                courseContent,
+                teachingMethod: teachingMethod || null,
+                assignmentExamFormat: assignmentExamFormat || null,
+                gradingBreakdown: gradingBreakdown || null,
                 comment,
                 userId: req.user.id,
                 isAnonymous,
@@ -230,10 +242,14 @@ router.post('/',
 router.put('/:id',
     authenticateToken,
     [
-        body('quality').optional().isFloat({ min: 1, max: 5 }),
-        body('difficulty').optional().isFloat({ min: 1, max: 5 }),
-        body('sweetness').optional().isFloat({ min: 1, max: 5 }),
-        body('usefulness').optional().isFloat({ min: 1, max: 5 }),
+        body('quality').optional().isFloat({ min: 0.5, max: 5 }),
+        body('difficulty').optional().isFloat({ min: 0.5, max: 5 }),
+        body('sweetness').optional().isFloat({ min: 0.5, max: 5 }),
+        body('usefulness').optional().isFloat({ min: 0.5, max: 5 }),
+        body('courseContent').optional().trim().isLength({ min: 5, max: 1000 }).withMessage({ code: 'COURSE_CONTENT_REQUIRED', message: '課程內容為必填，請填寫至少 5 字' }),
+        body('teachingMethod').optional({ checkFalsy: true }).trim().isLength({ max: 1000 }).withMessage({ code: 'TEACHING_METHOD_TOO_LONG', message: '教學方式請勿超過 1000 字' }),
+        body('assignmentExamFormat').optional({ checkFalsy: true }).trim().isLength({ max: 1000 }).withMessage({ code: 'ASSIGNMENT_EXAM_FORMAT_TOO_LONG', message: '作業與考試形式請勿超過 1000 字' }),
+        body('gradingBreakdown').optional({ checkFalsy: true }).trim().isLength({ max: 1000 }).withMessage({ code: 'GRADING_BREAKDOWN_TOO_LONG', message: '評分佔比請勿超過 1000 字' }),
         body('comment').optional().trim().isLength({ min: 50, max: 1000 }).withMessage({ code: 'COMMENT_LENGTH_OPTIONAL', message: '心得請填寫 50-1000 字' }),
         body('isAnonymous').optional().isBoolean()
     ],
@@ -257,7 +273,7 @@ router.put('/:id',
 
             // 更新評價
             const updates = {};
-            const allowedFields = ['quality', 'difficulty', 'sweetness', 'usefulness', 'comment', 'isAnonymous'];
+            const allowedFields = ['quality', 'difficulty', 'sweetness', 'usefulness', 'courseContent', 'teachingMethod', 'assignmentExamFormat', 'gradingBreakdown', 'comment', 'isAnonymous'];
 
             allowedFields.forEach(field => {
                 if (req.body[field] !== undefined) {
