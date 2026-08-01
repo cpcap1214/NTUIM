@@ -11,12 +11,14 @@ import {
     Divider,
     IconButton,
     Button,
+    Tooltip,
     Grid,
 } from '@mui/material';
 import {
     Edit as EditIcon,
     Delete as DeleteIcon,
     Warning as WarningIcon,
+    HelpOutline as HelpOutlineIcon,
 } from '@mui/icons-material';
 import RatingDisplay from './RatingDisplay';
 import ReviewDetailDialog from './ReviewDetailDialog';
@@ -61,11 +63,17 @@ const ReviewCard = ({ review, showStatus = false, hideReviewedBy = false, curren
                     <Stack direction="row" spacing={1} justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1 }}>
                         <Box sx={{ minWidth: 0, flex: 1 }}>
                             <Typography variant="subtitle1" sx={{ fontWeight: 700 }} noWrap>
-                                {review.courseName}（{review.courseCode}）
+                                {review.courseName}
                             </Typography>
-                            <Typography variant="body2" color="text.secondary" noWrap>
-                                {review.professor}
-                            </Typography>
+                            <Stack direction="row" spacing={0.75} alignItems="center" sx={{ minWidth: 0 }}>
+                                <Typography variant="body2" color="text.secondary" noWrap sx={{ minWidth: 0 }}>
+                                    {review.professor}
+                                </Typography>
+                                <Box component="span" sx={{ width: 4, height: 4, bgcolor: 'text.disabled', flexShrink: 0 }} />
+                                <Typography variant="body2" color="text.secondary" noWrap sx={{ flexShrink: 0 }}>
+                                    {review.courseCode}
+                                </Typography>
+                            </Stack>
                         </Box>
                         {isOwner && (
                             <Stack direction="row" spacing={0.75} alignItems="center" onClick={(e) => e.stopPropagation()}>
@@ -100,7 +108,7 @@ const ReviewCard = ({ review, showStatus = false, hideReviewedBy = false, curren
                             {reviewerName}
                         </Typography>
                         <Chip label={courseReviewService.getAcademicTermLabel(review.year, review.semester)} size="small" variant="outlined" />
-                        {showStatus && review.status && (
+                        {showStatus && review.status && review.status !== 'approved' && (
                             <Chip
                                 label={courseReviewService.getStatusLabel(review.status)}
                                 size="small"
@@ -130,9 +138,16 @@ const ReviewCard = ({ review, showStatus = false, hideReviewedBy = false, curren
                         {METRIC_KEYS.map((key) => (
                             <Grid item xs={6} sm={3} key={key}>
                                 <Stack spacing={0.25}>
-                                    <Typography variant="caption" color="text.secondary">
-                                        {t(`courseReview.metrics.${key}`)}
-                                    </Typography>
+                                    <Stack direction="row" spacing={0.25} alignItems="center">
+                                        <Typography variant="caption" color="text.secondary">
+                                            {t(`courseReview.metrics.${key}`)}
+                                        </Typography>
+                                        <Tooltip title={t(`courseReview.metricHints.${key}`)} arrow>
+                                            <Box component="span" onClick={(e) => e.stopPropagation()} sx={{ display: 'inline-flex' }}>
+                                                <HelpOutlineIcon sx={{ fontSize: 13, color: 'text.disabled', cursor: 'help' }} />
+                                            </Box>
+                                        </Tooltip>
+                                    </Stack>
                                     <RatingDisplay value={review[key]} size="small" />
                                 </Stack>
                             </Grid>

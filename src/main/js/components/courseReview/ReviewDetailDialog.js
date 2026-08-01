@@ -11,10 +11,11 @@ import {
     Stack,
     Avatar,
     Chip,
+    Tooltip,
     Divider,
     Grid,
 } from '@mui/material';
-import { Warning as WarningIcon } from '@mui/icons-material';
+import { Warning as WarningIcon, HelpOutline as HelpOutlineIcon } from '@mui/icons-material';
 import RatingDisplay from './RatingDisplay';
 import courseReviewService from '../../services/courseReviewService';
 
@@ -31,20 +32,26 @@ const ReviewDetailDialog = ({ open, review, onClose }) => {
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-            <DialogTitle>
-                {review.courseName}（{review.courseCode}）
-                <Typography variant="body2" color="text.secondary">
-                    {review.professor}
-                </Typography>
-            </DialogTitle>
+            <DialogTitle>{review.courseName}</DialogTitle>
             <DialogContent>
+                <Stack spacing={0.5} sx={{ mb: 2 }}>
+                    <Typography variant="body2" color="text.secondary">
+                        {t('courseReview.detailField.professor')}：{review.professor}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                        {t('courseReview.detailField.courseCode')}：{review.courseCode}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                        {t('courseReview.detailField.academicTerm')}：{courseReviewService.getAcademicTermLabel(review.year, review.semester)}
+                    </Typography>
+                </Stack>
+
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ mb: 2 }}>
                     <Avatar sx={{ width: 28, height: 28, fontSize: '0.8rem', bgcolor: 'grey.300', color: 'text.primary' }}>
                         {reviewerName.charAt(0)}
                     </Avatar>
                     <Typography variant="body2">{reviewerName}</Typography>
-                    <Chip label={courseReviewService.getAcademicTermLabel(review.year, review.semester)} size="small" variant="outlined" />
-                    {review.status && (
+                    {review.status && review.status !== 'approved' && (
                         <Chip
                             label={courseReviewService.getStatusLabel(review.status)}
                             size="small"
@@ -72,9 +79,14 @@ const ReviewDetailDialog = ({ open, review, onClose }) => {
                     {METRIC_KEYS.map((key) => (
                         <Grid item xs={6} sm={3} key={key}>
                             <Stack spacing={0.25}>
-                                <Typography variant="caption" color="text.secondary">
-                                    {t(`courseReview.metrics.${key}`)}
-                                </Typography>
+                                <Stack direction="row" spacing={0.25} alignItems="center">
+                                    <Typography variant="caption" color="text.secondary">
+                                        {t(`courseReview.metrics.${key}`)}
+                                    </Typography>
+                                    <Tooltip title={t(`courseReview.metricHints.${key}`)} arrow>
+                                        <HelpOutlineIcon sx={{ fontSize: 13, color: 'text.disabled', cursor: 'help' }} />
+                                    </Tooltip>
+                                </Stack>
                                 <RatingDisplay value={review[key]} size="small" />
                             </Stack>
                         </Grid>

@@ -54,6 +54,21 @@ const zhTW = {
             usefulness: '實用性',
         },
 
+        // 評分欄位文字旁邊的小問號提示，解釋每個指標實際代表什麼
+        metricHints: {
+            quality: '這門課整體的教學品質好壞',
+            difficulty: '這門課的上課與考試難易程度',
+            sweetness: '這門課的給分甜度，越高代表給分越高、越好拿高分',
+            usefulness: '這門課所學內容在實務或學習上的實用程度',
+        },
+
+        // 評價詳情彈窗裡，除了課程名稱外的分項標籤
+        detailField: {
+            professor: '教授',
+            courseCode: '課號',
+            academicTerm: '學期',
+        },
+
         // 四個指標 1~5 分（含 0.5）文字說明，取最接近的整數對應；index 0 保留空字串不使用
         metricTexts: {
             quality: ['', '非常差', '差', '普通', '好', '非常好'],

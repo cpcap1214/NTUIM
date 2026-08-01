@@ -98,6 +98,21 @@ const ReviewFeedView = ({
 
     return (
         <Box>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+                <Typography variant="body2" color="text.secondary">
+                    {t('courseReview.totalReviewCount', { count: filtered.length })}
+                </Typography>
+                {canWrite ? (
+                    <Button variant="contained" size="small" onClick={() => onWriteReview()}>
+                        {t('courseReview.writeReview')}
+                    </Button>
+                ) : (
+                    <Typography variant="caption" color="text.disabled">
+                        {t('courseReview.emptyState.loginToWrite')}
+                    </Typography>
+                )}
+            </Stack>
+
             <Paper variant="outlined" sx={{ p: 2, mb: 3, borderColor: 'divider' }}>
                 <Grid container spacing={2} alignItems="center">
                     <Grid item xs={12} md={5}>
@@ -157,21 +172,6 @@ const ReviewFeedView = ({
                     </Grid>
                 </Grid>
             </Paper>
-
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                    {t('courseReview.totalReviewCount', { count: filtered.length })}
-                </Typography>
-                {canWrite ? (
-                    <Button variant="contained" size="small" onClick={() => onWriteReview()}>
-                        {t('courseReview.writeReview')}
-                    </Button>
-                ) : (
-                    <Typography variant="caption" color="text.disabled">
-                        {t('courseReview.emptyState.loginToWrite')}
-                    </Typography>
-                )}
-            </Stack>
 
             {filtered.length === 0 && (
                 <Box sx={{ textAlign: 'center', py: 8 }}>

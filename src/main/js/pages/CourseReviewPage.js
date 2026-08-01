@@ -107,7 +107,7 @@ const CourseReviewPage = () => {
 
     return (
         <Box>
-            <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ md: 'center' }} spacing={2} sx={{ mb: 3 }}>
+            <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ md: 'center' }} spacing={2} sx={{ mb: 0.5 }}>
                 <Box>
                     <Typography variant="h2" component="h1" sx={{ fontWeight: 700, mb: 0.5 }}>
                         {t('courseReview.pageTitle')}

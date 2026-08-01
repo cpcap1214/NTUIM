@@ -2009,7 +2009,7 @@ const AdminPage = () => {
       {/* 課程評價管理分頁 */}
       {activeTab === 5 && (
         <Paper sx={{ p: 2 }}>
-          <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 1 }}>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
             {t('courseReview.admin.title')}
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
