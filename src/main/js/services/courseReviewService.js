@@ -30,6 +30,26 @@ const courseReviewService = {
         }
     },
 
+    // 取得目前可填寫評價的學年期（期末考已結束的學期）
+    async getReviewableTerms() {
+        try {
+            const response = await api.get('/course-catalog/reviewable-terms');
+            return response.data.data || [];
+        } catch (error) {
+            throw error.response?.data || error;
+        }
+    },
+
+    // 搜尋台大課程目錄，給「寫評價」表單的課程名稱自動完成下拉選單用
+    async searchCourseCatalog(keyword) {
+        try {
+            const response = await api.get('/course-catalog/search', { params: { q: keyword, limit: 15 } });
+            return response.data.data || [];
+        } catch (error) {
+            throw error.response?.data || error;
+        }
+    },
+
     // 新增評價
     async createReview(reviewData) {
         try {
@@ -87,6 +107,45 @@ const courseReviewService = {
         try {
             const response = await api.patch(`/course-reviews/${id}/status`, { status, rejectReason });
             return response.data;
+        } catch (error) {
+            throw error.response?.data || error;
+        }
+    },
+
+    // 取得回饋金發放清單（總務或管理員）；paid 傳 'true'/'false' 可只看已/未發放
+    async getPayouts(paid) {
+        try {
+            const response = await api.get('/course-reviews/payouts', {
+                params: paid === undefined ? {} : { paid }
+            });
+            return response.data.data || [];
+        } catch (error) {
+            throw error.response?.data || error;
+        }
+    },
+
+    // 標記回饋金是否已發放（總務或管理員）
+    async setPayoutStatus(id, isPaid) {
+        try {
+            const response = await api.patch(`/course-reviews/${id}/payout`, { isPaid });
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error;
+        }
+    },
+
+    // 下載發放清單 CSV：走 blob 才能帶上認證 token（單純用 <a href> 會少了 Authorization 標頭）
+    async downloadPayoutCsv() {
+        try {
+            const response = await api.get('/course-reviews/payouts/export', { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `course-review-payouts-${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
         } catch (error) {
             throw error.response?.data || error;
         }

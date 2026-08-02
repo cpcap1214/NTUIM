@@ -3,6 +3,10 @@ const { User } = require('../models');
 
 const hasAdminAccess = (user) => user?.role === 'admin' || user?.username === 'cpcap';
 
+// 總務權限：管理員一律有；另外可單獨授予總務部的人，讓他們不需要完整管理員權限
+// 就能管理回饋金發放（看不到、也改不了使用者管理與評價審核等其他後台功能）
+const hasPayoutAccess = (user) => hasAdminAccess(user) || user?.canManagePayouts === true;
+
 // JWT 認證中間件
 const authenticateToken = async (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -17,7 +21,7 @@ const authenticateToken = async (req, res, next) => {
 
         // 從資料庫獲取使用者資訊
         const user = await User.findByPk(decoded.userId, {
-            attributes: ['id', 'username', 'email', 'role', 'hasPaidFee']
+            attributes: ['id', 'username', 'email', 'role', 'hasPaidFee', 'canManagePayouts']
         });
 
         if (!user) {
@@ -38,6 +42,14 @@ const authenticateToken = async (req, res, next) => {
 const requireAdmin = (req, res, next) => {
     if (!hasAdminAccess(req.user)) {
         return res.status(403).json({ error: '需要管理員權限' });
+    }
+    next();
+};
+
+// 檢查是否可管理回饋金發放（總務部或管理員）
+const requirePayoutManager = (req, res, next) => {
+    if (!hasPayoutAccess(req.user)) {
+        return res.status(403).json({ error: '需要總務或管理員權限' });
     }
     next();
 };
@@ -107,8 +119,10 @@ const refreshToken = async (req, res) => {
 module.exports = {
     authenticateToken,
     requireAdmin,
+    requirePayoutManager,
     requirePaidMember,
     requireOwnerOrAdmin,
+    hasPayoutAccess,
     generateToken,
     refreshToken
 };

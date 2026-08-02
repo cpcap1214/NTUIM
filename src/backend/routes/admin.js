@@ -40,8 +40,9 @@ router.get('/users', verifyAdminAccess, async (req, res) => {
         'email', 
         'studentId', 
         'fullName', 
-        'role', 
-        'hasPaidFee', 
+        'role',
+        'hasPaidFee',
+        'canManagePayouts',
         'created_at',
         'passwordHash'
       ],
@@ -69,25 +70,35 @@ router.get('/users', verifyAdminAccess, async (req, res) => {
 router.put('/users/:id', verifyAdminAccess, async (req, res) => {
   try {
     const { id } = req.params;
-    const { username, email, studentId, fullName, hasPaidFee, role } = req.body;
+    const { username, email, studentId, fullName, hasPaidFee, role, canManagePayouts } = req.body;
 
     const user = await User.findByPk(id);
-    
+
     if (!user) {
       return res.status(404).json({ error: '找不到用戶' });
     }
 
     // 更新用戶資料
-    await user.update({
+    const updates = {
       username,
       email,
       studentId,
       fullName,
       hasPaidFee,
       role
-    });
+    };
+    // 總務權限是選填欄位，沒帶就維持原值（避免舊版前端漏傳時把權限清掉）
+    if (canManagePayouts !== undefined) {
+      updates.canManagePayouts = !!canManagePayouts;
+    }
 
-    res.json({ message: '用戶資料已更新', user });
+    await user.update(updates);
+
+    // 不要把密碼 hash 回傳出去（GET /users 也有特別剝除，這裡保持一致）
+    const safeUser = user.toJSON();
+    delete safeUser.passwordHash;
+
+    res.json({ message: '用戶資料已更新', user: safeUser });
   } catch (error) {
     console.error('更新用戶失敗:', error);
     res.status(500).json({ error: '更新失敗' });

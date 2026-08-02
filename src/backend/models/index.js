@@ -17,7 +17,12 @@ sequelize.addHook('afterConnect', async (connection) => {
     // 確保 SQLite 使用 UTF-8 編碼並啟用外鍵約束
     await sequelize.query('PRAGMA encoding = "UTF-8"');
     await sequelize.query('PRAGMA foreign_keys = ON');
-    console.log('SQLite PRAGMA 設定完成: UTF-8 編碼, 外鍵約束啟用');
+    // WAL 模式：讓讀取不會被同時進行的寫入交易鎖住（預設的 rollback journal 模式寫入時會鎖住
+    // 整個資料庫檔案，任何併發讀取都會直接失敗）；busy_timeout 是遇到鎖衝突時的重試等待上限（ms），
+    // 兩者搭配可以避免像 fetchNtuCourses.js 這種短時間大量寫入的背景作業把一般 API 請求打壞
+    await sequelize.query('PRAGMA journal_mode = WAL');
+    await sequelize.query('PRAGMA busy_timeout = 5000');
+    console.log('SQLite PRAGMA 設定完成: UTF-8 編碼, 外鍵約束啟用, WAL 模式, busy_timeout 5000ms');
 });
 
 // 定義 User 模型
@@ -56,6 +61,14 @@ const User = sequelize.define('User', {
     role: {
         type: DataTypes.ENUM('admin', 'member', 'user'),
         defaultValue: 'user'
+    },
+    // 總務權限：可管理課程評價回饋金的發放狀態。刻意獨立於 role 之外（role 有 CHECK 約束，
+    // SQLite 改不動；而且一個人可以同時是管理員與總務，用布林旗標比較合適）
+    canManagePayouts: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+        field: 'can_manage_payouts'
     },
     hasPaidFee: {
         type: DataTypes.BOOLEAN,
@@ -342,6 +355,21 @@ const CourseReview = sequelize.define('CourseReview', {
     reviewedBy: {
         type: DataTypes.INTEGER,
         field: 'reviewed_by'
+    },
+    // 回饋金發放狀態（只有已核准的評價才有發放意義），由總務部管理
+    isPaid: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+        field: 'is_paid'
+    },
+    paidAt: {
+        type: DataTypes.DATE,
+        field: 'paid_at'
+    },
+    paidBy: {
+        type: DataTypes.INTEGER,
+        field: 'paid_by'
     }
 }, {
     tableName: 'course_reviews',
@@ -382,6 +410,54 @@ const Course = sequelize.define('Course', {
     updatedAt: false
 });
 
+// 定義 CourseCatalog 模型：台大課程目錄（從 NOL 抓來的課程名稱/代碼/教授/學期），
+// 純唯讀查詢用，供「寫課程評價」表單的課程名稱自動完成下拉選單使用，不跟其他表建立關聯
+const CourseCatalog = sequelize.define('CourseCatalog', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    courseCode: {
+        type: DataTypes.STRING(20),
+        allowNull: false,
+        field: 'course_code'
+    },
+    courseName: {
+        type: DataTypes.STRING(100),
+        allowNull: false,
+        field: 'course_name'
+    },
+    professor: {
+        type: DataTypes.STRING(50)
+    },
+    year: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    semester: {
+        type: DataTypes.ENUM('1', '2', 'summer'),
+        allowNull: false
+    },
+    departmentCode: {
+        type: DataTypes.STRING(10),
+        field: 'department_code'
+    },
+    departmentName: {
+        type: DataTypes.STRING(50),
+        field: 'department_name'
+    }
+}, {
+    tableName: 'course_catalog',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+    indexes: [
+        // 對應資料庫層的 UNIQUE(course_code, professor, year, semester)，
+        // 讓 CourseCatalog.upsert() 在 SQLite 上能正確找到衝突目標（ON CONFLICT）
+        { unique: true, fields: ['course_code', 'professor', 'year', 'semester'] }
+    ]
+});
+
 // 定義關聯
 User.hasMany(Exam, { foreignKey: 'uploaded_by', as: 'uploadedExams' });
 Exam.belongsTo(User, { foreignKey: 'uploaded_by', as: 'uploader' });
@@ -392,6 +468,7 @@ CheatSheet.belongsTo(User, { foreignKey: 'uploaded_by', as: 'uploader' });
 User.hasMany(CourseReview, { foreignKey: 'user_id', as: 'reviews' });
 CourseReview.belongsTo(User, { foreignKey: 'user_id', as: 'reviewer' });
 CourseReview.belongsTo(User, { foreignKey: 'reviewed_by', as: 'reviewedByUser' });
+CourseReview.belongsTo(User, { foreignKey: 'paid_by', as: 'paidByUser' });
 
 // 測試連接
 async function testConnection() {
@@ -410,5 +487,6 @@ module.exports = {
     CheatSheet,
     CourseReview,
     Course,
+    CourseCatalog,
     testConnection
 };

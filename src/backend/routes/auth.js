@@ -72,7 +72,8 @@ router.post('/register', [
                 email: user.email,
                 fullName: user.fullName,
                 role: user.role,
-                hasPaidFee: user.hasPaidFee
+                hasPaidFee: user.hasPaidFee,
+                canManagePayouts: user.canManagePayouts
             }
         });
     } catch (error) {
@@ -127,7 +128,8 @@ router.post('/login', [
                 email: user.email,
                 fullName: user.fullName,
                 role: user.role,
-                hasPaidFee: user.hasPaidFee
+                hasPaidFee: user.hasPaidFee,
+                canManagePayouts: user.canManagePayouts
             }
         });
     } catch (error) {

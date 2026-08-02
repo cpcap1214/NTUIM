@@ -38,6 +38,9 @@ const CourseReviewPage = () => {
     const [feedReviews, setFeedReviews] = useState([]);
     const [feedPagination, setFeedPagination] = useState({ total: 0, page: 1, pages: 1 });
     const [feedLoading, setFeedLoading] = useState(true);
+    // 只有「第一次載入完成前」才顯示整頁的載入畫面；之後每次搜尋/篩選都保持 ReviewFeedView 掛載，
+    // 否則搜尋當下整個元件（含搜尋框本身）會被抽換掉，造成畫面閃爍、輸入游標跑掉
+    const [feedInitialized, setFeedInitialized] = useState(false);
     const [feedPage, setFeedPage] = useState(1);
     const [feedSearchInput, setFeedSearchInput] = useState('');
     const [debouncedFeedSearch, setDebouncedFeedSearch] = useState('');
@@ -49,6 +52,7 @@ const CourseReviewPage = () => {
     // 「我的評價」分頁：單一使用者的評價數量本來就不多，不需要後端分頁，維持前端就地篩選
     const [myReviews, setMyReviews] = useState([]);
     const [mineLoading, setMineLoading] = useState(true);
+    const [mineInitialized, setMineInitialized] = useState(false);
     const [mineSearchTerm, setMineSearchTerm] = useState('');
     const [mineTermFilter, setMineTermFilter] = useState('all');
     const [mineProfessorFilter, setMineProfessorFilter] = useState('all');
@@ -87,6 +91,7 @@ const CourseReviewPage = () => {
             setError(translateApiError(err, t('errors.FETCH_FAILED')));
         } finally {
             setFeedLoading(false);
+            setFeedInitialized(true);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [feedPage, feedSortBy, debouncedFeedSearch, feedProfessorFilter, feedTermFilter]);
@@ -106,6 +111,7 @@ const CourseReviewPage = () => {
         if (!user) {
             setMyReviews([]);
             setMineLoading(false);
+            setMineInitialized(true);
             return;
         }
         setMineLoading(true);
@@ -116,6 +122,7 @@ const CourseReviewPage = () => {
             setError(translateApiError(err, t('errors.FETCH_FAILED')));
         } finally {
             setMineLoading(false);
+            setMineInitialized(true);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
@@ -257,7 +264,7 @@ const CourseReviewPage = () => {
             )}
 
             {viewMode === 'feed' && (
-                feedLoading && feedReviews.length === 0 ? (
+                !feedInitialized ? (
                     <Box sx={{ textAlign: 'center', py: 8 }}>
                         <Typography variant="body2" color="text.secondary">
                             {t('courseReview.loadingReviews')}
@@ -286,13 +293,14 @@ const CourseReviewPage = () => {
                         onDelete={handleDeleteReview}
                         canWrite={canWrite}
                         onWriteReview={handleWriteReview}
+                        loading={feedLoading}
                         variant="all"
                     />
                 )
             )}
 
             {viewMode === 'mine' && user && (
-                mineLoading && myReviews.length === 0 ? (
+                !mineInitialized ? (
                     <Box sx={{ textAlign: 'center', py: 8 }}>
                         <Typography variant="body2" color="text.secondary">
                             {t('courseReview.loadingReviews')}
@@ -321,6 +329,7 @@ const CourseReviewPage = () => {
                         onDelete={handleDeleteReview}
                         canWrite
                         onWriteReview={handleWriteReview}
+                        loading={mineLoading}
                         variant="mine"
                     />
                 )

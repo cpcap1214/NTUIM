@@ -19,6 +19,7 @@ const userRoutes = require('./routes/users');
 const examRoutes = require('./routes/exams');
 const cheatSheetRoutes = require('./routes/cheatSheets');
 const courseReviewRoutes = require('./routes/courseReviews');
+const courseCatalogRoutes = require('./routes/courseCatalog');
 const adminRoutes = require('./routes/admin');
 
 // 引入中間件
@@ -63,6 +64,7 @@ app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/exams', examRoutes);
 app.use('/api/cheat-sheets', cheatSheetRoutes);
 app.use('/api/course-reviews', courseReviewRoutes);
+app.use('/api/course-catalog', courseCatalogRoutes);
 app.use('/api/admin', adminRoutes);
 
 // 健康檢查端點

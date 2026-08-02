@@ -16,6 +16,8 @@ import {
     Alert,
     Stack,
     Rating,
+    Autocomplete,
+    CircularProgress,
 } from '@mui/material';
 import courseReviewService from '../../services/courseReviewService';
 import { translateApiError } from '../../utils';
@@ -48,27 +50,16 @@ const METRIC_TEXT_FN = {
     usefulness: courseReviewService.getUsefulnessText,
 };
 
-// 產生「學年期」選項（民國年-學期），從今學年往前推 3 個學年，新到舊排序。
-// 這是模組層級（import 時就算好一次），元件內的 hook 用不到，所以直接用
-// 靜態的 i18n 實例翻譯後綴，而不是元件內的 useTranslation。
-const buildAcademicTermOptions = () => {
-    const currentRocYear = new Date().getFullYear() - 1911;
-    const startYear = currentRocYear - 3;
-    const chronological = [];
-    for (let y = startYear; y <= currentRocYear; y++) {
-        chronological.push({ value: `${y}-1`, label: `${y}-1`, adYear: y + 1911, semester: '1' });
-        chronological.push({ value: `${y}-2`, label: `${y}-2`, adYear: y + 1911, semester: '2' });
-        chronological.push({
-            value: `${y}-summer`,
-            label: `${y}-${i18n.t('courseReview.academicTermSuffix.summer')}`,
-            adYear: y + 1911,
-            semester: 'summer',
-        });
-    }
-    return chronological.reverse();
-};
-
-const BASE_ACADEMIC_TERM_OPTIONS = buildAcademicTermOptions();
+// 把後端回傳的可填寫學年期（期末考已結束的學期）轉成下拉選單選項。
+// 學年期是否可填由後端依台大行事曆判斷，前端不自己推算，避免兩邊規則不一致。
+const toTermOption = (term) => ({
+    value: `${term.year}-${term.semester}`,
+    label: `${term.year - 1911}-${i18n.t(`courseReview.academicTermSuffix.${term.semester}`, {
+        defaultValue: term.semester,
+    })}`,
+    adYear: term.year,
+    semester: term.semester,
+});
 
 const hasDraftContent = (data) =>
     (data.comment && data.comment.trim().length > 0) ||
@@ -87,6 +78,12 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [draftRestored, setDraftRestored] = useState(false);
+    const [courseOptions, setCourseOptions] = useState([]);
+    const [courseSearchLoading, setCourseSearchLoading] = useState(false);
+    const [termOptions, setTermOptions] = useState([]);
+    // 課程資料是從下拉選單自動帶入的：課號/教授/學年期就鎖起來不讓手動改，
+    // 避免跟課程目錄的正確資料不一致；重新手打課程名稱就會解鎖
+    const [autoFilled, setAutoFilled] = useState(false);
 
     const isEditing = !!review;
     // 被拒絕的評價修改後其實是「重新送出」而不是單純存檔，按鈕文字要對應改變，讓使用者清楚知道這是要重新進入審核
@@ -147,8 +144,28 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
             setDraftRestored(false);
         }
         setError('');
+        setAutoFilled(false);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [review, open]);
+
+    // 取得可填寫的學年期（期末考已結束的學期）
+    useEffect(() => {
+        if (!open) return;
+        courseReviewService
+            .getReviewableTerms()
+            .then((terms) => setTermOptions(terms.map(toTermOption)))
+            .catch(() => setTermOptions([]));
+    }, [open]);
+
+    // 新增評價時，預設帶入最新一個可填寫的學年期（emptyForm 的預設值不一定可填）
+    useEffect(() => {
+        if (!open || isEditing || termOptions.length === 0 || autoFilled) return;
+        const currentValue = `${formData.year}-${formData.semester}`;
+        if (termOptions.some((o) => o.value === currentValue)) return;
+        const newest = termOptions[0];
+        setFormData((prev) => ({ ...prev, year: newest.adYear, semester: newest.semester }));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [termOptions, open, isEditing]);
 
     // 自動暫存草稿（防抖 500ms），避免使用者不小心跳開頁面後心得整篇消失；只在新增時啟用
     useEffect(() => {
@@ -164,15 +181,58 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [formData, open]);
 
+    // 課程名稱自動完成（防抖 400ms）：新增時才需要查，編輯模式課程名稱本來就鎖定不能改。
+    // loading 狀態要等防抖計時器真的觸發、請求真的送出時才設 true——如果打字當下就同步設 true，
+    // 每個按鍵都會讓 loading 圖示瞬間出現又消失，輸入框寬度跟著抖動，看起來就是一直閃爍。
+    useEffect(() => {
+        if (!open || isEditing) return;
+        const keyword = formData.courseName.trim();
+        if (!keyword) {
+            setCourseOptions([]);
+            setCourseSearchLoading(false);
+            return;
+        }
+        const timer = setTimeout(async () => {
+            setCourseSearchLoading(true);
+            try {
+                const results = await courseReviewService.searchCourseCatalog(keyword);
+                setCourseOptions(results);
+            } catch (e) {
+                setCourseOptions([]);
+            } finally {
+                setCourseSearchLoading(false);
+            }
+        }, 400);
+        return () => clearTimeout(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [formData.courseName, open, isEditing]);
+
     const handleChange = (field, value) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
         setError('');
     };
 
     const handleAcademicTermChange = (value) => {
-        const option = BASE_ACADEMIC_TERM_OPTIONS.find((o) => o.value === value) || currentAcademicTermOptions.find((o) => o.value === value);
+        const option = currentAcademicTermOptions.find((o) => o.value === value);
         if (!option) return;
         setFormData((prev) => ({ ...prev, year: option.adYear, semester: option.semester }));
+        setError('');
+    };
+
+    // 從自動完成選單選了一筆課程目錄資料：一次帶入課程名稱、課號、教授、學年期，
+    // 並鎖定這三個欄位（資料來自課程目錄，不該被手動改成不一致的內容）
+    const handleCourseSelect = (option) => {
+        if (!option || typeof option === 'string') return;
+        setFormData((prev) => ({
+            ...prev,
+            courseName: option.courseName,
+            courseCode: option.courseCode,
+            professor: option.professor || '',
+            year: option.year,
+            semester: option.semester,
+        }));
+        setCourseOptions([]);
+        setAutoFilled(true);
         setError('');
     };
 
@@ -237,17 +297,22 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
         }
     };
 
-    const currentTermValue = `${formData.year - 1911}-${formData.semester}`;
-    const currentAcademicTermOptions = BASE_ACADEMIC_TERM_OPTIONS.some((o) => o.value === currentTermValue)
-        ? BASE_ACADEMIC_TERM_OPTIONS
+    // 選項 value 一律用「西元年-學期」，跟後端回傳的格式一致
+    const currentTermValue = `${formData.year}-${formData.semester}`;
+    // 編輯舊評價時，該評價的學年期可能已經不在「可填寫」清單裡（例如清單只往前推 4 學年），
+    // 這時候要把它補進選項，否則下拉選單會顯示空白
+    const currentAcademicTermOptions = termOptions.some((o) => o.value === currentTermValue)
+        ? termOptions
         : [
               {
                   value: currentTermValue,
-                  label: `${formData.year - 1911}-${t(`courseReview.academicTermSuffix.${formData.semester}`)}`,
+                  label: `${formData.year - 1911}-${t(`courseReview.academicTermSuffix.${formData.semester}`, {
+                      defaultValue: formData.semester,
+                  })}`,
                   adYear: formData.year,
                   semester: formData.semester,
               },
-              ...BASE_ACADEMIC_TERM_OPTIONS,
+              ...termOptions,
           ];
 
     return (
@@ -271,9 +336,14 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                         severity="info"
                         sx={{ mb: 2 }}
                         action={
-                            <Button color="inherit" size="small" onClick={handleDiscardDraft}>
-                                {t('courseReview.form.clearDraft')}
-                            </Button>
+                            <>
+                                <Button color="inherit" size="small" onClick={() => setDraftRestored(false)}>
+                                    {t('courseReview.form.dismissDraftNotice')}
+                                </Button>
+                                <Button color="inherit" size="small" onClick={handleDiscardDraft}>
+                                    {t('courseReview.form.clearDraft')}
+                                </Button>
+                            </>
                         }
                     >
                         {t('courseReview.form.draftRestored')}
@@ -282,22 +352,58 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
 
                 <Grid container spacing={2} sx={{ mt: 0.5 }}>
                     <Grid item xs={12}>
-                        <TextField
+                        <Autocomplete
+                            freeSolo
                             fullWidth
-                            label={t('courseReview.form.courseName')}
-                            value={formData.courseName}
-                            onChange={(e) => handleChange('courseName', e.target.value)}
                             disabled={isEditing}
-                            required
+                            options={courseOptions}
+                            filterOptions={(options) => options}
+                            loading={courseSearchLoading}
+                            inputValue={formData.courseName}
+                            onInputChange={(e, newValue, reason) => {
+                                handleChange('courseName', newValue);
+                                // 使用者自己動手改課程名稱（而不是從選單挑）就解除鎖定，讓他能手動填課號/教授/學年期
+                                if (reason === 'input') setAutoFilled(false);
+                            }}
+                            onChange={(e, selectedOption) => handleCourseSelect(selectedOption)}
+                            getOptionLabel={(option) => (typeof option === 'string' ? option : option.courseName)}
+                            isOptionEqualToValue={(option, val) => option.courseCode === val.courseCode && option.professor === val.professor && option.year === val.year && option.semester === val.semester}
+                            renderOption={(props, option) => (
+                                <li {...props} key={`${option.courseCode}-${option.professor}-${option.year}-${option.semester}`}>
+                                    <Box>
+                                        <Typography variant="body2">{option.courseName}</Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            {option.professor || t('common.unknown')} · {courseReviewService.getAcademicTermLabel(option.year, option.semester)}
+                                        </Typography>
+                                    </Box>
+                                </li>
+                            )}
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    label={t('courseReview.form.courseName')}
+                                    required
+                                    helperText={t('courseReview.form.courseNameHelper')}
+                                    InputProps={{
+                                        ...params.InputProps,
+                                        endAdornment: (
+                                            <>
+                                                {courseSearchLoading ? <CircularProgress size={16} /> : null}
+                                                {params.InputProps.endAdornment}
+                                            </>
+                                        ),
+                                    }}
+                                />
+                            )}
                         />
                     </Grid>
-                    <Grid item xs={12} sm={5}>
+                    <Grid item xs={12} sm={4}>
                         <TextField
                             fullWidth
                             label={t('courseReview.form.courseCode')}
                             value={formData.courseCode}
                             onChange={(e) => handleChange('courseCode', e.target.value)}
-                            disabled={isEditing}
+                            disabled={isEditing || autoFilled}
                             required
                         />
                     </Grid>
@@ -307,18 +413,18 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                             label={t('courseReview.form.professor')}
                             value={formData.professor}
                             onChange={(e) => handleChange('professor', e.target.value)}
-                            disabled={isEditing}
+                            disabled={isEditing || autoFilled}
                             required
                         />
                     </Grid>
-                    <Grid item xs={12} sm={3}>
+                    <Grid item xs={12} sm={4}>
                         <TextField
                             select
                             fullWidth
                             label={t('courseReview.form.academicTerm')}
                             value={currentTermValue}
                             onChange={(e) => handleAcademicTermChange(e.target.value)}
-                            disabled={isEditing}
+                            disabled={isEditing || autoFilled}
                         >
                             {currentAcademicTermOptions.map((option) => (
                                 <MenuItem key={option.value} value={option.value}>
@@ -327,6 +433,24 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                             ))}
                         </TextField>
                     </Grid>
+
+                    {METRIC_KEYS.map((key) => (
+                        <Grid item xs={12} sm={6} key={key}>
+                            <Typography variant="subtitle2" gutterBottom>
+                                {t(`courseReview.metrics.${key}`)}
+                            </Typography>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                                <Rating
+                                    precision={0.5}
+                                    value={formData[key]}
+                                    onChange={(e, value) => handleChange(key, value)}
+                                />
+                                <Typography variant="caption" color="text.secondary">
+                                    {formData[key] === null ? t('courseReview.form.notRatedYet') : METRIC_TEXT_FN[key](formData[key])}
+                                </Typography>
+                            </Stack>
+                        </Grid>
+                    ))}
 
                     <Grid item xs={12}>
                         <TextField
@@ -380,24 +504,6 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                             helperText={t('courseReview.form.optionalFieldHelper', { count: formData.gradingBreakdown.trim().length })}
                         />
                     </Grid>
-
-                    {METRIC_KEYS.map((key) => (
-                        <Grid item xs={12} sm={6} key={key}>
-                            <Typography variant="subtitle2" gutterBottom>
-                                {t(`courseReview.metrics.${key}`)}
-                            </Typography>
-                            <Stack direction="row" spacing={1} alignItems="center">
-                                <Rating
-                                    precision={0.5}
-                                    value={formData[key]}
-                                    onChange={(e, value) => handleChange(key, value)}
-                                />
-                                <Typography variant="caption" color="text.secondary">
-                                    {formData[key] === null ? t('courseReview.form.notRatedYet') : METRIC_TEXT_FN[key](formData[key])}
-                                </Typography>
-                            </Stack>
-                        </Grid>
-                    ))}
 
                     <Grid item xs={12}>
                         <TextField

@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const { body, validationResult, query } = require('express-validator');
 const { CourseReview, User, Course } = require('../models');
-const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const { authenticateToken, requireAdmin, requirePayoutManager } = require('../middleware/auth');
 const { Op } = require('sequelize');
 const sequelize = require('../models').sequelize;
+const { isTermReviewable } = require('../utils/semesterEligibility');
 
 const hasAdminAccess = (user) => user?.role === 'admin' || user?.username === 'cpcap';
 
@@ -175,6 +176,11 @@ router.post('/',
                 comment,
                 isAnonymous = false
             } = req.body;
+
+            // 該學期的期末考還沒結束就不能評價（前端已經濾掉這些學期，這裡是後端把關）
+            if (!isTermReviewable(year, semester)) {
+                return res.status(400).json(errorResponse('TERM_NOT_REVIEWABLE', '該學期的期末考尚未結束，還不能填寫評價'));
+            }
 
             // 檢查是否已評價過此課程（同一學期、同一教授）
             const existingReview = await CourseReview.findOne({
@@ -373,6 +379,141 @@ router.get('/admin/reviews', authenticateToken, requireAdmin, [
         res.status(500).json(errorResponse('FETCH_LIST_FAILED', '取得評價列表失敗'));
     }
 });
+
+// ---------------------------------------------------------------------------
+// 回饋金發放（總務部或管理員）
+//
+// 注意：發放清單一律顯示投稿者的真實姓名與學號，即使該篇評價是匿名發表的——
+// 匿名只是「不對外公開作者」，錢還是要發給本人，總務必須知道發放對象是誰。
+// ---------------------------------------------------------------------------
+
+// 取得回饋金發放清單：只列已核准的評價（未核准的沒有發放的意義）
+router.get('/payouts', authenticateToken, requirePayoutManager, [
+    query('paid').optional().isIn(['true', 'false'])
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+        const { paid } = req.query;
+        const where = { status: 'approved' };
+        if (paid === 'true') where.isPaid = true;
+        if (paid === 'false') where.isPaid = false;
+
+        const reviews = await CourseReview.findAll({
+            where,
+            include: [
+                {
+                    model: User,
+                    as: 'reviewer',
+                    attributes: ['username', 'fullName', 'studentId', 'email']
+                },
+                {
+                    model: User,
+                    as: 'paidByUser',
+                    attributes: ['username', 'fullName']
+                }
+            ],
+            // 未發放的排前面（待辦優先），同狀態內舊的排前面（先投稿的先發）
+            order: [
+                ['is_paid', 'ASC'],
+                ['created_at', 'ASC']
+            ],
+            attributes: [
+                'id', 'courseCode', 'courseName', 'professor', 'year', 'semester',
+                'isAnonymous', 'isPaid', 'paidAt', 'created_at'
+            ]
+        });
+
+        res.json({ data: reviews });
+    } catch (error) {
+        console.error('取得發放清單錯誤:', error);
+        res.status(500).json(errorResponse('FETCH_PAYOUTS_FAILED', '取得發放清單失敗'));
+    }
+});
+
+// 匯出發放清單 CSV：總務習慣用試算表對帳/做轉帳批次，站上仍是唯一真相來源
+router.get('/payouts/export', authenticateToken, requirePayoutManager, async (req, res) => {
+    try {
+        const reviews = await CourseReview.findAll({
+            where: { status: 'approved' },
+            include: [{ model: User, as: 'reviewer', attributes: ['fullName', 'studentId', 'email'] }],
+            order: [['is_paid', 'ASC'], ['created_at', 'ASC']]
+        });
+
+        const escapeCsv = (value) => {
+            const text = value === null || value === undefined ? '' : String(value);
+            return `"${text.replace(/"/g, '""')}"`;
+        };
+
+        const header = ['評價ID', '姓名', '學號', 'Email', '課程名稱', '課程代碼', '教授', '學年期', '投稿時間', '發放狀態', '發放時間'];
+        const rows = reviews.map((review) => [
+            review.id,
+            review.reviewer?.fullName,
+            review.reviewer?.studentId,
+            review.reviewer?.email,
+            review.courseName,
+            review.courseCode,
+            review.professor,
+            `${review.year - 1911}-${review.semester}`,
+            review.created_at ? new Date(review.created_at).toLocaleString('zh-TW') : '',
+            review.isPaid ? '已發放' : '未發放',
+            review.paidAt ? new Date(review.paidAt).toLocaleString('zh-TW') : ''
+        ]);
+
+        const csv = [header, ...rows].map((row) => row.map(escapeCsv).join(',')).join('\r\n');
+
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="course-review-payouts-${new Date().toISOString().slice(0, 10)}.csv"`);
+        // BOM：讓 Excel 開啟時正確辨識 UTF-8，不會變成亂碼
+        res.send(`﻿${csv}`);
+    } catch (error) {
+        console.error('匯出發放清單錯誤:', error);
+        res.status(500).json(errorResponse('EXPORT_PAYOUTS_FAILED', '匯出發放清單失敗'));
+    }
+});
+
+// 標記回饋金發放狀態（總務部或管理員）
+router.patch('/:id/payout',
+    authenticateToken,
+    requirePayoutManager,
+    [body('isPaid').isBoolean().withMessage({ code: 'PAID_STATUS_INVALID', message: '發放狀態須為 true 或 false' })],
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        try {
+            const review = await CourseReview.findByPk(req.params.id);
+
+            if (!review) {
+                return res.status(404).json(errorResponse('REVIEW_NOT_FOUND', '評價不存在'));
+            }
+
+            // 只有已核准的評價才有回饋金
+            if (review.status !== 'approved') {
+                return res.status(400).json(errorResponse('PAYOUT_REQUIRES_APPROVED', '只有已核准的評價才能標記發放'));
+            }
+
+            const isPaid = req.body.isPaid === true;
+            review.isPaid = isPaid;
+            review.paidAt = isPaid ? new Date() : null;
+            review.paidBy = isPaid ? req.user.id : null;
+            await review.save();
+
+            res.json({
+                message: isPaid ? '已標記為已發放' : '已改回未發放',
+                data: review
+            });
+        } catch (error) {
+            console.error('更新發放狀態錯誤:', error);
+            res.status(500).json(errorResponse('PAYOUT_UPDATE_FAILED', '更新發放狀態失敗'));
+        }
+    }
+);
 
 // 審核評價（核准或拒絕，管理員）
 router.patch('/:id/status',

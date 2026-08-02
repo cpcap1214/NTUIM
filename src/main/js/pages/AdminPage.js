@@ -114,6 +114,12 @@ const AdminPage = () => {
   const [courseReviewDeleteDialog, setCourseReviewDeleteDialog] = useState(false);
   const [reviewToDelete, setReviewToDelete] = useState(null);
 
+  // 回饋金發放管理相關狀態
+  const [payouts, setPayouts] = useState([]);
+  const [payoutLoading, setPayoutLoading] = useState(false);
+  const [payoutFilter, setPayoutFilter] = useState('unpaid');
+  const [payoutSearchTerm, setPayoutSearchTerm] = useState('');
+
   // 考古題表單狀態
   const [examForm, setExamForm] = useState({
     courseCode: '',
@@ -159,17 +165,21 @@ const AdminPage = () => {
     }
     
     const hasAdminAccess = user.username === 'cpcap' || user.role === 'admin';
+    // 總務部的人不是管理員，但要能進來管理回饋金發放（只會看到發放那一個功能）
+    const hasPayoutAccess = hasAdminAccess || user.canManagePayouts === true;
 
-    if (!hasAdminAccess) {
+    if (!hasPayoutAccess) {
       console.log('User does not have admin access, redirecting to home');
-      alert('您沒有權限訪問此頁面，只有管理員或 cpcap 用戶可以訪問');
+      alert('您沒有權限訪問此頁面');
       navigate('/');
       return;
     }
-    
-    console.log('User has admin access, fetching users...');
-    fetchUsers();
-    
+
+    // 只有管理員需要用戶清單；純總務身分沒有用戶管理權限，呼叫會被後端擋下
+    if (hasAdminAccess) {
+      fetchUsers();
+    }
+
     // 如果是管理分頁，載入對應資料
     if (activeTab === 3) {
       fetchExams();
@@ -177,6 +187,8 @@ const AdminPage = () => {
       fetchCheatSheets();
     } else if (activeTab === 5) {
       fetchCourseReviews();
+    } else if (activeTab === 6) {
+      fetchPayouts();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, navigate, authLoading, activeTab]);
@@ -188,6 +200,55 @@ const AdminPage = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseReviewFilter]);
+
+  // 發放清單的篩選條件變更時重新載入
+  useEffect(() => {
+    if (activeTab === 6) {
+      fetchPayouts();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payoutFilter]);
+
+  // 純總務身分（非管理員）預設落在回饋金發放，不要停在他們沒權限的用戶管理分頁
+  useEffect(() => {
+    if (!user) return;
+    const adminAccess = user.username === 'cpcap' || user.role === 'admin';
+    if (!adminAccess && user.canManagePayouts) {
+      setActiveTab(6);
+    }
+  }, [user]);
+
+  const fetchPayouts = async () => {
+    try {
+      setPayoutLoading(true);
+      const paidParam = payoutFilter === 'all' ? undefined : String(payoutFilter === 'paid');
+      const result = await courseReviewService.getPayouts(paidParam);
+      setPayouts(result);
+    } catch (err) {
+      console.error('取得發放清單錯誤:', err);
+      setError(translateApiError(err, t('courseReview.payout.fetchFailed')));
+    } finally {
+      setPayoutLoading(false);
+    }
+  };
+
+  const handleTogglePayout = async (review, isPaid) => {
+    try {
+      await courseReviewService.setPayoutStatus(review.id, isPaid);
+      await fetchPayouts();
+      setSuccess(isPaid ? t('courseReview.payout.markPaidSuccess') : t('courseReview.payout.markUnpaidSuccess'));
+    } catch (err) {
+      setError(translateApiError(err, t('courseReview.payout.updateFailed')));
+    }
+  };
+
+  const handleExportPayouts = async () => {
+    try {
+      await courseReviewService.downloadPayoutCsv();
+    } catch (err) {
+      setError(translateApiError(err, t('courseReview.payout.exportFailed')));
+    }
+  };
 
   const fetchCourseReviews = async () => {
     try {
@@ -327,7 +388,8 @@ const AdminPage = () => {
       studentId: user.studentId,
       fullName: user.fullName,
       hasPaidFee: user.hasPaidFee,
-      role: user.role
+      role: user.role,
+      canManagePayouts: !!user.canManagePayouts
     });
   };
 
@@ -364,7 +426,8 @@ const AdminPage = () => {
           email: editData.email,
           fullName: editData.fullName,
           hasPaidFee: editData.hasPaidFee,
-          role: editData.role
+          role: editData.role,
+          canManagePayouts: editData.canManagePayouts
         });
       }
       
@@ -815,14 +878,31 @@ const AdminPage = () => {
     paid: users.filter((managedUser) => managedUser.hasPaidFee).length,
   };
 
+  const unpaidPayoutCount = payouts.filter((review) => !review.isPaid).length;
+
+  const filteredPayouts = payouts.filter((review) => {
+    const keyword = payoutSearchTerm.trim().toLowerCase();
+    if (!keyword) return true;
+    return (
+      review.courseName.toLowerCase().includes(keyword) ||
+      review.courseCode.toLowerCase().includes(keyword) ||
+      (review.professor && review.professor.toLowerCase().includes(keyword)) ||
+      (review.reviewer?.fullName && review.reviewer.fullName.toLowerCase().includes(keyword)) ||
+      (review.reviewer?.studentId && review.reviewer.studentId.toLowerCase().includes(keyword))
+    );
+  });
+
+  // 管理員能看到全部功能；純總務身分（canManagePayouts）只看得到回饋金發放
+  const isAdminUser = user && (user.username === 'cpcap' || user.role === 'admin');
   const adminSections = [
-    { label: '用戶管理', description: '查詢、編輯、重設密碼', value: 0 },
-    { label: '上傳考古題', description: '新增題目與答案檔案', value: 1 },
-    { label: '上傳大抄', description: '建立課程重點整理', value: 2 },
-    { label: t('courseReview.admin.title'), description: t('courseReview.admin.description'), value: 5 },
-    { label: '考古題管理', description: '搜尋、預覽、刪除', value: 3 },
-    { label: '大抄管理', description: '檢視內容與清理資料', value: 4 },
-  ];
+    { label: '用戶管理', description: '查詢、編輯、重設密碼', value: 0, adminOnly: true },
+    { label: '上傳考古題', description: '新增題目與答案檔案', value: 1, adminOnly: true },
+    { label: '上傳大抄', description: '建立課程重點整理', value: 2, adminOnly: true },
+    { label: t('courseReview.admin.title'), description: t('courseReview.admin.description'), value: 5, adminOnly: true },
+    { label: t('courseReview.payout.title'), description: t('courseReview.payout.description'), value: 6, adminOnly: false },
+    { label: '考古題管理', description: '搜尋、預覽、刪除', value: 3, adminOnly: true },
+    { label: '大抄管理', description: '檢視內容與清理資料', value: 4, adminOnly: true },
+  ].filter((section) => isAdminUser || !section.adminOnly);
 
   if (authLoading || loading) return (
     <Container sx={{ mt: 4 }}>
@@ -830,10 +910,11 @@ const AdminPage = () => {
     </Container>
   );
 
-  // 檢查管理員權限 - 允許 cpcap 用戶名或 admin 角色
+  // 檢查權限 - 管理員（cpcap 用戶名或 admin 角色）或總務（可管理回饋金發放）
   const isAdmin = user && (user.username === 'cpcap' || user.role === 'admin');
-  
-  if (!authLoading && !isAdmin) {
+  const canAccessConsole = isAdmin || (user && user.canManagePayouts === true);
+
+  if (!authLoading && !canAccessConsole) {
     return (
       <Container sx={{ mt: 4 }}>
         <Alert severity="error">
@@ -1128,6 +1209,15 @@ const AdminPage = () => {
                                   {editData.hasPaidFee ? '已繳費' : '未繳費'}
                                 </Typography>
                               </Stack>
+                              <Stack direction="row" spacing={1} alignItems="center">
+                                <Switch
+                                  checked={!!editData.canManagePayouts}
+                                  onChange={(e) => setEditData({ ...editData, canManagePayouts: e.target.checked })}
+                                />
+                                <Typography variant="body2">
+                                  {editData.canManagePayouts ? t('courseReview.payout.roleOn') : t('courseReview.payout.roleOff')}
+                                </Typography>
+                              </Stack>
                             </Stack>
                           ) : (
                             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -1143,6 +1233,13 @@ const AdminPage = () => {
                                 color={managedUser.hasPaidFee ? 'success' : 'default'}
                                 variant={managedUser.hasPaidFee ? 'filled' : 'outlined'}
                               />
+                              {managedUser.canManagePayouts && (
+                                <Chip
+                                  size="small"
+                                  label={t('courseReview.payout.roleTag')}
+                                  color="secondary"
+                                />
+                              )}
                             </Stack>
                           )}
                         </TableCell>
@@ -2176,6 +2273,159 @@ const AdminPage = () => {
                 ))}
               </Grid>
             </Box>
+          )}
+        </Paper>
+      )}
+
+      {/* 回饋金發放管理分頁 */}
+      {activeTab === 6 && (
+        <Paper sx={{ p: 2 }}>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
+            {t('courseReview.payout.title')}
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            {t('courseReview.payout.description')}
+          </Typography>
+
+          {/* 搜尋與匯出 */}
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} md={8}>
+                <TextField
+                  fullWidth
+                  placeholder={t('courseReview.payout.searchPlaceholder')}
+                  value={payoutSearchTerm}
+                  onChange={(e) => setPayoutSearchTerm(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<DownloadIcon />}
+                  onClick={handleExportPayouts}
+                >
+                  {t('courseReview.payout.exportCsv')}
+                </Button>
+              </Grid>
+            </Grid>
+          </Paper>
+
+          <ToggleButtonGroup
+            value={payoutFilter}
+            exclusive
+            size="small"
+            onChange={(_, v) => v && setPayoutFilter(v)}
+            sx={{ mb: 3 }}
+          >
+            <ToggleButton value="unpaid">
+              {t('courseReview.payout.unpaid')}
+              {unpaidPayoutCount > 0 && (
+                <Chip label={unpaidPayoutCount} size="small" color="warning" sx={{ ml: 1 }} />
+              )}
+            </ToggleButton>
+            <ToggleButton value="paid">{t('courseReview.payout.paid')}</ToggleButton>
+            <ToggleButton value="all">{t('common.all')}</ToggleButton>
+          </ToggleButtonGroup>
+
+          {payoutLoading && (
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <Typography variant="h6" color="text.secondary">
+                {t('common.loading')}
+              </Typography>
+            </Box>
+          )}
+
+          {!payoutLoading && filteredPayouts.length === 0 && (
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <PaidIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+              <Typography variant="h6" color="text.secondary">
+                {t('courseReview.payout.empty')}
+              </Typography>
+            </Box>
+          )}
+
+          {!payoutLoading && filteredPayouts.length > 0 && (
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>{t('courseReview.payout.recipient')}</TableCell>
+                    <TableCell>{t('courseReview.payout.studentId')}</TableCell>
+                    <TableCell>{t('courseReview.payout.course')}</TableCell>
+                    <TableCell>{t('courseReview.form.academicTerm')}</TableCell>
+                    <TableCell>{t('courseReview.payout.submittedAt')}</TableCell>
+                    <TableCell>{t('courseReview.payout.status')}</TableCell>
+                    <TableCell align="center">{t('courseReview.payout.action')}</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredPayouts.map((review) => (
+                    <TableRow key={review.id} hover>
+                      <TableCell>
+                        <Stack direction="row" spacing={0.75} alignItems="center">
+                          <Typography variant="body2">{review.reviewer?.fullName || t('common.unknown')}</Typography>
+                          {review.isAnonymous && (
+                            <Tooltip title={t('courseReview.payout.anonymousHint')}>
+                              <Chip label={t('courseReview.payout.anonymousTag')} size="small" variant="outlined" />
+                            </Tooltip>
+                          )}
+                        </Stack>
+                      </TableCell>
+                      <TableCell>{review.reviewer?.studentId || '-'}</TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{review.courseName}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {review.professor} · {review.courseCode}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        {courseReviewService.getAcademicTermLabel(review.year, review.semester)}
+                      </TableCell>
+                      <TableCell>
+                        {review.created_at ? new Date(review.created_at).toLocaleDateString('zh-TW') : '-'}
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={review.isPaid ? t('courseReview.payout.paid') : t('courseReview.payout.unpaid')}
+                          size="small"
+                          color={review.isPaid ? 'success' : 'warning'}
+                        />
+                        {review.isPaid && review.paidAt && (
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            {new Date(review.paidAt).toLocaleDateString('zh-TW')}
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell align="center">
+                        {review.isPaid ? (
+                          <Button size="small" color="inherit" onClick={() => handleTogglePayout(review, false)}>
+                            {t('courseReview.payout.markUnpaid')}
+                          </Button>
+                        ) : (
+                          <Button
+                            size="small"
+                            variant="contained"
+                            color="success"
+                            startIcon={<PaidIcon />}
+                            onClick={() => handleTogglePayout(review, true)}
+                          >
+                            {t('courseReview.payout.markPaid')}
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           )}
         </Paper>
       )}

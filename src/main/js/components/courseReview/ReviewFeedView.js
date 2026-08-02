@@ -14,6 +14,7 @@ import {
     Typography,
     Button,
     Pagination,
+    LinearProgress,
 } from '@mui/material';
 import { Search as SearchIcon, RateReview as RateReviewIcon } from '@mui/icons-material';
 import ReviewCard from './ReviewCard';
@@ -44,6 +45,7 @@ const ReviewFeedView = ({
     onDelete,
     canWrite,
     onWriteReview,
+    loading = false,
     variant = 'all',
 }) => {
     const { t } = useTranslation();
@@ -126,7 +128,10 @@ const ReviewFeedView = ({
                 </Grid>
             </Paper>
 
-            {reviews.length === 0 && (
+            {/* 查詢中只顯示一條細進度條，不抽換整個畫面，避免搜尋框在打字途中被卸載、游標跑掉 */}
+            <Box sx={{ height: 4, mb: 1 }}>{loading && <LinearProgress />}</Box>
+
+            {reviews.length === 0 && !loading && (
                 <Box sx={{ textAlign: 'center', py: 8 }}>
                     <RateReviewIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 1.5 }} />
                     <Typography variant="subtitle1" color="text.secondary" gutterBottom>
