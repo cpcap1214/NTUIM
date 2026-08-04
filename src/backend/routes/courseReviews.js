@@ -2,12 +2,10 @@ const express = require('express');
 const router = express.Router();
 const { body, validationResult, query } = require('express-validator');
 const { CourseReview, User, Course } = require('../models');
-const { authenticateToken, requireAdmin, requirePayoutManager } = require('../middleware/auth');
+const { authenticateToken, requirePermission, isOwnerOrHasPermission } = require('../middleware/auth');
 const { Op } = require('sequelize');
 const sequelize = require('../models').sequelize;
 const { isTermReviewable } = require('../utils/semesterEligibility');
-
-const hasAdminAccess = (user) => user?.role === 'admin' || user?.username === 'cpcap';
 
 // 錯誤訊息一律回傳 errorCode，實際中文文字由前端 i18n 語言檔（src/main/js/i18n/locales/zh-TW.js
 // 的 errors 區塊）負責翻譯；error 欄位保留中文純文字作為未支援 i18n 的舊客戶端 fallback。
@@ -310,7 +308,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         }
 
         // 檢查權限
-        if (review.userId !== req.user.id && !hasAdminAccess(req.user)) {
+        if (!isOwnerOrHasPermission(req, review.userId, 'courseReviews.moderate')) {
             return res.status(403).json(errorResponse('NO_PERMISSION_DELETE', '無權刪除此評價'));
         }
 
@@ -340,7 +338,7 @@ router.get('/my-reviews', authenticateToken, async (req, res) => {
 
 // 取得評價列表供管理員審核/管理（管理員）
 // 不帶 status 就回傳全部，帶 status 則只回傳該狀態（pending/approved/rejected）
-router.get('/admin/reviews', authenticateToken, requireAdmin, [
+router.get('/admin/reviews', authenticateToken, requirePermission('courseReviews.moderate'), [
     query('status').optional().isIn(['pending', 'approved', 'rejected'])
 ], async (req, res) => {
     const errors = validationResult(req);
@@ -388,7 +386,7 @@ router.get('/admin/reviews', authenticateToken, requireAdmin, [
 // ---------------------------------------------------------------------------
 
 // 取得回饋金發放清單：只列已核准的評價（未核准的沒有發放的意義）
-router.get('/payouts', authenticateToken, requirePayoutManager, [
+router.get('/payouts', authenticateToken, requirePermission('courseReviews.payout'), [
     query('paid').optional().isIn(['true', 'false'])
 ], async (req, res) => {
     const errors = validationResult(req);
@@ -435,11 +433,14 @@ router.get('/payouts', authenticateToken, requirePayoutManager, [
 });
 
 // 匯出發放清單 CSV：總務習慣用試算表對帳/做轉帳批次，站上仍是唯一真相來源
-router.get('/payouts/export', authenticateToken, requirePayoutManager, async (req, res) => {
+router.get('/payouts/export', authenticateToken, requirePermission('courseReviews.payout'), async (req, res) => {
     try {
         const reviews = await CourseReview.findAll({
             where: { status: 'approved' },
-            include: [{ model: User, as: 'reviewer', attributes: ['fullName', 'studentId', 'email'] }],
+            include: [
+                { model: User, as: 'reviewer', attributes: ['fullName', 'studentId', 'email'] },
+                { model: User, as: 'paidByUser', attributes: ['fullName'] }
+            ],
             order: [['is_paid', 'ASC'], ['created_at', 'ASC']]
         });
 
@@ -448,7 +449,7 @@ router.get('/payouts/export', authenticateToken, requirePayoutManager, async (re
             return `"${text.replace(/"/g, '""')}"`;
         };
 
-        const header = ['評價ID', '姓名', '學號', 'Email', '課程名稱', '課程代碼', '教授', '學年期', '投稿時間', '發放狀態', '發放時間'];
+        const header = ['評價ID', '姓名', '學號', 'Email', '課程名稱', '課程代碼', '教授', '學年期', '投稿時間', '發放狀態', '發放時間', '發放人'];
         const rows = reviews.map((review) => [
             review.id,
             review.reviewer?.fullName,
@@ -460,7 +461,8 @@ router.get('/payouts/export', authenticateToken, requirePayoutManager, async (re
             `${review.year - 1911}-${review.semester}`,
             review.created_at ? new Date(review.created_at).toLocaleString('zh-TW') : '',
             review.isPaid ? '已發放' : '未發放',
-            review.paidAt ? new Date(review.paidAt).toLocaleString('zh-TW') : ''
+            review.paidAt ? new Date(review.paidAt).toLocaleString('zh-TW') : '',
+            review.isPaid ? (review.paidByUser?.fullName || '') : ''
         ]);
 
         const csv = [header, ...rows].map((row) => row.map(escapeCsv).join(',')).join('\r\n');
@@ -478,7 +480,7 @@ router.get('/payouts/export', authenticateToken, requirePayoutManager, async (re
 // 標記回饋金發放狀態（總務部或管理員）
 router.patch('/:id/payout',
     authenticateToken,
-    requirePayoutManager,
+    requirePermission('courseReviews.payout'),
     [body('isPaid').isBoolean().withMessage({ code: 'PAID_STATUS_INVALID', message: '發放狀態須為 true 或 false' })],
     async (req, res) => {
         const errors = validationResult(req);
@@ -518,7 +520,7 @@ router.patch('/:id/payout',
 // 審核評價（核准或拒絕，管理員）
 router.patch('/:id/status',
     authenticateToken,
-    requireAdmin,
+    requirePermission('courseReviews.moderate'),
     [
         body('status').isIn(['approved', 'rejected']).withMessage({ code: 'STATUS_INVALID', message: '狀態須為 approved 或 rejected' }),
         body('rejectReason').optional().isString()

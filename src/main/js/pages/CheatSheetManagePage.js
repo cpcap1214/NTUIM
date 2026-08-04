@@ -36,7 +36,7 @@ import {
   Edit as EditIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import { API_BASE_URL, UPLOAD_BASE_URL } from '../services/api';
+import { API_BASE_URL } from '../services/api';
 import cheatSheetService from '../services/cheatSheetService';
 import EditCheatSheetDialog from '../components/EditCheatSheetDialog';
 
@@ -163,7 +163,10 @@ const CheatSheetManagePage = () => {
   };
 
   const handlePreview = (cheatSheetId) => {
-    window.open(`${UPLOAD_BASE_URL}/uploads/cheat_sheets/${cheatSheetId}/preview`, '_blank');
+    // 原本指向 /uploads/cheat_sheets/{id}/preview，那是磁碟上不存在的路徑（一直是 404）。
+    // 改用有認證的 API 端點，跟 CheatSheetPage 一致。
+    const token = localStorage.getItem('token');
+    window.open(`${API_BASE_URL}/cheat-sheets/${cheatSheetId}/preview?token=${token}`, '_blank');
   };
 
   const handleDownload = async (cheatSheetId, filename) => {

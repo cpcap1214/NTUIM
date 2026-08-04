@@ -25,7 +25,9 @@ cp src/backend/database/ntuim.db src/backend/database/ntuim.db.backup.$(date +%Y
 
 # 5. 執行資料庫結構更新
 echo "🗄️ 更新資料庫結構..."
-sqlite3 src/backend/database/ntuim.db < src/backend/database/update_exams_table.sql
+# 註：此檔已移入遷移目錄並改由遷移執行器管理（database/migrations/001_update_exams_table.sql）。
+# 這支一次性腳本保留作為歷史紀錄；新的部署請改用 deploy.sh，它會自動執行 npm run migrate。
+sqlite3 src/backend/database/ntuim.db < src/backend/database/migrations/001_update_exams_table.sql
 
 # 6. 驗證資料庫結構
 echo "✅ 驗證資料庫結構..."

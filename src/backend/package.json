@@ -9,6 +9,7 @@
     "init-db": "node database/init.js",
     "test": "jest",
     "migrate": "node database/migrate.js",
+    "grant-admin": "node database/grant-admin.js",
     "fetch-courses": "node scripts/fetchNtuCourses.js"
   },
   "dependencies": {

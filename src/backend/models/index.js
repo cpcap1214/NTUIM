@@ -458,7 +458,61 @@ const CourseCatalog = sequelize.define('CourseCatalog', {
     ]
 });
 
+// ---------------------------------------------------------------------------
+// 身分組與模塊存取控制
+// 權限「種類」定義在 config/permissions.js，這裡只存「哪個身分組持有哪些權限字串」
+// ---------------------------------------------------------------------------
+const Role = sequelize.define('Role', {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    key: { type: DataTypes.STRING(50), allowNull: false, unique: true },
+    name: { type: DataTypes.STRING(50), allowNull: false },
+    description: { type: DataTypes.TEXT },
+    color: { type: DataTypes.STRING(20) },
+    priority: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+    // 內建身分組，不允許刪除或改 key
+    isSystem: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false, field: 'is_system' },
+    // 成員資格由系統自動推導，不可手動指派（目前只有「會員」＝已繳費）
+    isAuto: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false, field: 'is_auto' }
+}, { tableName: 'roles', createdAt: 'created_at', updatedAt: 'updated_at' });
+
+const RolePermission = sequelize.define('RolePermission', {
+    roleId: { type: DataTypes.INTEGER, primaryKey: true, field: 'role_id' },
+    permission: { type: DataTypes.STRING(50), primaryKey: true }
+}, { tableName: 'role_permissions', timestamps: false });
+
+const UserRole = sequelize.define('UserRole', {
+    userId: { type: DataTypes.INTEGER, primaryKey: true, field: 'user_id' },
+    roleId: { type: DataTypes.INTEGER, primaryKey: true, field: 'role_id' },
+    grantedBy: { type: DataTypes.INTEGER, field: 'granted_by' }
+}, { tableName: 'user_roles', createdAt: 'granted_at', updatedAt: false });
+
+const Module = sequelize.define('Module', {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    key: { type: DataTypes.STRING(50), allowNull: false, unique: true },
+    name: { type: DataTypes.STRING(50), allowNull: false },
+    description: { type: DataTypes.TEXT },
+    visibility: { type: DataTypes.ENUM('public', 'restricted'), allowNull: false, defaultValue: 'public' },
+    // 受限時，無權限者是否仍在選單看得到入口（標示「即將推出」）
+    showWhenRestricted: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true, field: 'show_when_restricted' }
+}, { tableName: 'modules', createdAt: 'created_at', updatedAt: 'updated_at' });
+
+const ModuleAccess = sequelize.define('ModuleAccess', {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    moduleId: { type: DataTypes.INTEGER, allowNull: false, field: 'module_id' },
+    roleId: { type: DataTypes.INTEGER, field: 'role_id' },
+    userId: { type: DataTypes.INTEGER, field: 'user_id' }
+}, { tableName: 'module_access', createdAt: 'created_at', updatedAt: false });
+
 // 定義關聯
+User.belongsToMany(Role, { through: UserRole, foreignKey: 'user_id', otherKey: 'role_id', as: 'roles' });
+Role.belongsToMany(User, { through: UserRole, foreignKey: 'role_id', otherKey: 'user_id', as: 'users' });
+Role.hasMany(RolePermission, { foreignKey: 'role_id', as: 'permissions' });
+RolePermission.belongsTo(Role, { foreignKey: 'role_id', as: 'role' });
+Module.hasMany(ModuleAccess, { foreignKey: 'module_id', as: 'accessRules' });
+ModuleAccess.belongsTo(Module, { foreignKey: 'module_id', as: 'module' });
+ModuleAccess.belongsTo(Role, { foreignKey: 'role_id', as: 'role' });
+ModuleAccess.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
 User.hasMany(Exam, { foreignKey: 'uploaded_by', as: 'uploadedExams' });
 Exam.belongsTo(User, { foreignKey: 'uploaded_by', as: 'uploader' });
 
@@ -488,5 +542,10 @@ module.exports = {
     CourseReview,
     Course,
     CourseCatalog,
+    Role,
+    RolePermission,
+    UserRole,
+    Module,
+    ModuleAccess,
     testConnection
 };

@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
@@ -20,20 +22,43 @@ const examRoutes = require('./routes/exams');
 const cheatSheetRoutes = require('./routes/cheatSheets');
 const courseReviewRoutes = require('./routes/courseReviews');
 const courseCatalogRoutes = require('./routes/courseCatalog');
+const moduleRoutes = require('./routes/modules');
+const roleRoutes = require('./routes/roles');
 const adminRoutes = require('./routes/admin');
 
 // 引入中間件
-const { authenticateToken } = require('./middleware/auth');
+const { authenticateToken, optionalAuth, tokenFromQuery, requireModuleAccess } = require('./middleware/auth');
 const { errorHandler } = require('./middleware/errorHandler');
 
 // 初始化 Express
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+// 安全標頭。helmet 與 express-rate-limit 一直都在 package.json 裡卻從未被套用。
+// 關閉 CSP 與 CORP：前端是由 nginx 另外服務的獨立來源，而 /uploads 的 PDF 需要被
+// 前端以 <iframe>/window.open 內嵌，預設的 CSP 與跨來源資源政策會把這些擋掉。
+app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: false
+}));
+
 // 最寬鬆的 CORS - 允許所有來源和方法
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// 認證相關端點的速率限制：登入/註冊/改密碼都是猜密碼與帳號枚舉的目標，
+// 在此之前完全沒有任何節流。只套用在 /api/auth，不影響一般瀏覽與檔案下載。
+// 上限刻意不設太低：校園網路常有大量使用者共用同一個對外 IP，
+// 而 express-rate-limit 預設是以 IP 計數，設太嚴會誤擋正常登入。
+// 100 次/15 分鐘足以擋掉暴力破解（原本是完全無限制），又不至於影響正常使用。
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: '嘗試次數過多，請稍後再試' }
+});
 
 // 設定字符編碼
 app.use((req, res, next) => {
@@ -41,8 +66,17 @@ app.use((req, res, next) => {
     next();
 });
 
-// 靜態檔案服務（用於提供上傳的檔案）
-app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
+// ⚠️ 這裡原本是：app.use('/uploads', express.static(...))
+//
+// 已移除。它把整個 uploads 目錄無條件公開，配合當時公開的 GET /api/exams
+// （沒有欄位白名單、直接回傳 question_file_path），任何人不必登入、不必繳費，
+// 只要列出考古題就能拿到檔案路徑再直接下載——付費牆等同虛設（已實測重現）。
+//
+// 檔案一律只能透過有認證的端點取得：
+//   GET /api/exams/:id/preview|download/...   （需 exams.download 權限）
+//   GET /api/cheat-sheets/:id/preview|download（需登入）
+// 這些端點會自行讀檔並串流回應，不需要靜態服務。
+// 注意：nginx.conf 的 location /uploads/ 也必須一併移除，否則正式環境仍然繞得過去。
 
 // 建立上傳目錄
 const uploadDirs = [
@@ -59,13 +93,27 @@ uploadDirs.forEach(dir => {
 });
 
 // API 路由
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
-app.use('/api/exams', examRoutes);
-app.use('/api/cheat-sheets', cheatSheetRoutes);
-app.use('/api/course-reviews', courseReviewRoutes);
-app.use('/api/course-catalog', courseCatalogRoutes);
-app.use('/api/admin', adminRoutes);
+
+// 模塊 ↔ 路由的對應集中在這裡一處，不散落到各 route 檔。
+// 中介層順序很重要：
+//   tokenFromQuery → 先把 ?token= 搬進標頭（PDF 預覽用 window.open，帶不了標頭）
+//   optionalAuth   → 認出身分但不強制登入（公開端點也要知道你是誰，管理員才能在模塊未公開時測試）
+//   requireModuleAccess → 模塊未開放就 403
+app.use('/api/exams', tokenFromQuery, optionalAuth, requireModuleAccess('exams'), examRoutes);
+app.use('/api/cheat-sheets', tokenFromQuery, optionalAuth, requireModuleAccess('cheatSheets'), cheatSheetRoutes);
+app.use('/api/course-reviews', optionalAuth, requireModuleAccess('courseReviews'), courseReviewRoutes);
+// 課程目錄只服務「寫課程評價」表單的課程搜尋，歸屬於 courseReviews 模塊
+app.use('/api/course-catalog', optionalAuth, requireModuleAccess('courseReviews'), courseCatalogRoutes);
+// 模塊清單本身是公開端點（內部用 optionalAuth）：登出的訪客也需要知道
+// 導覽列該顯示哪些項目，不能要求認證
+app.use('/api/modules', moduleRoutes);
+app.use('/api/roles', authenticateToken, roleRoutes);
+
+// admin 路由原本完全沒掛 authenticateToken（它自己有一套平行的認證實作），
+// 現在統一走共用中介層，路由檔內各自再用 requirePermission 檢查權限
+app.use('/api/admin', authenticateToken, adminRoutes);
 
 // 健康檢查端點
 app.get('/api/health', (req, res) => {

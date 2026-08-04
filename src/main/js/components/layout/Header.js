@@ -85,7 +85,7 @@ const Header = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, isAuthenticated, isAdmin } = useAuth();
+  const { user, logout, isAuthenticated, isAdmin, isModuleVisible, isModuleComingSoon } = useAuth();
 
   const adminNavItems = [
     { id: 'admin-panel', label: '用戶管理', path: '/admin', icon: AdminIcon },
@@ -120,7 +120,7 @@ const Header = () => {
       <Divider />
 
       <List sx={{ px: 1, py: 1.5, flexGrow: 1 }}>
-        {NAVIGATION_ITEMS.map((item) => {
+        {NAVIGATION_ITEMS.filter((item) => isModuleVisible(item.moduleKey)).map((item) => {
           const IconComponent = iconMap[item.icon];
           const isActive = location.pathname === item.path;
           return (
@@ -146,6 +146,9 @@ const Header = () => {
                   primary={item.label}
                   primaryTypographyProps={{ fontWeight: isActive ? 600 : 500, fontSize: '0.9rem' }}
                 />
+                {isModuleComingSoon(item.moduleKey) && (
+                  <Chip label="即將推出" size="small" color="warning" sx={{ height: 18, fontSize: '0.65rem' }} />
+                )}
               </ListItemButton>
             </ListItem>
           );

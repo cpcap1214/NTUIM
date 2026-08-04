@@ -14,8 +14,8 @@
 -- 若未來 course_reviews 已有正式資料，請先參考 update_exams_table.sql 的
 -- 「建立 _new 表 → INSERT SELECT → DROP → RENAME」模式改寫本腳本，避免直接 DROP。
 --
--- 執行方式（在 src/backend/database 目錄下）：
---   sqlite3 ntuim.db < update_course_reviews_table.sql
+-- 執行方式：已改由遷移執行器管理，在 src/backend 目錄下執行 `npm run migrate`。
+-- （此檔在既有資料庫上早已人工套用過，會被 --baseline 標記為已套用而不重跑）
 -- 執行前務必先備份 ntuim.db（見 DEPLOYMENT.md）。
 
 DROP TABLE IF EXISTS course_reviews;

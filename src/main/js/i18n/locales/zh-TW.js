@@ -150,6 +150,7 @@ const zhTW = {
             course: '課程',
             submittedAt: '投稿時間',
             status: '狀態',
+            paidBy: '發放人',
             action: '操作',
             markPaid: '標記已發放',
             markUnpaid: '改回未發放',

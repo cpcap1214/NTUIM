@@ -9,10 +9,9 @@
 -- 用 ADD COLUMN 就能安全加上，而且一個人可以同時是管理員與總務，兩者不互斥。
 --
 -- 注意：ALTER TABLE ADD COLUMN 不具冪等性，重複執行會出現 "duplicate column name" 錯誤。
--- 請改用 node scripts 檢查後再執行，或確認尚未套用過再跑。
+-- 現已改由遷移執行器管理（schema_migrations 帳本會確保每個檔案只套用一次）。
 --
--- 執行方式（在 src/backend/database 目錄下）：
---   sqlite3 ntuim.db < add_payout_tracking.sql
+-- 執行方式：在 src/backend 目錄下執行 `npm run migrate`。
 
 -- 總務權限：可管理回饋金發放狀態
 ALTER TABLE users ADD COLUMN can_manage_payouts BOOLEAN NOT NULL DEFAULT 0;

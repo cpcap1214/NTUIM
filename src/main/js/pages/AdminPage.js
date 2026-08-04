@@ -35,7 +35,9 @@ import {
   DialogContentText,
   Divider,
   ToggleButton,
-  ToggleButtonGroup
+  ToggleButtonGroup,
+  FormControlLabel,
+  Checkbox
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -59,12 +61,30 @@ import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import courseReviewService from '../services/courseReviewService';
+import roleService from '../services/roleService';
+import moduleService from '../services/moduleService';
 import ReviewCard from '../components/courseReview/ReviewCard';
 import { translateApiError } from '../utils';
 
+// 後台各功能對應的權限與分頁編號。持有其中任何一項就能進入管理控制台，
+// 實際看得到哪些功能由每張 tile 各自的權限決定。順序即「第一個有權限的功能」判定順序。
+const PERMISSION_TO_TAB = {
+  'users.manage': 0,
+  'roles.manage': 7,
+  'modules.manage': 8,
+  'exams.manage': 3,
+  'cheatSheets.manage': 4,
+  'courseReviews.moderate': 5,
+  'exams.upload': 1,
+  'cheatSheets.upload': 2,
+  'courseReviews.payout': 6,
+};
+const CONSOLE_PERMISSIONS = Object.keys(PERMISSION_TO_TAB);
+
 const AdminPage = () => {
   const { t } = useTranslation();
-  const { user, loading: authLoading, updateUser } = useAuth();
+  // isAdmin 一律取自 AuthContext（全前端唯一來源），這個檔案原本自己重複推導了 4 次
+  const { user, loading: authLoading, updateUser, isAdmin: hasAdminRole, hasPermission } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
   const [users, setUsers] = useState([]);
@@ -113,6 +133,17 @@ const AdminPage = () => {
   const [rejectReason, setRejectReason] = useState('');
   const [courseReviewDeleteDialog, setCourseReviewDeleteDialog] = useState(false);
   const [reviewToDelete, setReviewToDelete] = useState(null);
+
+  // 身分組與模塊管理相關狀態
+  const [allRoles, setAllRoles] = useState([]);
+  const [permissionCatalog, setPermissionCatalog] = useState([]);
+  const [roleLoading, setRoleLoading] = useState(false);
+  const [roleDialog, setRoleDialog] = useState(false);
+  const [roleForm, setRoleForm] = useState({ id: null, key: '', name: '', description: '', color: '', priority: 0, permissions: [] });
+  const [roleDeleteDialog, setRoleDeleteDialog] = useState(false);
+  const [roleToDelete, setRoleToDelete] = useState(null);
+  const [moduleSettings, setModuleSettings] = useState([]);
+  const [moduleLoading, setModuleLoading] = useState(false);
 
   // 回饋金發放管理相關狀態
   const [payouts, setPayouts] = useState([]);
@@ -164,19 +195,16 @@ const AdminPage = () => {
       return;
     }
     
-    const hasAdminAccess = user.username === 'cpcap' || user.role === 'admin';
-    // 總務部的人不是管理員，但要能進來管理回饋金發放（只會看到發放那一個功能）
-    const hasPayoutAccess = hasAdminAccess || user.canManagePayouts === true;
-
-    if (!hasPayoutAccess) {
-      console.log('User does not have admin access, redirecting to home');
+    // 只要持有任何一項後台權限就能進來，實際看得到哪些功能由 adminSections 各自的權限決定
+    if (!CONSOLE_PERMISSIONS.some((p) => hasPermission(p))) {
+      console.log('User does not have console access, redirecting to home');
       alert('您沒有權限訪問此頁面');
       navigate('/');
       return;
     }
 
-    // 只有管理員需要用戶清單；純總務身分沒有用戶管理權限，呼叫會被後端擋下
-    if (hasAdminAccess) {
+    // 沒有用戶管理權限的人（例如純總務）呼叫會被後端擋下，不必浪費一次請求
+    if (hasPermission('users.manage')) {
       fetchUsers();
     }
 
@@ -189,9 +217,23 @@ const AdminPage = () => {
       fetchCourseReviews();
     } else if (activeTab === 6) {
       fetchPayouts();
+    } else if (activeTab === 7) {
+      fetchRoles();
+    } else if (activeTab === 8) {
+      fetchModuleSettings();
+      // 模塊白名單的下拉選單需要身分組清單
+      if (allRoles.length === 0) fetchRoles();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, navigate, authLoading, activeTab]);
+
+  // 用戶管理的身分組多選需要身分組清單
+  useEffect(() => {
+    if (activeTab === 0 && hasPermission('roles.manage') && allRoles.length === 0) {
+      fetchRoles();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   // 課程評價的篩選條件變更時重新載入
   useEffect(() => {
@@ -212,11 +254,86 @@ const AdminPage = () => {
   // 純總務身分（非管理員）預設落在回饋金發放，不要停在他們沒權限的用戶管理分頁
   useEffect(() => {
     if (!user) return;
-    const adminAccess = user.username === 'cpcap' || user.role === 'admin';
-    if (!adminAccess && user.canManagePayouts) {
-      setActiveTab(6);
+    // 沒有用戶管理權限的人（例如純總務）不要停在他們看不到的用戶管理分頁，
+    // 自動落到第一個他們有權限使用的功能
+    if (!hasPermission('users.manage')) {
+      const firstAllowed = CONSOLE_PERMISSIONS.find((p) => hasPermission(p));
+      if (firstAllowed) setActiveTab(PERMISSION_TO_TAB[firstAllowed]);
     }
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, hasAdminRole]);
+
+  const fetchRoles = async () => {
+    try {
+      setRoleLoading(true);
+      const [roles, catalog] = await Promise.all([
+        roleService.getRoles(),
+        roleService.getPermissionCatalog().catch(() => []),
+      ]);
+      setAllRoles(roles);
+      setPermissionCatalog(catalog);
+    } catch (err) {
+      setError(translateApiError(err, '取得身分組失敗'));
+    } finally {
+      setRoleLoading(false);
+    }
+  };
+
+  const openRoleDialog = (role = null) => {
+    setRoleForm(role
+      ? { ...role, permissions: role.permissions || [] }
+      : { id: null, key: '', name: '', description: '', color: '', priority: 0, permissions: [] });
+    setRoleDialog(true);
+  };
+
+  const handleSaveRole = async () => {
+    try {
+      if (roleForm.id) {
+        await roleService.updateRole(roleForm.id, roleForm);
+      } else {
+        await roleService.createRole(roleForm);
+      }
+      setRoleDialog(false);
+      await fetchRoles();
+      setSuccess('身分組已儲存');
+    } catch (err) {
+      setError(translateApiError(err, '儲存身分組失敗'));
+    }
+  };
+
+  const handleDeleteRole = async () => {
+    try {
+      await roleService.deleteRole(roleToDelete.id);
+      await fetchRoles();
+      setSuccess('身分組已刪除');
+    } catch (err) {
+      setError(translateApiError(err, '刪除身分組失敗'));
+    } finally {
+      setRoleDeleteDialog(false);
+      setRoleToDelete(null);
+    }
+  };
+
+  const fetchModuleSettings = async () => {
+    try {
+      setModuleLoading(true);
+      setModuleSettings(await moduleService.getModuleSettings());
+    } catch (err) {
+      setError(translateApiError(err, '取得模塊設定失敗'));
+    } finally {
+      setModuleLoading(false);
+    }
+  };
+
+  const handleUpdateModule = async (key, payload) => {
+    try {
+      await moduleService.updateModule(key, payload);
+      await fetchModuleSettings();
+      setSuccess('模塊設定已更新');
+    } catch (err) {
+      setError(translateApiError(err, '更新模塊設定失敗'));
+    }
+  };
 
   const fetchPayouts = async () => {
     try {
@@ -389,7 +506,7 @@ const AdminPage = () => {
       fullName: user.fullName,
       hasPaidFee: user.hasPaidFee,
       role: user.role,
-      canManagePayouts: !!user.canManagePayouts
+      roleIds: (user.roles || []).map((r) => r.id)
     });
   };
 
@@ -414,26 +531,30 @@ const AdminPage = () => {
       }
 
       await response.json();
-      
+
+      // 身分組是獨立的關聯資料表，走專屬端點（它另外有「不可指派自動身分組」
+      // 與「不可移除最後一位管理員」的把關，錯誤要讓使用者看得到）
+      if (Array.isArray(editData.roleIds)) {
+        await roleService.setUserRoles(userId, editData.roleIds);
+      }
+
       setSuccess('用戶資料已更新');
       setEditingId(null);
-      
+
       // 如果更新的是當前登入用戶，同步更新 AuthContext
       if (user && parseInt(userId) === user.id) {
-        console.log('正在更新當前用戶的 AuthContext 資料');
         updateUser({
           username: editData.username,
           email: editData.email,
           fullName: editData.fullName,
           hasPaidFee: editData.hasPaidFee,
-          role: editData.role,
-          canManagePayouts: editData.canManagePayouts
+          role: editData.role
         });
       }
-      
+
       fetchUsers();
     } catch (err) {
-      setError(err.message);
+      setError(translateApiError(err, err.message || '更新失敗'));
     }
   };
 
@@ -892,17 +1013,24 @@ const AdminPage = () => {
     );
   });
 
-  // 管理員能看到全部功能；純總務身分（canManagePayouts）只看得到回饋金發放
-  const isAdminUser = user && (user.username === 'cpcap' || user.role === 'admin');
+  // 每個功能標示它所需的權限，顯示與否一律以此為準（不再用 adminOnly 布林）。
+  // 排列順序即畫面上的 3×3：
+  //   用戶管理     身分組管理   模塊管理
+  //   考古題管理   大抄管理     課程評價管理
+  //   上傳考古題   上傳大抄     發放回饋金
   const adminSections = [
-    { label: '用戶管理', description: '查詢、編輯、重設密碼', value: 0, adminOnly: true },
-    { label: '上傳考古題', description: '新增題目與答案檔案', value: 1, adminOnly: true },
-    { label: '上傳大抄', description: '建立課程重點整理', value: 2, adminOnly: true },
-    { label: t('courseReview.admin.title'), description: t('courseReview.admin.description'), value: 5, adminOnly: true },
-    { label: t('courseReview.payout.title'), description: t('courseReview.payout.description'), value: 6, adminOnly: false },
-    { label: '考古題管理', description: '搜尋、預覽、刪除', value: 3, adminOnly: true },
-    { label: '大抄管理', description: '檢視內容與清理資料', value: 4, adminOnly: true },
-  ].filter((section) => isAdminUser || !section.adminOnly);
+    { label: '用戶管理', description: '查詢、編輯、重設密碼', value: 0, permission: 'users.manage' },
+    { label: '身分組管理', description: '建立身分組、調整權限與成員', value: 7, permission: 'roles.manage' },
+    { label: '模塊管理', description: '設定各功能開放給哪些身分組', value: 8, permission: 'modules.manage' },
+
+    { label: '考古題管理', description: '搜尋、預覽、刪除', value: 3, permission: 'exams.manage' },
+    { label: '大抄管理', description: '檢視內容與清理資料', value: 4, permission: 'cheatSheets.manage' },
+    { label: t('courseReview.admin.title'), description: t('courseReview.admin.description'), value: 5, permission: 'courseReviews.moderate' },
+
+    { label: '上傳考古題', description: '新增題目與答案檔案', value: 1, permission: 'exams.upload' },
+    { label: '上傳大抄', description: '建立課程重點整理', value: 2, permission: 'cheatSheets.upload' },
+    { label: t('courseReview.payout.title'), description: t('courseReview.payout.description'), value: 6, permission: 'courseReviews.payout' },
+  ].filter((section) => hasPermission(section.permission));
 
   if (authLoading || loading) return (
     <Container sx={{ mt: 4 }}>
@@ -910,9 +1038,8 @@ const AdminPage = () => {
     </Container>
   );
 
-  // 檢查權限 - 管理員（cpcap 用戶名或 admin 角色）或總務（可管理回饋金發放）
-  const isAdmin = user && (user.username === 'cpcap' || user.role === 'admin');
-  const canAccessConsole = isAdmin || (user && user.canManagePayouts === true);
+  // 持有任何一項後台權限即可進入
+  const canAccessConsole = CONSOLE_PERMISSIONS.some((p) => hasPermission(p));
 
   if (!authLoading && !canAccessConsole) {
     return (
@@ -1209,15 +1336,34 @@ const AdminPage = () => {
                                   {editData.hasPaidFee ? '已繳費' : '未繳費'}
                                 </Typography>
                               </Stack>
-                              <Stack direction="row" spacing={1} alignItems="center">
-                                <Switch
-                                  checked={!!editData.canManagePayouts}
-                                  onChange={(e) => setEditData({ ...editData, canManagePayouts: e.target.checked })}
-                                />
-                                <Typography variant="body2">
-                                  {editData.canManagePayouts ? t('courseReview.payout.roleOn') : t('courseReview.payout.roleOff')}
+                              {/* 身分組（可複選）。取代原本的「總務權限」開關——
+                                  後端已改用身分組授權，那個布林欄位不再有任何作用。 */}
+                              <FormControl fullWidth size="small">
+                                <InputLabel>身分組</InputLabel>
+                                <Select
+                                  multiple
+                                  value={editData.roleIds || []}
+                                  label="身分組"
+                                  onChange={(e) => setEditData({ ...editData, roleIds: e.target.value })}
+                                  renderValue={(selected) => (
+                                    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                                      {selected.map((id) => {
+                                        const r = allRoles.find((x) => x.id === id);
+                                        return r ? <Chip key={id} label={r.name} size="small" /> : null;
+                                      })}
+                                    </Stack>
+                                  )}
+                                >
+                                  {allRoles.filter((r) => !r.isAuto).map((r) => (
+                                    <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>
+                                  ))}
+                                </Select>
+                              </FormControl>
+                              {allRoles.some((r) => r.isAuto) && (
+                                <Typography variant="caption" color="text.secondary">
+                                  「會員」依繳費狀態自動授予，不在此指派
                                 </Typography>
-                              </Stack>
+                              )}
                             </Stack>
                           ) : (
                             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -1233,13 +1379,14 @@ const AdminPage = () => {
                                 color={managedUser.hasPaidFee ? 'success' : 'default'}
                                 variant={managedUser.hasPaidFee ? 'filled' : 'outlined'}
                               />
-                              {managedUser.canManagePayouts && (
+                              {(managedUser.roles || []).map((r) => (
                                 <Chip
+                                  key={r.id}
                                   size="small"
-                                  label={t('courseReview.payout.roleTag')}
-                                  color="secondary"
+                                  label={r.name}
+                                  sx={r.color ? { bgcolor: r.color, color: '#fff' } : undefined}
                                 />
-                              )}
+                              ))}
                             </Stack>
                           )}
                         </TableCell>
@@ -1271,8 +1418,8 @@ const AdminPage = () => {
                                   setDeleteUserDialog(true);
                                 }}
                                 color="error"
-                                title="刪除用戶"
-                                disabled={managedUser.username === 'cpcap'}
+                                title={managedUser.id === user?.id ? '不能刪除自己的帳號' : '刪除用戶'}
+                                disabled={managedUser.id === user?.id}
                               >
                                 <PersonRemoveIcon />
                               </IconButton>
@@ -1368,7 +1515,8 @@ const AdminPage = () => {
                       variant="outlined"
                       color="error"
                       startIcon={<PersonRemoveIcon />}
-                      disabled={activeUser.username === 'cpcap'}
+                      title={activeUser.id === user?.id ? '不能刪除自己的帳號' : undefined}
+                      disabled={activeUser.id === user?.id}
                       onClick={() => {
                         setUserToDelete(activeUser);
                         setDeleteUserDialog(true);
@@ -2363,6 +2511,7 @@ const AdminPage = () => {
                     <TableCell>{t('courseReview.form.academicTerm')}</TableCell>
                     <TableCell>{t('courseReview.payout.submittedAt')}</TableCell>
                     <TableCell>{t('courseReview.payout.status')}</TableCell>
+                    <TableCell>{t('courseReview.payout.paidBy')}</TableCell>
                     <TableCell align="center">{t('courseReview.payout.action')}</TableCell>
                   </TableRow>
                 </TableHead>
@@ -2404,6 +2553,11 @@ const AdminPage = () => {
                           </Typography>
                         )}
                       </TableCell>
+                      <TableCell>
+                        {review.isPaid
+                          ? (review.paidByUser?.fullName || t('common.unknown'))
+                          : '-'}
+                      </TableCell>
                       <TableCell align="center">
                         {review.isPaid ? (
                           <Button size="small" color="inherit" onClick={() => handleTogglePayout(review, false)}>
@@ -2429,6 +2583,276 @@ const AdminPage = () => {
           )}
         </Paper>
       )}
+
+      {/* 身分組管理分頁 */}
+      {activeTab === 7 && (
+        <Paper sx={{ p: 2 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 3 }}>
+            <Box>
+              <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 1 }}>
+                身分組管理
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                一個使用者可以擁有多個身分組，權限是所有身分組的聯集
+              </Typography>
+            </Box>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => openRoleDialog()}>
+              新增身分組
+            </Button>
+          </Stack>
+
+          {roleLoading && (
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <Typography variant="h6" color="text.secondary">載入中...</Typography>
+            </Box>
+          )}
+
+          {!roleLoading && (
+            <Grid container spacing={2}>
+              {allRoles.map((role) => (
+                <Grid item xs={12} md={6} key={role.id}>
+                  <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1 }}>
+                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                        <Chip
+                          label={role.name}
+                          size="small"
+                          sx={role.color ? { bgcolor: role.color, color: '#fff', fontWeight: 600 } : { fontWeight: 600 }}
+                        />
+                        <Typography variant="caption" color="text.secondary">{role.key}</Typography>
+                        {role.isSystem && <Chip label="內建" size="small" variant="outlined" />}
+                        {role.isAuto && <Chip label="自動授予" size="small" color="info" variant="outlined" />}
+                      </Stack>
+                      <Stack direction="row" spacing={0.5}>
+                        <IconButton size="small" onClick={() => openRoleDialog(role)} title="編輯">
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          disabled={role.isSystem}
+                          title={role.isSystem ? '內建身分組不可刪除' : '刪除'}
+                          onClick={() => { setRoleToDelete(role); setRoleDeleteDialog(true); }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Stack>
+                    </Stack>
+
+                    {role.description && (
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        {role.description}
+                      </Typography>
+                    )}
+
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                      成員 {role.memberCount} 人{role.isAuto ? '（依繳費狀態自動計算）' : ''}
+                    </Typography>
+
+                    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                      {role.permissions.includes('*')
+                        ? <Chip label="所有權限" size="small" color="error" />
+                        : role.permissions.map((p) => (
+                            <Chip
+                              key={p}
+                              label={permissionCatalog.find((c) => c.key === p)?.label || p}
+                              size="small"
+                              variant="outlined"
+                            />
+                          ))}
+                      {role.permissions.length === 0 && (
+                        <Typography variant="caption" color="text.disabled">未設定任何權限</Typography>
+                      )}
+                    </Stack>
+                  </Paper>
+                </Grid>
+              ))}
+            </Grid>
+          )}
+        </Paper>
+      )}
+
+      {/* 模塊管理分頁 */}
+      {activeTab === 8 && (
+        <Paper sx={{ p: 2 }}>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
+            模塊管理
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            控制每個功能開放給誰。設為「限定」後，只有白名單內的身分組或使用者可以使用，
+            管理員則一律可用（才能在正式環境先測試再公開）
+          </Typography>
+
+          {moduleLoading && (
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <Typography variant="h6" color="text.secondary">載入中...</Typography>
+            </Box>
+          )}
+
+          {!moduleLoading && (
+            <Stack spacing={2}>
+              {moduleSettings.map((module) => (
+                <Paper key={module.key} variant="outlined" sx={{ p: 2 }}>
+                  <Grid container spacing={2} alignItems="center">
+                    <Grid item xs={12} md={3}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>{module.name}</Typography>
+                      <Typography variant="caption" color="text.secondary">{module.key}</Typography>
+                    </Grid>
+                    <Grid item xs={12} md={3}>
+                      <FormControl fullWidth size="small">
+                        <InputLabel>開放狀態</InputLabel>
+                        <Select
+                          value={module.visibility}
+                          label="開放狀態"
+                          onChange={(e) => handleUpdateModule(module.key, { visibility: e.target.value })}
+                        >
+                          <MenuItem value="public">公開（所有人）</MenuItem>
+                          <MenuItem value="restricted">限定（白名單）</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12} md={4}>
+                      <FormControl fullWidth size="small" disabled={module.visibility === 'public'}>
+                        <InputLabel>可使用的身分組</InputLabel>
+                        <Select
+                          multiple
+                          value={(module.allowedRoles || []).map((r) => r.id)}
+                          label="可使用的身分組"
+                          onChange={(e) => handleUpdateModule(module.key, { roleIds: e.target.value })}
+                          renderValue={(selected) => (
+                            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                              {selected.map((id) => {
+                                const r = allRoles.find((x) => x.id === id);
+                                return r ? <Chip key={id} label={r.name} size="small" /> : null;
+                              })}
+                            </Stack>
+                          )}
+                        >
+                          {allRoles.map((r) => (
+                            <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12} md={2}>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Switch
+                          checked={!!module.showWhenRestricted}
+                          disabled={module.visibility === 'public'}
+                          onChange={(e) => handleUpdateModule(module.key, { showWhenRestricted: e.target.checked })}
+                        />
+                        <Typography variant="caption">
+                          {module.showWhenRestricted ? '顯示「即將推出」' : '完全隱藏'}
+                        </Typography>
+                      </Stack>
+                    </Grid>
+                  </Grid>
+                </Paper>
+              ))}
+            </Stack>
+          )}
+        </Paper>
+      )}
+
+      {/* 身分組編輯對話框 */}
+      <Dialog open={roleDialog} onClose={() => setRoleDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{roleForm.id ? '編輯身分組' : '新增身分組'}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="代碼"
+              value={roleForm.key}
+              onChange={(e) => setRoleForm({ ...roleForm, key: e.target.value })}
+              disabled={!!roleForm.id}
+              helperText={roleForm.id ? '代碼建立後不可修改' : '英文字母開頭，僅可用英數字與底線'}
+              fullWidth
+            />
+            <TextField
+              label="名稱"
+              value={roleForm.name}
+              onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
+              fullWidth
+            />
+            <TextField
+              label="說明"
+              value={roleForm.description || ''}
+              onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })}
+              fullWidth
+            />
+            <Stack direction="row" spacing={2}>
+              <TextField
+                label="顏色"
+                type="color"
+                value={roleForm.color || '#1976d2'}
+                onChange={(e) => setRoleForm({ ...roleForm, color: e.target.value })}
+                sx={{ width: 120 }}
+              />
+              <TextField
+                label="排序權重"
+                type="number"
+                value={roleForm.priority}
+                onChange={(e) => setRoleForm({ ...roleForm, priority: parseInt(e.target.value, 10) || 0 })}
+                helperText="數字越大越前面"
+              />
+            </Stack>
+
+            <Divider />
+            <Typography variant="subtitle2">權限</Typography>
+            {roleForm.permissions.includes('*') ? (
+              <Alert severity="info">此身分組擁有所有權限，無法逐項調整</Alert>
+            ) : (
+              Object.entries(
+                permissionCatalog.reduce((acc, p) => {
+                  (acc[p.group] = acc[p.group] || []).push(p);
+                  return acc;
+                }, {})
+              ).map(([group, items]) => (
+                <Box key={group}>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>{group}</Typography>
+                  <Stack>
+                    {items.map((p) => (
+                      <FormControlLabel
+                        key={p.key}
+                        control={
+                          <Checkbox
+                            size="small"
+                            checked={roleForm.permissions.includes(p.key)}
+                            onChange={(e) => setRoleForm({
+                              ...roleForm,
+                              permissions: e.target.checked
+                                ? [...roleForm.permissions, p.key]
+                                : roleForm.permissions.filter((x) => x !== p.key)
+                            })}
+                          />
+                        }
+                        label={<Typography variant="body2">{p.label}<Typography component="span" variant="caption" color="text.secondary"> — {p.description}</Typography></Typography>}
+                      />
+                    ))}
+                  </Stack>
+                </Box>
+              ))
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRoleDialog(false)}>取消</Button>
+          <Button variant="contained" onClick={handleSaveRole}>儲存</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 刪除身分組確認 */}
+      <Dialog open={roleDeleteDialog} onClose={() => setRoleDeleteDialog(false)}>
+        <DialogTitle>刪除身分組？</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            將刪除「{roleToDelete?.name}」，持有此身分組的 {roleToDelete?.memberCount} 位使用者會失去對應權限。此操作無法復原。
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRoleDeleteDialog(false)}>取消</Button>
+          <Button color="error" variant="contained" onClick={handleDeleteRole}>確認刪除</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* 上傳訊息 */}
       {uploadMessage.text && (

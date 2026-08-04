@@ -9,8 +9,7 @@
 --
 -- 這是新表，不影響任何既有資料，不需要 DROP 現有資料表。
 --
--- 執行方式（在 src/backend/database 目錄下）：
---   sqlite3 ntuim.db < create_course_catalog_table.sql
+-- 執行方式：已改由遷移執行器管理，在 src/backend 目錄下執行 `npm run migrate`。
 
 CREATE TABLE IF NOT EXISTS course_catalog (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
