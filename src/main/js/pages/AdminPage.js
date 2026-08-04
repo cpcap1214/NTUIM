@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Container,
   Paper,
@@ -32,9 +33,15 @@ import {
   InputAdornment,
   Avatar,
   DialogContentText,
-  Divider
+  Divider,
+  ToggleButton,
+  ToggleButtonGroup,
+  FormControlLabel,
+  Checkbox
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import RateReviewIcon from '@mui/icons-material/RateReview';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -53,9 +60,31 @@ import LockResetIcon from '@mui/icons-material/LockReset';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import courseReviewService from '../services/courseReviewService';
+import roleService from '../services/roleService';
+import moduleService from '../services/moduleService';
+import ReviewCard from '../components/courseReview/ReviewCard';
+import { translateApiError } from '../utils';
+
+// 後台各功能對應的權限與分頁編號。持有其中任何一項就能進入管理控制台，
+// 實際看得到哪些功能由每張 tile 各自的權限決定。順序即「第一個有權限的功能」判定順序。
+const PERMISSION_TO_TAB = {
+  'users.manage': 0,
+  'roles.manage': 7,
+  'modules.manage': 8,
+  'exams.manage': 3,
+  'cheatSheets.manage': 4,
+  'courseReviews.moderate': 5,
+  'exams.upload': 1,
+  'cheatSheets.upload': 2,
+  'courseReviews.payout': 6,
+};
+const CONSOLE_PERMISSIONS = Object.keys(PERMISSION_TO_TAB);
 
 const AdminPage = () => {
-  const { user, loading: authLoading, updateUser } = useAuth();
+  const { t } = useTranslation();
+  // isAdmin 一律取自 AuthContext（全前端唯一來源），這個檔案原本自己重複推導了 4 次
+  const { user, loading: authLoading, updateUser, isAdmin: hasAdminRole, hasPermission } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
   const [users, setUsers] = useState([]);
@@ -91,7 +120,37 @@ const AdminPage = () => {
   const [cheatSheetDeleteDialog, setCheatSheetDeleteDialog] = useState(false);
   const [cheatSheetToDelete, setCheatSheetToDelete] = useState(null);
   const [cheatSheetLoading, setCheatSheetLoading] = useState(false);
-  
+
+  // 課程評價管理相關狀態
+  const [courseReviews, setCourseReviews] = useState([]);
+  const [courseReviewSearchTerm, setCourseReviewSearchTerm] = useState('');
+  const [courseReviewFilter, setCourseReviewFilter] = useState('pending');
+  const [courseReviewTermFilter, setCourseReviewTermFilter] = useState('all');
+  const [courseReviewProfessorFilter, setCourseReviewProfessorFilter] = useState('all');
+  const [courseReviewLoading, setCourseReviewLoading] = useState(false);
+  const [courseReviewRejectDialog, setCourseReviewRejectDialog] = useState(false);
+  const [reviewToReject, setReviewToReject] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [courseReviewDeleteDialog, setCourseReviewDeleteDialog] = useState(false);
+  const [reviewToDelete, setReviewToDelete] = useState(null);
+
+  // 身分組與模塊管理相關狀態
+  const [allRoles, setAllRoles] = useState([]);
+  const [permissionCatalog, setPermissionCatalog] = useState([]);
+  const [roleLoading, setRoleLoading] = useState(false);
+  const [roleDialog, setRoleDialog] = useState(false);
+  const [roleForm, setRoleForm] = useState({ id: null, key: '', name: '', description: '', color: '', priority: 0, permissions: [] });
+  const [roleDeleteDialog, setRoleDeleteDialog] = useState(false);
+  const [roleToDelete, setRoleToDelete] = useState(null);
+  const [moduleSettings, setModuleSettings] = useState([]);
+  const [moduleLoading, setModuleLoading] = useState(false);
+
+  // 回饋金發放管理相關狀態
+  const [payouts, setPayouts] = useState([]);
+  const [payoutLoading, setPayoutLoading] = useState(false);
+  const [payoutFilter, setPayoutFilter] = useState('unpaid');
+  const [payoutSearchTerm, setPayoutSearchTerm] = useState('');
+
   // 考古題表單狀態
   const [examForm, setExamForm] = useState({
     courseCode: '',
@@ -136,25 +195,241 @@ const AdminPage = () => {
       return;
     }
     
-    const hasAdminAccess = user.username === 'cpcap' || user.role === 'admin';
-
-    if (!hasAdminAccess) {
-      console.log('User does not have admin access, redirecting to home');
-      alert('您沒有權限訪問此頁面，只有管理員或 cpcap 用戶可以訪問');
+    // 只要持有任何一項後台權限就能進來，實際看得到哪些功能由 adminSections 各自的權限決定
+    if (!CONSOLE_PERMISSIONS.some((p) => hasPermission(p))) {
+      console.log('User does not have console access, redirecting to home');
+      alert('您沒有權限訪問此頁面');
       navigate('/');
       return;
     }
-    
-    console.log('User has admin access, fetching users...');
-    fetchUsers();
-    
+
+    // 沒有用戶管理權限的人（例如純總務）呼叫會被後端擋下，不必浪費一次請求
+    if (hasPermission('users.manage')) {
+      fetchUsers();
+    }
+
     // 如果是管理分頁，載入對應資料
     if (activeTab === 3) {
       fetchExams();
     } else if (activeTab === 4) {
       fetchCheatSheets();
+    } else if (activeTab === 5) {
+      fetchCourseReviews();
+    } else if (activeTab === 6) {
+      fetchPayouts();
+    } else if (activeTab === 7) {
+      fetchRoles();
+    } else if (activeTab === 8) {
+      fetchModuleSettings();
+      // 模塊白名單的下拉選單需要身分組清單
+      if (allRoles.length === 0) fetchRoles();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, navigate, authLoading, activeTab]);
+
+  // 用戶管理的身分組多選需要身分組清單
+  useEffect(() => {
+    if (activeTab === 0 && hasPermission('roles.manage') && allRoles.length === 0) {
+      fetchRoles();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  // 課程評價的篩選條件變更時重新載入
+  useEffect(() => {
+    if (activeTab === 5) {
+      fetchCourseReviews();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courseReviewFilter]);
+
+  // 發放清單的篩選條件變更時重新載入
+  useEffect(() => {
+    if (activeTab === 6) {
+      fetchPayouts();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payoutFilter]);
+
+  // 純總務身分（非管理員）預設落在回饋金發放，不要停在他們沒權限的用戶管理分頁
+  useEffect(() => {
+    if (!user) return;
+    // 沒有用戶管理權限的人（例如純總務）不要停在他們看不到的用戶管理分頁，
+    // 自動落到第一個他們有權限使用的功能
+    if (!hasPermission('users.manage')) {
+      const firstAllowed = CONSOLE_PERMISSIONS.find((p) => hasPermission(p));
+      if (firstAllowed) setActiveTab(PERMISSION_TO_TAB[firstAllowed]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, hasAdminRole]);
+
+  const fetchRoles = async () => {
+    try {
+      setRoleLoading(true);
+      const [roles, catalog] = await Promise.all([
+        roleService.getRoles(),
+        roleService.getPermissionCatalog().catch(() => []),
+      ]);
+      setAllRoles(roles);
+      setPermissionCatalog(catalog);
+    } catch (err) {
+      setError(translateApiError(err, '取得身分組失敗'));
+    } finally {
+      setRoleLoading(false);
+    }
+  };
+
+  const openRoleDialog = (role = null) => {
+    setRoleForm(role
+      ? { ...role, permissions: role.permissions || [] }
+      : { id: null, key: '', name: '', description: '', color: '', priority: 0, permissions: [] });
+    setRoleDialog(true);
+  };
+
+  const handleSaveRole = async () => {
+    try {
+      if (roleForm.id) {
+        await roleService.updateRole(roleForm.id, roleForm);
+      } else {
+        await roleService.createRole(roleForm);
+      }
+      setRoleDialog(false);
+      await fetchRoles();
+      setSuccess('身分組已儲存');
+    } catch (err) {
+      setError(translateApiError(err, '儲存身分組失敗'));
+    }
+  };
+
+  const handleDeleteRole = async () => {
+    try {
+      await roleService.deleteRole(roleToDelete.id);
+      await fetchRoles();
+      setSuccess('身分組已刪除');
+    } catch (err) {
+      setError(translateApiError(err, '刪除身分組失敗'));
+    } finally {
+      setRoleDeleteDialog(false);
+      setRoleToDelete(null);
+    }
+  };
+
+  const fetchModuleSettings = async () => {
+    try {
+      setModuleLoading(true);
+      setModuleSettings(await moduleService.getModuleSettings());
+    } catch (err) {
+      setError(translateApiError(err, '取得模塊設定失敗'));
+    } finally {
+      setModuleLoading(false);
+    }
+  };
+
+  const handleUpdateModule = async (key, payload) => {
+    try {
+      await moduleService.updateModule(key, payload);
+      await fetchModuleSettings();
+      setSuccess('模塊設定已更新');
+    } catch (err) {
+      setError(translateApiError(err, '更新模塊設定失敗'));
+    }
+  };
+
+  const fetchPayouts = async () => {
+    try {
+      setPayoutLoading(true);
+      const paidParam = payoutFilter === 'all' ? undefined : String(payoutFilter === 'paid');
+      const result = await courseReviewService.getPayouts(paidParam);
+      setPayouts(result);
+    } catch (err) {
+      console.error('取得發放清單錯誤:', err);
+      setError(translateApiError(err, t('courseReview.payout.fetchFailed')));
+    } finally {
+      setPayoutLoading(false);
+    }
+  };
+
+  const handleTogglePayout = async (review, isPaid) => {
+    try {
+      await courseReviewService.setPayoutStatus(review.id, isPaid);
+      await fetchPayouts();
+      setSuccess(isPaid ? t('courseReview.payout.markPaidSuccess') : t('courseReview.payout.markUnpaidSuccess'));
+    } catch (err) {
+      setError(translateApiError(err, t('courseReview.payout.updateFailed')));
+    }
+  };
+
+  const handleExportPayouts = async () => {
+    try {
+      await courseReviewService.downloadPayoutCsv();
+    } catch (err) {
+      setError(translateApiError(err, t('courseReview.payout.exportFailed')));
+    }
+  };
+
+  const fetchCourseReviews = async () => {
+    try {
+      setCourseReviewLoading(true);
+      const result = await courseReviewService.getAdminReviews(courseReviewFilter === 'all' ? undefined : courseReviewFilter);
+      setCourseReviews(result.data || []);
+    } catch (err) {
+      console.error('取得課程評價錯誤:', err);
+      setError(translateApiError(err, t('errors.FETCH_LIST_FAILED')));
+    } finally {
+      setCourseReviewLoading(false);
+    }
+  };
+
+  const handleApproveCourseReview = async (review) => {
+    try {
+      await courseReviewService.reviewStatus(review.id, { status: 'approved' });
+      await fetchCourseReviews();
+      setSuccess(t('courseReview.admin.approveSuccess'));
+    } catch (err) {
+      setError(translateApiError(err, t('courseReview.admin.approveFailed')));
+    }
+  };
+
+  const openRejectDialog = (review) => {
+    setReviewToReject(review);
+    setRejectReason('');
+    setCourseReviewRejectDialog(true);
+  };
+
+  const handleRejectCourseReview = async () => {
+    if (!rejectReason.trim()) return;
+    try {
+      await courseReviewService.reviewStatus(reviewToReject.id, {
+        status: 'rejected',
+        rejectReason: rejectReason.trim(),
+      });
+      setCourseReviewRejectDialog(false);
+      setReviewToReject(null);
+      await fetchCourseReviews();
+      setSuccess(t('courseReview.admin.rejectSuccess'));
+    } catch (err) {
+      setError(translateApiError(err, t('courseReview.admin.rejectFailed')));
+    }
+  };
+
+  const handleDeleteCourseReviewClick = (review) => {
+    setReviewToDelete(review);
+    setCourseReviewDeleteDialog(true);
+  };
+
+  const handleDeleteCourseReviewConfirm = async () => {
+    if (!reviewToDelete) return;
+    try {
+      await courseReviewService.deleteReview(reviewToDelete.id);
+      await fetchCourseReviews();
+      setSuccess(t('courseReview.admin.deleteSuccess'));
+    } catch (err) {
+      setError(translateApiError(err, t('courseReview.admin.deleteFailed')));
+    } finally {
+      setCourseReviewDeleteDialog(false);
+      setReviewToDelete(null);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -230,7 +505,8 @@ const AdminPage = () => {
       studentId: user.studentId,
       fullName: user.fullName,
       hasPaidFee: user.hasPaidFee,
-      role: user.role
+      role: user.role,
+      roleIds: (user.roles || []).map((r) => r.id)
     });
   };
 
@@ -255,13 +531,18 @@ const AdminPage = () => {
       }
 
       await response.json();
-      
+
+      // 身分組是獨立的關聯資料表，走專屬端點（它另外有「不可指派自動身分組」
+      // 與「不可移除最後一位管理員」的把關，錯誤要讓使用者看得到）
+      if (Array.isArray(editData.roleIds)) {
+        await roleService.setUserRoles(userId, editData.roleIds);
+      }
+
       setSuccess('用戶資料已更新');
       setEditingId(null);
-      
+
       // 如果更新的是當前登入用戶，同步更新 AuthContext
       if (user && parseInt(userId) === user.id) {
-        console.log('正在更新當前用戶的 AuthContext 資料');
         updateUser({
           username: editData.username,
           email: editData.email,
@@ -270,10 +551,10 @@ const AdminPage = () => {
           role: editData.role
         });
       }
-      
+
       fetchUsers();
     } catch (err) {
-      setError(err.message);
+      setError(translateApiError(err, err.message || '更新失敗'));
     }
   };
 
@@ -661,7 +942,32 @@ const AdminPage = () => {
     (exam.professor && exam.professor.toLowerCase().includes(examSearchTerm.toLowerCase()))
   );
 
-  const filteredCheatSheets = cheatSheets.filter(sheet => 
+  const pendingCourseReviewCount = courseReviews.filter((r) => r.status === 'pending').length;
+
+  const courseReviewTermRank = { '1': 1, '2': 2, summer: 3 };
+  const courseReviewTermOptions = [...new Map(
+    courseReviews.map((r) => [`${r.year}-${r.semester}`, {
+      value: `${r.year}-${r.semester}`,
+      label: courseReviewService.getAcademicTermLabel(r.year, r.semester),
+      year: r.year,
+      semester: r.semester,
+    }])
+  ).values()].sort((a, b) => b.year - a.year || courseReviewTermRank[b.semester] - courseReviewTermRank[a.semester]);
+
+  const courseReviewProfessorOptions = [...new Set(courseReviews.map((r) => r.professor).filter(Boolean))].sort();
+
+  const filteredCourseReviews = courseReviews.filter((review) => {
+    const keyword = courseReviewSearchTerm.toLowerCase();
+    const matchesKeyword =
+      review.courseName.toLowerCase().includes(keyword) ||
+      review.courseCode.toLowerCase().includes(keyword) ||
+      (review.professor && review.professor.toLowerCase().includes(keyword));
+    const matchesTerm = courseReviewTermFilter === 'all' || `${review.year}-${review.semester}` === courseReviewTermFilter;
+    const matchesProfessor = courseReviewProfessorFilter === 'all' || review.professor === courseReviewProfessorFilter;
+    return matchesKeyword && matchesTerm && matchesProfessor;
+  });
+
+  const filteredCheatSheets = cheatSheets.filter(sheet =>
     sheet.title.toLowerCase().includes(cheatSheetSearchTerm.toLowerCase()) ||
     sheet.courseName.toLowerCase().includes(cheatSheetSearchTerm.toLowerCase()) ||
     (sheet.description && sheet.description.toLowerCase().includes(cheatSheetSearchTerm.toLowerCase()))
@@ -693,13 +999,38 @@ const AdminPage = () => {
     paid: users.filter((managedUser) => managedUser.hasPaidFee).length,
   };
 
+  const unpaidPayoutCount = payouts.filter((review) => !review.isPaid).length;
+
+  const filteredPayouts = payouts.filter((review) => {
+    const keyword = payoutSearchTerm.trim().toLowerCase();
+    if (!keyword) return true;
+    return (
+      review.courseName.toLowerCase().includes(keyword) ||
+      review.courseCode.toLowerCase().includes(keyword) ||
+      (review.professor && review.professor.toLowerCase().includes(keyword)) ||
+      (review.reviewer?.fullName && review.reviewer.fullName.toLowerCase().includes(keyword)) ||
+      (review.reviewer?.studentId && review.reviewer.studentId.toLowerCase().includes(keyword))
+    );
+  });
+
+  // 每個功能標示它所需的權限，顯示與否一律以此為準（不再用 adminOnly 布林）。
+  // 排列順序即畫面上的 3×3：
+  //   用戶管理     身分組管理   模塊管理
+  //   考古題管理   大抄管理     課程評價管理
+  //   上傳考古題   上傳大抄     發放回饋金
   const adminSections = [
-    { label: '用戶管理', description: '查詢、編輯、重設密碼', value: 0 },
-    { label: '上傳考古題', description: '新增題目與答案檔案', value: 1 },
-    { label: '上傳大抄', description: '建立課程重點整理', value: 2 },
-    { label: '考古題管理', description: '搜尋、預覽、刪除', value: 3 },
-    { label: '大抄管理', description: '檢視內容與清理資料', value: 4 },
-  ];
+    { label: '用戶管理', description: '查詢、編輯、重設密碼', value: 0, permission: 'users.manage' },
+    { label: '身分組管理', description: '建立身分組、調整權限與成員', value: 7, permission: 'roles.manage' },
+    { label: '模塊管理', description: '設定各功能開放給哪些身分組', value: 8, permission: 'modules.manage' },
+
+    { label: '考古題管理', description: '搜尋、預覽、刪除', value: 3, permission: 'exams.manage' },
+    { label: '大抄管理', description: '檢視內容與清理資料', value: 4, permission: 'cheatSheets.manage' },
+    { label: t('courseReview.admin.title'), description: t('courseReview.admin.description'), value: 5, permission: 'courseReviews.moderate' },
+
+    { label: '上傳考古題', description: '新增題目與答案檔案', value: 1, permission: 'exams.upload' },
+    { label: '上傳大抄', description: '建立課程重點整理', value: 2, permission: 'cheatSheets.upload' },
+    { label: t('courseReview.payout.title'), description: t('courseReview.payout.description'), value: 6, permission: 'courseReviews.payout' },
+  ].filter((section) => hasPermission(section.permission));
 
   if (authLoading || loading) return (
     <Container sx={{ mt: 4 }}>
@@ -707,10 +1038,10 @@ const AdminPage = () => {
     </Container>
   );
 
-  // 檢查管理員權限 - 允許 cpcap 用戶名或 admin 角色
-  const isAdmin = user && (user.username === 'cpcap' || user.role === 'admin');
-  
-  if (!authLoading && !isAdmin) {
+  // 持有任何一項後台權限即可進入
+  const canAccessConsole = CONSOLE_PERMISSIONS.some((p) => hasPermission(p));
+
+  if (!authLoading && !canAccessConsole) {
     return (
       <Container sx={{ mt: 4 }}>
         <Alert severity="error">
@@ -736,15 +1067,15 @@ const AdminPage = () => {
             {adminSections.map((section) => (
               <Grid item xs={12} sm={6} md={4} key={section.value}>
                 <Paper
-                  onClick={() => setActiveTab(section.value)}
+                  onClick={() => (section.path ? navigate(section.path) : setActiveTab(section.value))}
                   sx={{
                     p: 2,
                     height: '100%',
                     cursor: 'pointer',
                     borderRadius: 3,
                     border: '1px solid',
-                    borderColor: activeTab === section.value ? 'primary.main' : 'divider',
-                    bgcolor: activeTab === section.value ? 'primary.50' : 'background.paper',
+                    borderColor: !section.path && activeTab === section.value ? 'primary.main' : 'divider',
+                    bgcolor: !section.path && activeTab === section.value ? 'primary.50' : 'background.paper',
                     transition: 'all 0.2s ease',
                     '&:hover': {
                       borderColor: 'primary.main',
@@ -1005,6 +1336,34 @@ const AdminPage = () => {
                                   {editData.hasPaidFee ? '已繳費' : '未繳費'}
                                 </Typography>
                               </Stack>
+                              {/* 身分組（可複選）。取代原本的「總務權限」開關——
+                                  後端已改用身分組授權，那個布林欄位不再有任何作用。 */}
+                              <FormControl fullWidth size="small">
+                                <InputLabel>身分組</InputLabel>
+                                <Select
+                                  multiple
+                                  value={editData.roleIds || []}
+                                  label="身分組"
+                                  onChange={(e) => setEditData({ ...editData, roleIds: e.target.value })}
+                                  renderValue={(selected) => (
+                                    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                                      {selected.map((id) => {
+                                        const r = allRoles.find((x) => x.id === id);
+                                        return r ? <Chip key={id} label={r.name} size="small" /> : null;
+                                      })}
+                                    </Stack>
+                                  )}
+                                >
+                                  {allRoles.filter((r) => !r.isAuto).map((r) => (
+                                    <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>
+                                  ))}
+                                </Select>
+                              </FormControl>
+                              {allRoles.some((r) => r.isAuto) && (
+                                <Typography variant="caption" color="text.secondary">
+                                  「會員」依繳費狀態自動授予，不在此指派
+                                </Typography>
+                              )}
                             </Stack>
                           ) : (
                             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -1020,6 +1379,14 @@ const AdminPage = () => {
                                 color={managedUser.hasPaidFee ? 'success' : 'default'}
                                 variant={managedUser.hasPaidFee ? 'filled' : 'outlined'}
                               />
+                              {(managedUser.roles || []).map((r) => (
+                                <Chip
+                                  key={r.id}
+                                  size="small"
+                                  label={r.name}
+                                  sx={r.color ? { bgcolor: r.color, color: '#fff' } : undefined}
+                                />
+                              ))}
                             </Stack>
                           )}
                         </TableCell>
@@ -1051,8 +1418,8 @@ const AdminPage = () => {
                                   setDeleteUserDialog(true);
                                 }}
                                 color="error"
-                                title="刪除用戶"
-                                disabled={managedUser.username === 'cpcap'}
+                                title={managedUser.id === user?.id ? '不能刪除自己的帳號' : '刪除用戶'}
+                                disabled={managedUser.id === user?.id}
                               >
                                 <PersonRemoveIcon />
                               </IconButton>
@@ -1148,7 +1515,8 @@ const AdminPage = () => {
                       variant="outlined"
                       color="error"
                       startIcon={<PersonRemoveIcon />}
-                      disabled={activeUser.username === 'cpcap'}
+                      title={activeUser.id === user?.id ? '不能刪除自己的帳號' : undefined}
+                      disabled={activeUser.id === user?.id}
                       onClick={() => {
                         setUserToDelete(activeUser);
                         setDeleteUserDialog(true);
@@ -1883,6 +2251,609 @@ const AdminPage = () => {
         </Paper>
       )}
 
+      {/* 課程評價管理分頁 */}
+      {activeTab === 5 && (
+        <Paper sx={{ p: 2 }}>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
+            {t('courseReview.admin.title')}
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            {t('courseReview.admin.description')}
+          </Typography>
+
+          {/* 搜尋欄與篩選 */}
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  placeholder={t('courseReview.admin.searchPlaceholder')}
+                  value={courseReviewSearchTerm}
+                  onChange={(e) => setCourseReviewSearchTerm(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+              <Grid item xs={6} md={3}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>{t('courseReview.form.academicTerm')}</InputLabel>
+                  <Select
+                    value={courseReviewTermFilter}
+                    label={t('courseReview.form.academicTerm')}
+                    onChange={(e) => setCourseReviewTermFilter(e.target.value)}
+                  >
+                    <MenuItem value="all">{t('common.all')}</MenuItem>
+                    {courseReviewTermOptions.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={6} md={3}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>{t('courseReview.professorFilterLabel')}</InputLabel>
+                  <Select
+                    value={courseReviewProfessorFilter}
+                    label={t('courseReview.professorFilterLabel')}
+                    onChange={(e) => setCourseReviewProfessorFilter(e.target.value)}
+                  >
+                    <MenuItem value="all">{t('common.all')}</MenuItem>
+                    {courseReviewProfessorOptions.map((professor) => (
+                      <MenuItem key={professor} value={professor}>
+                        {professor}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+          </Paper>
+
+          <ToggleButtonGroup
+            value={courseReviewFilter}
+            exclusive
+            size="small"
+            onChange={(_, v) => v && setCourseReviewFilter(v)}
+            sx={{ mb: 3 }}
+          >
+            <ToggleButton value="all">{t('common.all')}</ToggleButton>
+            <ToggleButton value="pending">
+              {t('courseReview.status.pending')}
+              {pendingCourseReviewCount > 0 && (
+                <Chip label={pendingCourseReviewCount} size="small" color="warning" sx={{ ml: 1 }} />
+              )}
+            </ToggleButton>
+            <ToggleButton value="approved">{t('courseReview.status.approved')}</ToggleButton>
+            <ToggleButton value="rejected">{t('courseReview.status.rejected')}</ToggleButton>
+          </ToggleButtonGroup>
+
+          {courseReviewLoading && (
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <Typography variant="h6" color="text.secondary">
+                {t('common.loading')}
+              </Typography>
+            </Box>
+          )}
+
+          {!courseReviewLoading && filteredCourseReviews.length === 0 && (
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <RateReviewIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+              <Typography variant="h6" color="text.secondary">
+                {courseReviews.length === 0 ? t('courseReview.admin.noMatchingReviews') : t('courseReview.admin.noMatchingSearchReviews')}
+              </Typography>
+            </Box>
+          )}
+
+          {!courseReviewLoading && filteredCourseReviews.length > 0 && (
+            <Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {t('courseReview.admin.countLabel', { count: filteredCourseReviews.length })}
+              </Typography>
+              <Grid container spacing={2}>
+                {filteredCourseReviews.map((review) => (
+                  <Grid item xs={12} md={6} key={review.id}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                      <ReviewCard
+                        review={review}
+                        showStatus
+                        hideReviewedBy
+                        currentUserId={null}
+                        onEdit={() => {}}
+                        onDelete={() => {}}
+                      />
+                      <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="center"
+                        flexWrap="wrap"
+                        sx={{ mt: 1, rowGap: 1 }}
+                      >
+                        <Stack spacing={0.25}>
+                          <Typography variant="caption" color="text.secondary">
+                            {t('courseReview.admin.submittedAt', { time: review.created_at ? new Date(review.created_at).toLocaleString('zh-TW') : t('common.unknown') })}
+                          </Typography>
+                          {review.reviewedByUser && (
+                            <Typography variant="caption" color="text.secondary">
+                              {t('courseReview.reviewedBy', { name: review.reviewedByUser.fullName })}
+                            </Typography>
+                          )}
+                        </Stack>
+                        <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ rowGap: 1 }}>
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            startIcon={<DeleteIcon />}
+                            onClick={() => handleDeleteCourseReviewClick(review)}
+                          >
+                            {t('common.delete')}
+                          </Button>
+                          {review.status === 'pending' && (
+                            <>
+                              <Button
+                                variant="outlined"
+                                color="warning"
+                                startIcon={<CancelIcon />}
+                                onClick={() => openRejectDialog(review)}
+                              >
+                                {t('common.reject')}
+                              </Button>
+                              <Button
+                                variant="contained"
+                                color="success"
+                                startIcon={<CheckCircleIcon />}
+                                onClick={() => handleApproveCourseReview(review)}
+                              >
+                                {t('common.approve')}
+                              </Button>
+                            </>
+                          )}
+                        </Stack>
+                      </Stack>
+                    </Box>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+          )}
+        </Paper>
+      )}
+
+      {/* 回饋金發放管理分頁 */}
+      {activeTab === 6 && (
+        <Paper sx={{ p: 2 }}>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
+            {t('courseReview.payout.title')}
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            {t('courseReview.payout.description')}
+          </Typography>
+
+          {/* 搜尋與匯出 */}
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} md={8}>
+                <TextField
+                  fullWidth
+                  placeholder={t('courseReview.payout.searchPlaceholder')}
+                  value={payoutSearchTerm}
+                  onChange={(e) => setPayoutSearchTerm(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<DownloadIcon />}
+                  onClick={handleExportPayouts}
+                >
+                  {t('courseReview.payout.exportCsv')}
+                </Button>
+              </Grid>
+            </Grid>
+          </Paper>
+
+          <ToggleButtonGroup
+            value={payoutFilter}
+            exclusive
+            size="small"
+            onChange={(_, v) => v && setPayoutFilter(v)}
+            sx={{ mb: 3 }}
+          >
+            <ToggleButton value="unpaid">
+              {t('courseReview.payout.unpaid')}
+              {unpaidPayoutCount > 0 && (
+                <Chip label={unpaidPayoutCount} size="small" color="warning" sx={{ ml: 1 }} />
+              )}
+            </ToggleButton>
+            <ToggleButton value="paid">{t('courseReview.payout.paid')}</ToggleButton>
+            <ToggleButton value="all">{t('common.all')}</ToggleButton>
+          </ToggleButtonGroup>
+
+          {payoutLoading && (
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <Typography variant="h6" color="text.secondary">
+                {t('common.loading')}
+              </Typography>
+            </Box>
+          )}
+
+          {!payoutLoading && filteredPayouts.length === 0 && (
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <PaidIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+              <Typography variant="h6" color="text.secondary">
+                {t('courseReview.payout.empty')}
+              </Typography>
+            </Box>
+          )}
+
+          {!payoutLoading && filteredPayouts.length > 0 && (
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>{t('courseReview.payout.recipient')}</TableCell>
+                    <TableCell>{t('courseReview.payout.studentId')}</TableCell>
+                    <TableCell>{t('courseReview.payout.course')}</TableCell>
+                    <TableCell>{t('courseReview.form.academicTerm')}</TableCell>
+                    <TableCell>{t('courseReview.payout.submittedAt')}</TableCell>
+                    <TableCell>{t('courseReview.payout.status')}</TableCell>
+                    <TableCell>{t('courseReview.payout.paidBy')}</TableCell>
+                    <TableCell align="center">{t('courseReview.payout.action')}</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredPayouts.map((review) => (
+                    <TableRow key={review.id} hover>
+                      <TableCell>
+                        <Stack direction="row" spacing={0.75} alignItems="center">
+                          <Typography variant="body2">{review.reviewer?.fullName || t('common.unknown')}</Typography>
+                          {review.isAnonymous && (
+                            <Tooltip title={t('courseReview.payout.anonymousHint')}>
+                              <Chip label={t('courseReview.payout.anonymousTag')} size="small" variant="outlined" />
+                            </Tooltip>
+                          )}
+                        </Stack>
+                      </TableCell>
+                      <TableCell>{review.reviewer?.studentId || '-'}</TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{review.courseName}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {review.professor} · {review.courseCode}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        {courseReviewService.getAcademicTermLabel(review.year, review.semester)}
+                      </TableCell>
+                      <TableCell>
+                        {review.created_at ? new Date(review.created_at).toLocaleDateString('zh-TW') : '-'}
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={review.isPaid ? t('courseReview.payout.paid') : t('courseReview.payout.unpaid')}
+                          size="small"
+                          color={review.isPaid ? 'success' : 'warning'}
+                        />
+                        {review.isPaid && review.paidAt && (
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            {new Date(review.paidAt).toLocaleDateString('zh-TW')}
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {review.isPaid
+                          ? (review.paidByUser?.fullName || t('common.unknown'))
+                          : '-'}
+                      </TableCell>
+                      <TableCell align="center">
+                        {review.isPaid ? (
+                          <Button size="small" color="inherit" onClick={() => handleTogglePayout(review, false)}>
+                            {t('courseReview.payout.markUnpaid')}
+                          </Button>
+                        ) : (
+                          <Button
+                            size="small"
+                            variant="contained"
+                            color="success"
+                            startIcon={<PaidIcon />}
+                            onClick={() => handleTogglePayout(review, true)}
+                          >
+                            {t('courseReview.payout.markPaid')}
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Paper>
+      )}
+
+      {/* 身分組管理分頁 */}
+      {activeTab === 7 && (
+        <Paper sx={{ p: 2 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 3 }}>
+            <Box>
+              <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 1 }}>
+                身分組管理
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                一個使用者可以擁有多個身分組，權限是所有身分組的聯集
+              </Typography>
+            </Box>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => openRoleDialog()}>
+              新增身分組
+            </Button>
+          </Stack>
+
+          {roleLoading && (
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <Typography variant="h6" color="text.secondary">載入中...</Typography>
+            </Box>
+          )}
+
+          {!roleLoading && (
+            <Grid container spacing={2}>
+              {allRoles.map((role) => (
+                <Grid item xs={12} md={6} key={role.id}>
+                  <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1 }}>
+                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                        <Chip
+                          label={role.name}
+                          size="small"
+                          sx={role.color ? { bgcolor: role.color, color: '#fff', fontWeight: 600 } : { fontWeight: 600 }}
+                        />
+                        <Typography variant="caption" color="text.secondary">{role.key}</Typography>
+                        {role.isSystem && <Chip label="內建" size="small" variant="outlined" />}
+                        {role.isAuto && <Chip label="自動授予" size="small" color="info" variant="outlined" />}
+                      </Stack>
+                      <Stack direction="row" spacing={0.5}>
+                        <IconButton size="small" onClick={() => openRoleDialog(role)} title="編輯">
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          disabled={role.isSystem}
+                          title={role.isSystem ? '內建身分組不可刪除' : '刪除'}
+                          onClick={() => { setRoleToDelete(role); setRoleDeleteDialog(true); }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Stack>
+                    </Stack>
+
+                    {role.description && (
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        {role.description}
+                      </Typography>
+                    )}
+
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                      成員 {role.memberCount} 人{role.isAuto ? '（依繳費狀態自動計算）' : ''}
+                    </Typography>
+
+                    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                      {role.permissions.includes('*')
+                        ? <Chip label="所有權限" size="small" color="error" />
+                        : role.permissions.map((p) => (
+                            <Chip
+                              key={p}
+                              label={permissionCatalog.find((c) => c.key === p)?.label || p}
+                              size="small"
+                              variant="outlined"
+                            />
+                          ))}
+                      {role.permissions.length === 0 && (
+                        <Typography variant="caption" color="text.disabled">未設定任何權限</Typography>
+                      )}
+                    </Stack>
+                  </Paper>
+                </Grid>
+              ))}
+            </Grid>
+          )}
+        </Paper>
+      )}
+
+      {/* 模塊管理分頁 */}
+      {activeTab === 8 && (
+        <Paper sx={{ p: 2 }}>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
+            模塊管理
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            控制每個功能開放給誰。設為「限定」後，只有白名單內的身分組或使用者可以使用，
+            管理員則一律可用（才能在正式環境先測試再公開）
+          </Typography>
+
+          {moduleLoading && (
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <Typography variant="h6" color="text.secondary">載入中...</Typography>
+            </Box>
+          )}
+
+          {!moduleLoading && (
+            <Stack spacing={2}>
+              {moduleSettings.map((module) => (
+                <Paper key={module.key} variant="outlined" sx={{ p: 2 }}>
+                  <Grid container spacing={2} alignItems="center">
+                    <Grid item xs={12} md={3}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>{module.name}</Typography>
+                      <Typography variant="caption" color="text.secondary">{module.key}</Typography>
+                    </Grid>
+                    <Grid item xs={12} md={3}>
+                      <FormControl fullWidth size="small">
+                        <InputLabel>開放狀態</InputLabel>
+                        <Select
+                          value={module.visibility}
+                          label="開放狀態"
+                          onChange={(e) => handleUpdateModule(module.key, { visibility: e.target.value })}
+                        >
+                          <MenuItem value="public">公開（所有人）</MenuItem>
+                          <MenuItem value="restricted">限定（白名單）</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12} md={4}>
+                      <FormControl fullWidth size="small" disabled={module.visibility === 'public'}>
+                        <InputLabel>可使用的身分組</InputLabel>
+                        <Select
+                          multiple
+                          value={(module.allowedRoles || []).map((r) => r.id)}
+                          label="可使用的身分組"
+                          onChange={(e) => handleUpdateModule(module.key, { roleIds: e.target.value })}
+                          renderValue={(selected) => (
+                            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                              {selected.map((id) => {
+                                const r = allRoles.find((x) => x.id === id);
+                                return r ? <Chip key={id} label={r.name} size="small" /> : null;
+                              })}
+                            </Stack>
+                          )}
+                        >
+                          {allRoles.map((r) => (
+                            <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12} md={2}>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Switch
+                          checked={!!module.showWhenRestricted}
+                          disabled={module.visibility === 'public'}
+                          onChange={(e) => handleUpdateModule(module.key, { showWhenRestricted: e.target.checked })}
+                        />
+                        <Typography variant="caption">
+                          {module.showWhenRestricted ? '顯示「即將推出」' : '完全隱藏'}
+                        </Typography>
+                      </Stack>
+                    </Grid>
+                  </Grid>
+                </Paper>
+              ))}
+            </Stack>
+          )}
+        </Paper>
+      )}
+
+      {/* 身分組編輯對話框 */}
+      <Dialog open={roleDialog} onClose={() => setRoleDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{roleForm.id ? '編輯身分組' : '新增身分組'}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="代碼"
+              value={roleForm.key}
+              onChange={(e) => setRoleForm({ ...roleForm, key: e.target.value })}
+              disabled={!!roleForm.id}
+              helperText={roleForm.id ? '代碼建立後不可修改' : '英文字母開頭，僅可用英數字與底線'}
+              fullWidth
+            />
+            <TextField
+              label="名稱"
+              value={roleForm.name}
+              onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
+              fullWidth
+            />
+            <TextField
+              label="說明"
+              value={roleForm.description || ''}
+              onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })}
+              fullWidth
+            />
+            <Stack direction="row" spacing={2}>
+              <TextField
+                label="顏色"
+                type="color"
+                value={roleForm.color || '#1976d2'}
+                onChange={(e) => setRoleForm({ ...roleForm, color: e.target.value })}
+                sx={{ width: 120 }}
+              />
+              <TextField
+                label="排序權重"
+                type="number"
+                value={roleForm.priority}
+                onChange={(e) => setRoleForm({ ...roleForm, priority: parseInt(e.target.value, 10) || 0 })}
+                helperText="數字越大越前面"
+              />
+            </Stack>
+
+            <Divider />
+            <Typography variant="subtitle2">權限</Typography>
+            {roleForm.permissions.includes('*') ? (
+              <Alert severity="info">此身分組擁有所有權限，無法逐項調整</Alert>
+            ) : (
+              Object.entries(
+                permissionCatalog.reduce((acc, p) => {
+                  (acc[p.group] = acc[p.group] || []).push(p);
+                  return acc;
+                }, {})
+              ).map(([group, items]) => (
+                <Box key={group}>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>{group}</Typography>
+                  <Stack>
+                    {items.map((p) => (
+                      <FormControlLabel
+                        key={p.key}
+                        control={
+                          <Checkbox
+                            size="small"
+                            checked={roleForm.permissions.includes(p.key)}
+                            onChange={(e) => setRoleForm({
+                              ...roleForm,
+                              permissions: e.target.checked
+                                ? [...roleForm.permissions, p.key]
+                                : roleForm.permissions.filter((x) => x !== p.key)
+                            })}
+                          />
+                        }
+                        label={<Typography variant="body2">{p.label}<Typography component="span" variant="caption" color="text.secondary"> — {p.description}</Typography></Typography>}
+                      />
+                    ))}
+                  </Stack>
+                </Box>
+              ))
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRoleDialog(false)}>取消</Button>
+          <Button variant="contained" onClick={handleSaveRole}>儲存</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 刪除身分組確認 */}
+      <Dialog open={roleDeleteDialog} onClose={() => setRoleDeleteDialog(false)}>
+        <DialogTitle>刪除身分組？</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            將刪除「{roleToDelete?.name}」，持有此身分組的 {roleToDelete?.memberCount} 位使用者會失去對應權限。此操作無法復原。
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRoleDeleteDialog(false)}>取消</Button>
+          <Button color="error" variant="contained" onClick={handleDeleteRole}>確認刪除</Button>
+        </DialogActions>
+      </Dialog>
+
       {/* 上傳訊息 */}
       {uploadMessage.text && (
         <Alert 
@@ -1988,6 +2959,52 @@ const AdminPage = () => {
           </Button>
           <Button onClick={handleCheatSheetDeleteConfirm} color="error" variant="contained">
             確認刪除
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 拒絕課程評價對話框 */}
+      <Dialog open={courseReviewRejectDialog} onClose={() => setCourseReviewRejectDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{t('courseReview.admin.rejectDialogTitle')}</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            multiline
+            rows={3}
+            autoFocus
+            label={t('courseReview.admin.rejectReasonInput')}
+            required
+            sx={{ mt: 1 }}
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            helperText={t('courseReview.admin.rejectReasonHelper')}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCourseReviewRejectDialog(false)}>{t('common.cancel')}</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleRejectCourseReview}
+            disabled={!rejectReason.trim()}
+          >
+            {t('courseReview.admin.confirmReject')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 刪除課程評價對話框 */}
+      <Dialog open={courseReviewDeleteDialog} onClose={() => setCourseReviewDeleteDialog(false)}>
+        <DialogTitle>{t('courseReview.admin.deleteDialogTitle')}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {t('courseReview.admin.deleteDialogBody')}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCourseReviewDeleteDialog(false)}>{t('common.cancel')}</Button>
+          <Button onClick={handleDeleteCourseReviewConfirm} color="error" variant="contained">
+            {t('courseReview.admin.confirmDelete')}
           </Button>
         </DialogActions>
       </Dialog>

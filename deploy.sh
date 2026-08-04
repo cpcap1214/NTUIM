@@ -23,6 +23,42 @@ fi
 echo "📥 拉取最新代碼..."
 git pull origin main
 
+# 前置檢查：資料庫遷移是否可以順利套用
+#
+# 這一步刻意放在「建置與複製前端之前」。本腳本有 set -e，而遷移是在後端階段才執行；
+# 若等到那時才失敗，前端新版已經複製到 /var/www 且 nginx 已重載，後端卻還是舊的，
+# 會留下前後端版本不一致的中間狀態。在這裡先失敗，網站維持完整的舊版本。
+echo "🔍 檢查資料庫遷移狀態..."
+if [ -f "src/backend/database/ntuim.db" ] && [ -f "src/backend/database/migrate.js" ]; then
+    if ! (cd src/backend && npm run migrate --silent -- --status > /dev/null 2>&1); then
+        echo "❌ 無法讀取遷移狀態，請先手動檢查："
+        echo "   cd src/backend && npm run migrate -- --status"
+        exit 1
+    fi
+    # 帳本是空的但資料表已存在 → 尚未建立基準，直接跑會重跑含 DROP TABLE 的舊遷移
+    LEDGER_COUNT=$(cd src/backend && node -e "
+        const s=require('sqlite3').verbose();
+        const db=new s.Database('./database/ntuim.db', s.OPEN_READONLY);
+        db.get(\"SELECT COUNT(*) c FROM sqlite_master WHERE type='table' AND name='schema_migrations'\", (e,r)=>{
+            if (e || !r || r.c === 0) { console.log('0'); db.close(); return; }
+            db.get('SELECT COUNT(*) c FROM schema_migrations', (e2,r2)=>{ console.log(e2?'0':String(r2.c)); db.close(); });
+        });
+    " 2>/dev/null || echo "0")
+    if [ "$LEDGER_COUNT" = "0" ]; then
+        echo ""
+        echo "❌ 尚未建立遷移基準，已中止部署（網站維持原狀，未做任何變更）"
+        echo ""
+        echo "   這是第一次導入遷移執行器時的必要步驟。現有資料庫裡的舊遷移"
+        echo "   （其中含 DROP TABLE）早就人工套用過，直接執行會清空資料表。"
+        echo ""
+        echo "   請先執行一次，再重新部署："
+        echo "     cd src/backend && npm run migrate -- --baseline"
+        echo ""
+        exit 1
+    fi
+    echo "✅ 遷移基準已建立（已套用 $LEDGER_COUNT 個遷移）"
+fi
+
 # 安裝前端依賴
 echo "📦 安裝前端依賴..."
 npm install
@@ -109,6 +145,14 @@ if [ -f "database/ntuim.db" ]; then
     # 設定資料庫權限
     chmod 664 database/ntuim.db
     echo "✅ 資料庫權限設定完成"
+
+    # 套用資料庫遷移（在備份之後、重啟後端之前）
+    # ⚠️ 首次導入遷移執行器時，必須先在伺服器上手動執行一次：
+    #      cd ~/NTUIM/src/backend && npm run migrate -- --baseline
+    #    否則這裡會中止，因為舊遷移（含 DROP TABLE）早就人工套用過了
+    echo "🗃️ 套用資料庫遷移..."
+    npm run migrate
+    echo "✅ 資料庫遷移完成"
 else
     echo "⚠️ 警告：資料庫檔案不存在"
     echo "📝 如果是首次部署，請執行以下命令初始化資料庫："

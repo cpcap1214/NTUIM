@@ -65,11 +65,10 @@ const authService = {
         window.location.href = '/login';
     },
 
-    // 修改密碼
-    async changePassword(username, oldPassword, newPassword) {
+    // 修改密碼（需登入，身分由 token 決定，不再傳 username）
+    async changePassword(oldPassword, newPassword) {
         try {
             const response = await api.post('/auth/change-password', {
-                username,
                 oldPassword,
                 newPassword
             });
@@ -108,7 +107,7 @@ const authService = {
     // 檢查是否為管理員
     isAdmin() {
         const user = this.getCurrentUser();
-        return user?.role === 'admin' || user?.username === 'cpcap';
+        return user?.role === 'admin';
     },
 
     // 檢查是否已繳費

@@ -4,14 +4,16 @@ import { useAuth } from '../contexts/AuthContext';
 import { Box, Typography, Button, Paper } from '@mui/material';
 import { Lock, Payment, AdminPanelSettings } from '@mui/icons-material';
 
-const ProtectedRoute = ({ 
-    children, 
-    requireAuth = true, 
-    requirePaid = false, 
+const ProtectedRoute = ({
+    children,
+    requireAuth = true,
+    requirePaid = false,
     requireAdmin = false,
-    fallback = null 
+    requirePermission = null,
+    requireModule = null,
+    fallback = null
 }) => {
-    const { user, loading, hasPermission } = useAuth();
+    const { user, loading, hasPermission, isModuleAccessible, isModuleComingSoon } = useAuth();
     const location = useLocation();
 
     // 載入中
@@ -23,9 +25,52 @@ const ProtectedRoute = ({
         );
     }
 
+    // 模塊是否開放。這一關要放在登入檢查「之前」——未開放的功能，
+    // 對未登入者也該直接說「尚未開放」，而不是先叫他去登入、登入完才發現不能用。
+    if (requireModule && !isModuleAccessible(requireModule)) {
+        return fallback || (
+            <Box maxWidth="md" mx="auto" p={3}>
+                <Paper sx={{ p: 4, textAlign: 'center' }}>
+                    <Lock sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+                    <Typography variant="h5" gutterBottom>
+                        {isModuleComingSoon(requireModule) ? '即將推出' : '此功能尚未開放'}
+                    </Typography>
+                    <Typography color="textSecondary" paragraph>
+                        {isModuleComingSoon(requireModule)
+                            ? '這項功能正在準備中，敬請期待'
+                            : '你目前沒有使用這項功能的權限'}
+                    </Typography>
+                    <Button variant="contained" href="/" sx={{ mt: 2 }}>
+                        返回首頁
+                    </Button>
+                </Paper>
+            </Box>
+        );
+    }
+
     // 檢查登入要求
     if (requireAuth && !user) {
         return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+
+    // 檢查特定權限（新式權限 key，例如 'users.manage'）
+    if (requirePermission && !hasPermission(requirePermission)) {
+        return fallback || (
+            <Box maxWidth="md" mx="auto" p={3}>
+                <Paper sx={{ p: 4, textAlign: 'center' }}>
+                    <AdminPanelSettings sx={{ fontSize: 60, color: 'error.main', mb: 2 }} />
+                    <Typography variant="h5" gutterBottom>
+                        權限不足
+                    </Typography>
+                    <Typography color="textSecondary" paragraph>
+                        你的帳號沒有使用這項功能的權限
+                    </Typography>
+                    <Button variant="contained" href="/" sx={{ mt: 2 }}>
+                        返回首頁
+                    </Button>
+                </Paper>
+            </Box>
+        );
     }
 
     // 檢查管理員權限

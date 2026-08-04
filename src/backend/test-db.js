@@ -83,10 +83,11 @@ async function testDatabase() {
                 professor: '王教授',
                 year: 2024,
                 semester: '1',
-                overallRating: 4.5,
-                difficulty: 3,
-                workload: 3,
+                quality: 4.5,
+                difficulty: 2.5,
+                sweetness: 3,
                 usefulness: 5,
+                courseContent: '涵蓋資訊管理基礎理論與實務案例',
                 comment: '很棒的入門課程',
                 userId: testUser[0].id,
                 isAnonymous: false
@@ -94,7 +95,7 @@ async function testDatabase() {
         });
         console.log('✅ 課程評價建立/查詢成功');
         console.log(`   課程: ${review[0].courseCode}`);
-        console.log(`   整體評分: ${review[0].overallRating}/5\n`);
+        console.log(`   課程品質: ${review[0].quality}/5, 難易度: ${review[0].difficulty}/5, 給分高低: ${review[0].sweetness}/5, 實用性: ${review[0].usefulness}/5\n`);
 
         // 測試統計
         console.log('--- 資料庫統計 ---');

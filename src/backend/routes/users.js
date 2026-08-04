@@ -2,12 +2,13 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const { body, validationResult, query } = require('express-validator');
-const { User, Exam, CheatSheet, CourseReview } = require('../models');
-const { requireAdmin, requireOwnerOrAdmin } = require('../middleware/auth');
+const { User, Exam, CheatSheet, CourseReview, Role, UserRole } = require('../models');
+const { requirePermission, requireOwnerOrAdmin } = require('../middleware/auth');
+const permissionService = require('../services/permissionService');
 const { Op } = require('sequelize');
 
 // 取得使用者列表（管理員）
-router.get('/', requireAdmin, [
+router.get('/', requirePermission('users.manage'), [
     query('role').optional().isIn(['admin', 'member', 'user']),
     query('hasPaidFee').optional().isBoolean(),
     query('page').optional().isInt({ min: 1 }),
@@ -72,8 +73,15 @@ router.get('/profile', async (req, res) => {
             CourseReview.count({ where: { userId: req.user.id } })
         ]);
 
+        // 前端的權限判斷一律以後端解析結果為準，不再自己從 role 推導。
+        // authenticateToken 已經解析好掛在 req.user 上，這裡直接帶出去。
+        const modules = await permissionService.listModulesFor(req.user, req.permissions);
+
         res.json({
             ...user.toJSON(),
+            roles: req.user.roles || [],
+            permissions: req.user.permissions || [],
+            modules,
             stats: {
                 uploadedExams: stats[0],
                 uploadedCheatSheets: stats[1],
@@ -158,7 +166,7 @@ router.put('/profile', [
 });
 
 // 更新使用者會費狀態（管理員）
-router.patch('/:id/fee-status', requireAdmin, [
+router.patch('/:id/fee-status', requirePermission('users.manage'), [
     body('hasPaidFee').isBoolean().withMessage('請提供有效的繳費狀態')
 ], async (req, res) => {
     const errors = validationResult(req);
@@ -191,7 +199,7 @@ router.patch('/:id/fee-status', requireAdmin, [
 });
 
 // 更新使用者角色（管理員）
-router.patch('/:id/role', requireAdmin, [
+router.patch('/:id/role', requirePermission('users.manage'), [
     body('role').isIn(['admin', 'member', 'user']).withMessage('請提供有效的角色')
 ], async (req, res) => {
     const errors = validationResult(req);
@@ -231,8 +239,57 @@ router.patch('/:id/role', requireAdmin, [
     }
 });
 
+// 設定使用者的身分組（管理員）。一次帶入完整清單，前端用多選框操作。
+router.put('/:id/roles', requirePermission('users.manage'), [
+    body('roleIds').isArray().withMessage('請提供身分組清單')
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+        const user = await User.findByPk(req.params.id);
+        if (!user) return res.status(404).json({ error: '使用者不存在' });
+
+        const requested = await Role.findAll({ where: { id: req.body.roleIds } });
+
+        // 自動身分組（會員）的成員資格由繳費狀態推導，不可手動指派。
+        // 若允許手動加，它會在下一次繳費狀態變動時無聲消失——一張無法重現的客訴單。
+        const autoRole = requested.find((r) => r.isAuto);
+        if (autoRole) {
+            return res.status(400).json({
+                error: `「${autoRole.name}」是自動身分組，依繳費狀態自動授予，不可手動指派`
+            });
+        }
+
+        // 不可移除最後一位管理員
+        const adminRole = await Role.findOne({ where: { key: 'admin' } });
+        if (adminRole) {
+            const hadAdmin = await UserRole.findOne({ where: { userId: user.id, roleId: adminRole.id } });
+            const willHaveAdmin = req.body.roleIds.map(Number).includes(adminRole.id);
+            if (hadAdmin && !willHaveAdmin) {
+                const adminCount = await UserRole.count({ where: { roleId: adminRole.id } });
+                if (adminCount <= 1) {
+                    return res.status(400).json({ error: '無法移除最後一個管理員' });
+                }
+            }
+        }
+
+        await UserRole.destroy({ where: { userId: user.id } });
+        for (const role of requested.filter((r) => !r.isAuto)) {
+            await UserRole.create({ userId: user.id, roleId: role.id, grantedBy: req.user.id });
+        }
+
+        res.json({ message: '身分組已更新' });
+    } catch (error) {
+        console.error('更新使用者身分組錯誤:', error);
+        res.status(500).json({ error: '更新身分組失敗' });
+    }
+});
+
 // 刪除使用者（管理員）
-router.delete('/:id', requireAdmin, async (req, res) => {
+router.delete('/:id', requirePermission('users.manage'), async (req, res) => {
     try {
         const user = await User.findByPk(req.params.id);
 
@@ -286,7 +343,7 @@ router.get('/:id/contributions', async (req, res) => {
         // 取得課程評價
         const reviews = await CourseReview.findAll({
             where: { userId: userId },
-            attributes: ['id', 'courseCode', 'courseName', 'professor', 'overallRating', 'created_at'],
+            attributes: ['id', 'courseCode', 'courseName', 'professor', 'quality', 'difficulty', 'sweetness', 'usefulness', 'created_at'],
             order: [['created_at', 'DESC']],
             limit: 10
         });

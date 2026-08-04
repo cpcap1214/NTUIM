@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
 const { User } = require('../models');
-const { generateToken } = require('../middleware/auth');
+const { generateToken, authenticateToken } = require('../middleware/auth');
 const { checkStudentPaidFee } = require('../services/feeStatusService');
 
 // 註冊
@@ -72,7 +72,8 @@ router.post('/register', [
                 email: user.email,
                 fullName: user.fullName,
                 role: user.role,
-                hasPaidFee: user.hasPaidFee
+                hasPaidFee: user.hasPaidFee,
+                canManagePayouts: user.canManagePayouts
             }
         });
     } catch (error) {
@@ -127,7 +128,8 @@ router.post('/login', [
                 email: user.email,
                 fullName: user.fullName,
                 role: user.role,
-                hasPaidFee: user.hasPaidFee
+                hasPaidFee: user.hasPaidFee,
+                canManagePayouts: user.canManagePayouts
             }
         });
     } catch (error) {
@@ -136,9 +138,13 @@ router.post('/login', [
     }
 });
 
-// 修改密碼
-router.post('/change-password', [
-    body('username').notEmpty(),
+// 修改密碼（需登入，只能改自己的）
+//
+// 原本這個端點完全不需要認證：任何人帶著 username + oldPassword 就能改任何帳號的密碼，
+// 而且「使用者不存在」(404) 與「舊密碼錯誤」(401) 回應不同，等於一個未認證的
+// 帳號枚舉 + 暴力破解介面，加上當時全站沒有任何速率限制。
+// 現在改為從 token 取得身分（不再信任 body 裡的 username），並套用 authLimiter。
+router.post('/change-password', authenticateToken, [
     body('oldPassword').notEmpty(),
     body('newPassword').isLength({ min: 6 }).withMessage('新密碼至少6個字元')
 ], async (req, res) => {
@@ -147,17 +153,10 @@ router.post('/change-password', [
         return res.status(400).json({ errors: errors.array() });
     }
 
-    const { username, oldPassword, newPassword } = req.body;
+    const { oldPassword, newPassword } = req.body;
 
     try {
-        const user = await User.findOne({
-            where: {
-                [require('sequelize').Op.or]: [
-                    { studentId: username },
-                    { username: username }
-                ]
-            }
-        });
+        const user = await User.findByPk(req.user.id);
 
         if (!user) {
             return res.status(404).json({ error: '使用者不存在' });

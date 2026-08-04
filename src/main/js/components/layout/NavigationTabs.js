@@ -1,34 +1,48 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Tabs, Tab } from '@mui/material';
+import { Tabs, Tab, Chip, Stack } from '@mui/material';
+import { useAuth } from '../../contexts/AuthContext';
 import { NAVIGATION_ITEMS } from '../../../resources/config/constants';
 
+// Tab 的 value 一律用 path，不用陣列索引。
+// 原本是用 findIndex 取索引當 value，但導覽項目一旦依模塊開放狀態被過濾，
+// 索引就會跟 Header 裡另一份迴圈錯位、選到錯的分頁。
 const NavigationTabs = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { isModuleVisible, isModuleComingSoon } = useAuth();
 
-  const currentTabIndex = NAVIGATION_ITEMS.findIndex((item) => item.path === location.pathname);
-
-  const handleTabChange = (_, newValue) => {
-    const selectedItem = NAVIGATION_ITEMS[newValue];
-    if (selectedItem) {
-      navigate(selectedItem.path);
-    }
-  };
+  const visibleItems = NAVIGATION_ITEMS.filter((item) => isModuleVisible(item.moduleKey));
+  const currentPath = visibleItems.some((item) => item.path === location.pathname)
+    ? location.pathname
+    : false;
 
   return (
     <Tabs
-      value={currentTabIndex >= 0 ? currentTabIndex : false}
-      onChange={handleTabChange}
+      value={currentPath}
+      onChange={(_, newPath) => navigate(newPath)}
       aria-label="網站導覽"
       sx={{ minHeight: 48 }}
     >
-      {NAVIGATION_ITEMS.map((item, index) => (
+      {visibleItems.map((item) => (
         <Tab
           key={item.id}
-          label={item.label}
-          id={`nav-tab-${index}`}
-          aria-controls={`nav-tabpanel-${index}`}
+          value={item.path}
+          label={
+            isModuleComingSoon(item.moduleKey) ? (
+              <Stack direction="row" spacing={0.75} alignItems="center">
+                <span>{item.label}</span>
+                <Chip
+                  label="即將推出"
+                  size="small"
+                  color="warning"
+                  sx={{ height: 18, fontSize: '0.65rem' }}
+                />
+              </Stack>
+            ) : (
+              item.label
+            )
+          }
           sx={{ minWidth: 'auto', px: 2 }}
         />
       ))}

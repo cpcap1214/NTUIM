@@ -33,7 +33,7 @@ import {
   Edit as EditIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import { API_BASE_URL, UPLOAD_BASE_URL } from '../services/api';
+import { API_BASE_URL } from '../services/api';
 import examService from '../services/examService';
 import EditExamDialog from '../components/EditExamDialog';
 
@@ -161,7 +161,11 @@ const ExamManagePage = () => {
   };
 
   const handlePreview = (examId) => {
-    window.open(`${UPLOAD_BASE_URL}/uploads/exams/${examId}/preview`, '_blank');
+    // 原本指向 /uploads/exams/{id}/preview，那是磁碟上不存在的路徑（一直是 404）。
+    // 改用有認證的 API 端點，跟 ExamArchivePage 一致；token 走 query string 是因為
+    // window.open 沒辦法帶 Authorization 標頭。
+    const token = localStorage.getItem('token');
+    window.open(`${API_BASE_URL}/exams/${examId}/preview/question?token=${token}`, '_blank');
   };
 
   const handleDownload = async (examId, filename) => {

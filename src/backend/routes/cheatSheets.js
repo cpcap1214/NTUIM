@@ -4,11 +4,9 @@ const path = require('path');
 const fs = require('fs');
 const { body, validationResult, query } = require('express-validator');
 const { CheatSheet, User } = require('../models');
-const { authenticateToken, requirePaidMember, requireAdmin } = require('../middleware/auth');
+const { authenticateToken, requirePermission, isOwnerOrHasPermission } = require('../middleware/auth');
 const { upload, adminUpload, handleUploadError } = require('../middleware/upload');
 const { Op } = require('sequelize');
-
-const hasAdminAccess = (user) => user?.role === 'admin' || user?.username === 'cpcap';
 
 // 取得大抄列表（公開）
 router.get('/', [
@@ -41,9 +39,14 @@ router.get('/', [
             ];
         }
 
-        // 查詢大抄
+        // 查詢大抄。欄位白名單的理由同 exams.js：這是公開端點，
+        // file_path 不該離開伺服器，取檔一律走有認證的 preview / download 端點。
         const { count, rows } = await CheatSheet.findAndCountAll({
             where,
+            attributes: [
+                'id', 'courseCode', 'courseName', 'title', 'description', 'tags',
+                'fileName', 'fileSize', 'uploadedBy', 'downloadCount', 'created_at'
+            ],
             include: [{
                 model: User,
                 as: 'uploader',
@@ -72,6 +75,10 @@ router.get('/', [
 router.get('/:id', async (req, res) => {
     try {
         const cheatSheet = await CheatSheet.findByPk(req.params.id, {
+            attributes: [
+                'id', 'courseCode', 'courseName', 'title', 'description', 'tags',
+                'fileName', 'fileSize', 'uploadedBy', 'downloadCount', 'created_at'
+            ],
             include: [{
                 model: User,
                 as: 'uploader',
@@ -93,7 +100,7 @@ router.get('/:id', async (req, res) => {
 // 上傳大抄（只有管理員可以上傳）
 router.post('/upload',
     authenticateToken,
-    requireAdmin,
+    requirePermission('cheatSheets.upload'),
     adminUpload.single('file'),
     handleUploadError,
     [
@@ -164,13 +171,7 @@ router.post('/upload',
 );
 
 // 預覽大抄（只需登入）
-router.get('/:id/preview', (req, res, next) => {
-    // 支援 query parameter 的 token
-    if (req.query.token && !req.headers.authorization) {
-        req.headers.authorization = `Bearer ${req.query.token}`;
-    }
-    next();
-}, authenticateToken, async (req, res) => {
+router.get('/:id/preview', authenticateToken, async (req, res) => {
     try {
         const cheatSheet = await CheatSheet.findByPk(req.params.id);
         
@@ -258,7 +259,7 @@ router.put('/:id',
             }
 
             // 檢查權限
-            if (cheatSheet.uploadedBy !== req.user.id && !hasAdminAccess(req.user)) {
+            if (!isOwnerOrHasPermission(req, cheatSheet.uploadedBy, 'cheatSheets.manage')) {
                 return res.status(403).json({ error: '無權修改此大抄' });
             }
 
@@ -301,7 +302,7 @@ router.put('/:id/file',
             }
 
             // 檢查權限
-            if (cheatSheet.uploadedBy !== req.user.id && !hasAdminAccess(req.user)) {
+            if (!isOwnerOrHasPermission(req, cheatSheet.uploadedBy, 'cheatSheets.manage')) {
                 // 清理上傳的檔案
                 if (req.file && fs.existsSync(req.file.path)) {
                     fs.unlinkSync(req.file.path);
@@ -351,7 +352,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         }
 
         // 檢查權限
-        if (cheatSheet.uploadedBy !== req.user.id && !hasAdminAccess(req.user)) {
+        if (!isOwnerOrHasPermission(req, cheatSheet.uploadedBy, 'cheatSheets.manage')) {
             return res.status(403).json({ error: '無權刪除此大抄' });
         }
 

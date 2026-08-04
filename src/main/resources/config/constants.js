@@ -6,6 +6,8 @@ export const APP_CONFIG = {
   version: '1.6.7',
 };
 
+// moduleKey 對應後端 modules 表的 key。有 moduleKey 的項目會受模塊開放狀態影響
+// （未開放時標示「即將推出」或整個隱藏），沒有 moduleKey 的項目一律顯示。
 export const NAVIGATION_ITEMS = [
   {
     id: 'home',
@@ -18,18 +20,21 @@ export const NAVIGATION_ITEMS = [
     label: '課程評價',
     path: '/course-reviews',
     icon: 'rate_review',
+    moduleKey: 'courseReviews',
   },
   {
     id: 'exam-archive',
     label: '考古題',
     path: '/exam-archive',
     icon: 'quiz',
+    moduleKey: 'exams',
   },
   {
     id: 'cheat-sheets',
     label: '大抄',
     path: '/cheat-sheets',
     icon: 'description',
+    moduleKey: 'cheatSheets',
   },
   {
     id: 'about',

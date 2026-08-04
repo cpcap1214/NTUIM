@@ -2,7 +2,9 @@ import axios from 'axios';
 
 // API 基礎設定 - 使用同源 /api（避免 CORS）
 export const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
-export const UPLOAD_BASE_URL = API_BASE_URL.replace('/api', '');
+// 註：原本這裡還有 UPLOAD_BASE_URL，用來組出 /uploads/... 的直連網址。
+// 該靜態服務已移除（它讓任何人不必登入就能下載考古題，繞過付費牆），
+// 檔案一律走有認證的 API 端點取得，因此這個常數也一併刪掉，避免有人再組出直連路徑。
 
 // 建立 axios 實例
 const api = axios.create({

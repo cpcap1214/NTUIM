@@ -4,11 +4,9 @@ const path = require('path');
 const fs = require('fs');
 const { body, validationResult, query } = require('express-validator');
 const { Exam, User } = require('../models');
-const { authenticateToken, requirePaidMember, requireAdmin } = require('../middleware/auth');
+const { authenticateToken, requirePermission, isOwnerOrHasPermission } = require('../middleware/auth');
 const { upload, adminUpload, handleUploadError } = require('../middleware/upload');
 const { Op } = require('sequelize');
-
-const hasAdminAccess = (user) => user?.role === 'admin' || user?.username === 'cpcap';
 
 // 取得考古題列表（公開）
 router.get('/', [
@@ -41,9 +39,18 @@ router.get('/', [
         if (semester) where.semester = semester;
         if (examType) where.examType = examType;
 
-        // 查詢考古題
+        // 查詢考古題。
+        // ⚠️ 必須明確列出欄位：這是公開端點，先前沒有白名單、直接回傳整列，
+        // 連 question_file_path / answer_file_path 都送出去。搭配當時公開的
+        // /uploads 靜態服務，任何人都能列出檔案路徑再直接抓檔，完全繞過付費牆。
+        // 檔案路徑一律不出伺服器，取檔只能走有認證的 preview / download 端點。
         const { count, rows } = await Exam.findAndCountAll({
             where,
+            attributes: [
+                'id', 'courseCode', 'courseName', 'professor', 'year', 'semester',
+                'examType', 'examAttempt', 'questionFileName', 'questionFileSize',
+                'answerFileName', 'answerFileSize', 'uploadedBy', 'downloadCount', 'created_at'
+            ],
             include: [{
                 model: User,
                 as: 'uploader',
@@ -71,7 +78,7 @@ router.get('/', [
 // 上傳考古題（只有管理員可以上傳）
 router.post('/upload', 
     authenticateToken,
-    requireAdmin,
+    requirePermission('exams.upload'),
     adminUpload.fields([
         { name: 'questionFile', maxCount: 1 },
         { name: 'answerFile', maxCount: 1 }
@@ -164,13 +171,7 @@ router.post('/upload',
 
 // 下載考古題（需登入且繳費）
 // 預覽考古題題目（需要繳費）
-router.get('/:id/preview/question', (req, res, next) => {
-    // 支援 query parameter 的 token
-    if (req.query.token && !req.headers.authorization) {
-        req.headers.authorization = `Bearer ${req.query.token}`;
-    }
-    next();
-}, authenticateToken, requirePaidMember, async (req, res) => {
+router.get('/:id/preview/question', authenticateToken, requirePermission('exams.download'), async (req, res) => {
     try {
         const exam = await Exam.findByPk(req.params.id);
         
@@ -203,13 +204,7 @@ router.get('/:id/preview/question', (req, res, next) => {
 });
 
 // 預覽考古題答案（需要繳費）
-router.get('/:id/preview/answer', (req, res, next) => {
-    // 支援 query parameter 的 token
-    if (req.query.token && !req.headers.authorization) {
-        req.headers.authorization = `Bearer ${req.query.token}`;
-    }
-    next();
-}, authenticateToken, requirePaidMember, async (req, res) => {
+router.get('/:id/preview/answer', authenticateToken, requirePermission('exams.download'), async (req, res) => {
     try {
         const exam = await Exam.findByPk(req.params.id);
         
@@ -246,7 +241,7 @@ router.get('/:id/preview/answer', (req, res, next) => {
 });
 
 // 下載考古題題目
-router.get('/:id/download/question', authenticateToken, requirePaidMember, async (req, res) => {
+router.get('/:id/download/question', authenticateToken, requirePermission('exams.download'), async (req, res) => {
     try {
         const exam = await Exam.findByPk(req.params.id);
 
@@ -278,7 +273,7 @@ router.get('/:id/download/question', authenticateToken, requirePaidMember, async
 });
 
 // 下載考古題答案
-router.get('/:id/download/answer', authenticateToken, requirePaidMember, async (req, res) => {
+router.get('/:id/download/answer', authenticateToken, requirePermission('exams.download'), async (req, res) => {
     try {
         const exam = await Exam.findByPk(req.params.id);
 
@@ -339,7 +334,7 @@ router.put('/:id',
             }
 
             // 檢查權限
-            if (exam.uploadedBy !== req.user.id && !hasAdminAccess(req.user)) {
+            if (!isOwnerOrHasPermission(req, exam.uploadedBy, 'exams.manage')) {
                 return res.status(403).json({ error: '無權修改此考古題' });
             }
 
@@ -398,7 +393,7 @@ router.put('/:id/files',
             }
 
             // 檢查權限
-            if (exam.uploadedBy !== req.user.id && !hasAdminAccess(req.user)) {
+            if (!isOwnerOrHasPermission(req, exam.uploadedBy, 'exams.manage')) {
                 // 清理上傳的檔案
                 if (req.files) {
                     Object.values(req.files).flat().forEach(file => {
@@ -478,7 +473,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         }
 
         // 檢查權限
-        if (exam.uploadedBy !== req.user.id && !hasAdminAccess(req.user)) {
+        if (!isOwnerOrHasPermission(req, exam.uploadedBy, 'exams.manage')) {
             return res.status(403).json({ error: '無權刪除此考古題' });
         }
 

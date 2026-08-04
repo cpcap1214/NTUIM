@@ -74,6 +74,13 @@ tools/
 docs/
 
 src/backend/database/ntuim.db
+# SQLite 啟用 WAL 模式後會產生這兩個附屬檔。它們記錄的是「尚未寫回主檔的交易」，
+# 與特定的 .db 檔綁定；推上版控再拉到別台機器，會讓該機的 SQLite 狀態錯亂。
+src/backend/database/*.db-shm
+src/backend/database/*.db-wal
+# 手動備份與遷移前的快照
+src/backend/database/*.db.bak.*
+src/backend/database/backups/
 
 # 使用者上傳/seed 假資料
 uploads/

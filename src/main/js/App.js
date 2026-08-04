@@ -16,6 +16,7 @@ import ExamManagePage from './pages/ExamManagePage';
 import CheatSheetManagePage from './pages/CheatSheetManagePage';
 import ChangelogPage from './pages/ChangelogPage';
 import ExamUploadPage from './pages/ExamUploadPage';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
@@ -27,9 +28,33 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
-              <Route path="/course-reviews" element={<CourseReviewPage />} />
-              <Route path="/exam-archive" element={<ExamArchivePage />} />
-              <Route path="/cheat-sheets" element={<CheatSheetPage />} />
+              {/* 模塊守衛：未開放時直接顯示「即將推出」，不必等頁面自己去打 API 才發現。
+                  requireAuth={false} 是因為這三個模塊本身允許未登入瀏覽，
+                  真正的登入/繳費限制仍由各頁面與後端各自把關。 */}
+              <Route
+                path="/course-reviews"
+                element={
+                  <ProtectedRoute requireAuth={false} requireModule="courseReviews">
+                    <CourseReviewPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/exam-archive"
+                element={
+                  <ProtectedRoute requireAuth={false} requireModule="exams">
+                    <ExamArchivePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/cheat-sheets"
+                element={
+                  <ProtectedRoute requireAuth={false} requireModule="cheatSheets">
+                    <CheatSheetPage />
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/about" element={<AboutUsPage />} />
               <Route path="/changelog" element={<ChangelogPage />} />
               <Route path="/upload-exam" element={<ExamUploadPage />} />
