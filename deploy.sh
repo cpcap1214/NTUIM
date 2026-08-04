@@ -153,6 +153,28 @@ if [ -f "database/ntuim.db" ]; then
     echo "🗃️ 套用資料庫遷移..."
     npm run migrate
     echo "✅ 資料庫遷移完成"
+
+    # 事後檢查：確認權限系統的資料表真的存在。
+    # 光看 schema_migrations 帳本是不夠的——帳本可能因為 --baseline 標記過頭而
+    # 顯示「全部已套用」，實際上建表的遷移根本沒跑過，後端會在啟動後才全站報錯。
+    echo "🔍 驗證權限資料表..."
+    RBAC_TABLES=$(node -e "
+        const s=require('sqlite3').verbose();
+        const db=new s.Database('./database/ntuim.db', s.OPEN_READONLY);
+        db.get(\"SELECT COUNT(*) c FROM sqlite_master WHERE type='table' AND name IN ('roles','role_permissions','user_roles','modules','module_access')\",
+            (e,r)=>{ console.log(e?'0':String(r.c)); db.close(); });
+    " 2>/dev/null || echo "0")
+    if [ "$RBAC_TABLES" != "5" ]; then
+        echo ""
+        echo "❌ 權限資料表不完整（找到 $RBAC_TABLES / 5），已中止，不會重啟後端"
+        echo "   舊的後端仍在執行，網站維持可用。"
+        echo ""
+        echo "   最常見原因：--baseline 把尚未執行的遷移一併標記成已套用。"
+        echo "   檢查：npm run migrate -- --status"
+        echo ""
+        exit 1
+    fi
+    echo "✅ 權限資料表齊全"
 else
     echo "⚠️ 警告：資料庫檔案不存在"
     echo "📝 如果是首次部署，請執行以下命令初始化資料庫："

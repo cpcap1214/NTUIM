@@ -9,7 +9,8 @@
 // 用法（在 src/backend 目錄下）：
 //   npm run migrate                指令：套用所有尚未執行的遷移
 //   npm run migrate -- --status    只列出已套用/待套用，不做任何事
-//   npm run migrate -- --baseline  把目前 migrations/ 內的檔案「標記為已套用」但不執行
+//   npm run migrate -- --baseline  把「執行器誕生前就人工跑過的舊遷移」標記為已套用但不執行
+//                                  （只涵蓋下方 LEGACY_MIGRATIONS，之後仍要跑一次 npm run migrate）
 //
 // ⚠️ --baseline 的用途與時機：
 // 既有的資料庫（包含正式機）裡，001~004 這幾個遷移「早就人工跑過了」，
@@ -23,6 +24,25 @@ const sqlite3 = require('sqlite3').verbose();
 
 const DB_PATH = path.join(__dirname, 'ntuim.db');
 const MIGRATIONS_DIR = path.join(__dirname, 'migrations');
+
+// --baseline 會標記為「已套用」但不執行的遷移。
+//
+// 收錄的判準不是「檔案比較舊」，而是「重跑會不會毀掉資料」：
+// 001 與 002 內含 DROP TABLE，會把 exams / course_reviews 整張刪掉重建。
+// 那是合法 SQL、會成功提交，不會有任何錯誤讓你察覺資料已經沒了，
+// 所以只有它們必須靠帳本擋下。
+//
+// 其餘遷移一律讓它真的跑過一次，不要用「舊不舊」來猜：
+//   003 是 CREATE TABLE IF NOT EXISTS  → 已存在就是 no-op
+//   004 是 ALTER TABLE ADD COLUMN      → 重複會明確報錯並整檔回滾，不會毀資料
+// 早期版本把 003/004 也列進來，結果正式機上從沒執行過的 004 被跳過，
+// users.can_manage_payouts 不存在，連帶讓 007 回填失敗。
+//
+// 新增遷移時不要加進這裡，除非它同樣不可重跑。
+const LEGACY_MIGRATIONS = [
+    '001_update_exams_table.sql',
+    '002_update_course_reviews_table.sql',
+];
 
 const openDb = () => new sqlite3.Database(DB_PATH);
 
@@ -91,16 +111,35 @@ async function showStatus(db) {
 async function baseline(db) {
     const files = listMigrationFiles();
     if (files.length === 0) {
-        console.log('migrations/ 目錄下沒有任何 .sql 檔，無需建立基準。');
+        console.log('migrations/ 目錄下沒有任何遷移檔，無需建立基準。');
         return;
     }
+
+    const missing = LEGACY_MIGRATIONS.filter((f) => !files.includes(f));
+    if (missing.length > 0) {
+        console.warn(`⚠️ 舊遷移清單中有檔案不存在於 migrations/：${missing.join(', ')}`);
+    }
+
     let marked = 0;
-    for (const file of files) {
+    for (const file of LEGACY_MIGRATIONS) {
+        if (!files.includes(file)) continue;
         const result = await run(db, 'INSERT OR IGNORE INTO schema_migrations (filename) VALUES (?)', [file]);
         if (result.changes > 0) marked += 1;
     }
-    console.log(`已建立基準：標記 ${marked} 個遷移為已套用（未執行任何 SQL），${files.length - marked} 個原本就已記錄。`);
-    console.log('之後執行 npm run migrate 只會套用新增的遷移。');
+
+    const applied = await getApplied(db);
+    const pending = files.filter((f) => !applied.has(f));
+
+    console.log(`已建立基準：標記 ${marked} 個舊遷移為已套用（未執行任何 SQL）。`);
+    console.log('');
+    if (pending.length === 0) {
+        console.log('目前沒有待套用的遷移。');
+    } else {
+        console.log(`⚠️ 仍有 ${pending.length} 個遷移「尚未執行」，基準不會幫你跑它們：`);
+        pending.forEach((f) => console.log(`     - ${f}`));
+        console.log('');
+        console.log('   請接著執行：npm run migrate');
+    }
 }
 
 // 安全防線：既有資料庫 + 空白帳本 = 幾乎確定是「還沒建立基準」。
