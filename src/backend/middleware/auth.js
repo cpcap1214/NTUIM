@@ -8,6 +8,101 @@ const permissionService = require('../services/permissionService');
 const hasAdminAccess = (user) => user?.role === 'admin';
 
 
+// ---------------------------------------------------------------------------
+// 身分預覽（管理台的「以身分組檢視」/「以成員檢視」）
+//
+// 目的：驗證權限與模塊設定是否真的正確。純前端的預覽只能驗證「選單有沒有藏對」，
+// 驗證不到「API 有沒有擋對」——而後者才是最可能出錯的地方。
+//
+// 這等於是受控的身分冒用，所以有三道防線，缺一不可：
+//   1. 只有持有 '*' 的管理員能發起（見 PREVIEW_REQUIRED_PERMISSION）
+//   2. 強制唯讀：預覽期間所有寫入方法一律 403，不可能以他人身分改到任何資料
+//   3. 權限與發起者取交集，預覽不可能成為提權管道（見 intersectResolved）
+//
+// 真實身分保留在 req.realUser，稽核用。
+// ---------------------------------------------------------------------------
+const PREVIEW_HEADER = 'x-preview-as';
+const PREVIEW_REQUIRED_PERMISSION = '*';
+const READ_ONLY_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+// 回傳 true 表示已經送出回應，呼叫端必須直接 return
+const applyPreview = async (req, res) => {
+    const raw = req.headers[PREVIEW_HEADER];
+    if (!raw || !req.user) return false;
+
+    const [kind, rawId] = String(raw).split(':');
+    const id = parseInt(rawId, 10);
+    if (!['user', 'role'].includes(kind) || !Number.isInteger(id)) {
+        res.status(400).json({ error: '預覽目標格式錯誤', errorCode: 'PREVIEW_BAD_TARGET' });
+        return true;
+    }
+
+    // 防線 1：發起資格
+    if (!permissionService.hasPermission(req.permissions, PREVIEW_REQUIRED_PERMISSION)) {
+        res.status(403).json({ error: '沒有使用身分預覽的權限', errorCode: 'PREVIEW_FORBIDDEN' });
+        return true;
+    }
+
+    // 防線 2：唯讀。放在解析目標之前，這樣連「預覽目標不存在」都不會洩漏給寫入請求
+    if (!READ_ONLY_METHODS.has(req.method)) {
+        res.status(403).json({
+            error: '預覽模式為唯讀，請先停用檢視再操作',
+            errorCode: 'PREVIEW_READ_ONLY'
+        });
+        return true;
+    }
+
+    const caller = req.permissions;
+    let previewUser;
+    let previewResolved;
+    let label;
+
+    if (kind === 'role') {
+        const found = await permissionService.resolveForRole(id);
+        if (!found) {
+            res.status(404).json({ error: '身分組不存在', errorCode: 'PREVIEW_TARGET_MISSING' });
+            return true;
+        }
+        // 假想使用者：沒有 id，所以「資源擁有者」類的檢查一律不成立，正是我們要的
+        previewUser = {
+            id: null,
+            username: `(${found.role.name})`,
+            email: null,
+            role: found.role.key === 'admin' ? 'admin' : 'user',
+            // 「會員」是依繳費狀態推導的，單獨預覽該身分組時要讓它成立
+            hasPaidFee: found.role.key === 'member',
+            canManagePayouts: false
+        };
+        previewResolved = found.resolved;
+        label = `身分組「${found.role.name}」`;
+    } else {
+        const target = await User.findByPk(id, {
+            attributes: ['id', 'username', 'email', 'role', 'hasPaidFee', 'canManagePayouts']
+        });
+        if (!target) {
+            res.status(404).json({ error: '使用者不存在', errorCode: 'PREVIEW_TARGET_MISSING' });
+            return true;
+        }
+        previewUser = target.toJSON();
+        previewResolved = await permissionService.resolve(previewUser);
+        label = `使用者「${target.username}」`;
+    }
+
+    // 防線 3：與發起者取交集
+    const effective = permissionService.intersectResolved(previewResolved, caller);
+
+    req.realUser = req.user;
+    req.user = previewUser;
+    req.user.roles = effective.roles;
+    req.user.permissions = effective.permissions;
+    req.user.rawPermissions = effective.rawPermissions;
+    req.permissions = effective;
+    req.preview = { kind, id, label };
+
+    console.log(`[身分預覽] ${req.realUser.username}(id=${req.realUser.id}) 以 ${label} 檢視 ${req.method} ${req.originalUrl}`);
+    return false;
+};
+
 // JWT 認證中間件
 const authenticateToken = async (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -47,14 +142,24 @@ const authenticateToken = async (req, res, next) => {
                 `舊(role='admin')=${hasAdminAccess(req.user)} 新(身分組)=${resolved.isAdmin}`
             );
         }
-
-        next();
     } catch (error) {
         if (error.name === 'TokenExpiredError') {
             return res.status(401).json({ error: '認證令牌已過期' });
         }
         return res.status(403).json({ error: '無效的認證令牌' });
     }
+
+    // 預覽刻意放在上面的 try/catch 之外：它有自己的錯誤語意，
+    // 混進去的話，一個資料庫錯誤會被誤報成「無效的認證令牌」，
+    // 前端收到 403 又會照 api.js 的規則把使用者登出——完全找不到原因。
+    try {
+        if (await applyPreview(req, res)) return;
+    } catch (error) {
+        console.error('身分預覽失敗:', error);
+        return res.status(500).json({ error: '身分預覽失敗', errorCode: 'PREVIEW_ERROR' });
+    }
+
+    next();
 };
 
 // 把 ?token= 轉成 Authorization 標頭。
@@ -92,6 +197,16 @@ const optionalAuth = async (req, res, next) => {
         // 過期或無效的 token 一律視同未登入，不在這裡回錯——
         // 這些是公開端點，匿名本來就該能用
     }
+
+    // 同 authenticateToken：預覽的錯誤不能被上面那個「一律當成匿名」的 catch 吃掉，
+    // 否則預覽失敗時會靜靜地以你自己的身分回應，看起來像預覽沒生效
+    try {
+        if (await applyPreview(req, res)) return;
+    } catch (error) {
+        console.error('身分預覽失敗:', error);
+        return res.status(500).json({ error: '身分預覽失敗', errorCode: 'PREVIEW_ERROR' });
+    }
+
     next();
 };
 

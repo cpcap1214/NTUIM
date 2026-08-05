@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import authService from '../services/authService';
 import userService from '../services/userService';
 import moduleService from '../services/moduleService';
+import { getPreviewTarget, setPreviewTarget } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -19,10 +20,20 @@ export const AuthProvider = ({ children }) => {
     // 模塊開放狀態。獨立於 user 之外載入，因為未登入的訪客同樣需要它來決定導覽列內容
     const [modules, setModules] = useState({});
 
+    // 身分預覽狀態。頁面重新整理後要能接續（目標存在 sessionStorage），
+    // 否則畫面會停在別人的權限下卻沒有橫幅可以退出。
+    const [preview, setPreview] = useState(() => {
+        const raw = getPreviewTarget();
+        if (!raw) return null;
+        const [kind, id] = raw.split(':');
+        return { kind, id: Number(id), label: null };
+    });
+
     const syncUserProfile = async () => {
         const profile = await userService.getProfile();
         setUser(profile);
-        authService.setCurrentUser(profile);
+        // 預覽中拿到的是「別人的」資料，不可寫進 localStorage 蓋掉你自己的快取
+        if (!getPreviewTarget()) authService.setCurrentUser(profile);
         if (profile?.modules) setModules(profile.modules);
         return profile;
     };
@@ -160,6 +171,29 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // 以某個身分組或某位成員的身分檢視全站。
+    // 後端會改用對方的權限解析（含 API 回應），所以這不只是介面上的模擬；
+    // 預覽期間一律唯讀，任何寫入請求都會被後端以 403 擋下。
+    const startPreview = async (kind, id, label) => {
+        setPreviewTarget(`${kind}:${id}`);
+        setPreview({ kind, id, label });
+        try {
+            await Promise.all([syncUserProfile(), loadModules()]);
+        } catch (error) {
+            // 失敗就退回原本身分，否則會卡在「標頭已送出但權限沒換」的半吊子狀態
+            setPreviewTarget(null);
+            setPreview(null);
+            await Promise.all([syncUserProfile().catch(() => {}), loadModules()]);
+            throw error;
+        }
+    };
+
+    const stopPreview = async () => {
+        setPreviewTarget(null);
+        setPreview(null);
+        await Promise.all([syncUserProfile().catch(() => {}), loadModules()]);
+    };
+
     // 更新使用者資料
     const updateUser = (userData) => {
         const updatedUser = { ...user, ...userData };
@@ -241,6 +275,11 @@ export const AuthProvider = ({ children }) => {
         isModuleVisible,
         isModuleAccessible,
         isModuleComingSoon,
+        // 身分預覽
+        preview,
+        isPreviewing: !!preview,
+        startPreview,
+        stopPreview,
         // 便利方法
         isAuthenticated: !!user,
         isAdmin: isAdminUser,

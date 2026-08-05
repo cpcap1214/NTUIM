@@ -58,6 +58,26 @@ router.get('/', requirePermission('users.manage'), [
 // 取得個人資料
 router.get('/profile', async (req, res) => {
     try {
+        // 身分組預覽的是一個假想使用者，沒有 id，查資料庫必然落空。
+        // 不特別處理的話這裡會回 404，而前端 AuthContext 收到 404 會清掉登入資料——
+        // 按下「以身分組檢視」的結果會變成把自己登出。
+        if (req.preview?.kind === 'role') {
+            const modules = await permissionService.listModulesFor(req.user, req.permissions);
+            return res.json({
+                id: null,
+                username: req.user.username,
+                email: null,
+                fullName: req.user.username,
+                studentId: null,
+                role: req.user.role,
+                hasPaidFee: req.user.hasPaidFee,
+                roles: req.user.roles || [],
+                permissions: req.user.permissions || [],
+                modules,
+                stats: { uploadedExams: 0, uploadedCheatSheets: 0, reviews: 0 }
+            });
+        }
+
         const user = await User.findByPk(req.user.id, {
             attributes: { exclude: ['passwordHash'] }
         });

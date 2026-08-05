@@ -15,12 +15,29 @@ const api = axios.create({
     }
 });
 
+// 身分預覽目標（管理台的「以身分組檢視」/「以成員檢視」）。
+// 用 sessionStorage 而非 localStorage：預覽是臨時的除錯狀態，關掉分頁就該結束，
+// 不該跨瀏覽器工作階段留存，也不該影響同時開著的其他分頁。
+const PREVIEW_KEY = 'previewAs';
+
+export const getPreviewTarget = () => sessionStorage.getItem(PREVIEW_KEY);
+
+export const setPreviewTarget = (target) => {
+    if (target) sessionStorage.setItem(PREVIEW_KEY, target);
+    else sessionStorage.removeItem(PREVIEW_KEY);
+};
+
 // 請求攔截器 - 自動加入認證 token
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
+        }
+        // 預覽期間每個請求都帶上目標，後端據此改用對方的權限解析
+        const preview = getPreviewTarget();
+        if (preview) {
+            config.headers['X-Preview-As'] = preview;
         }
         return config;
     },

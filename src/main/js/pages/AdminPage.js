@@ -84,7 +84,7 @@ const CONSOLE_PERMISSIONS = Object.keys(PERMISSION_TO_TAB);
 const AdminPage = () => {
   const { t } = useTranslation();
   // isAdmin 一律取自 AuthContext（全前端唯一來源），這個檔案原本自己重複推導了 4 次
-  const { user, loading: authLoading, updateUser, isAdmin: hasAdminRole, hasPermission } = useAuth();
+  const { user, loading: authLoading, updateUser, isAdmin: hasAdminRole, hasPermission, startPreview } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
   const [users, setUsers] = useState([]);
@@ -497,6 +497,19 @@ const AdminPage = () => {
     }
   };
 
+  // 以某個身分組或某位成員的身分檢視全站。
+  // 切換後管理台通常會直接消失（那正是預期結果），所以要先導回首頁——
+  // 停在一個自己已經沒有權限的頁面上只會看到錯誤訊息，看不出模塊與選單的實際樣貌。
+  // 退出的入口在 Layout 最上層的固定橫幅，不在這個頁面裡。
+  const handleStartPreview = async (kind, id, label) => {
+    try {
+      await startPreview(kind, id, label);
+      navigate('/');
+    } catch (err) {
+      setError(translateApiError(err, '無法切換檢視身分'));
+    }
+  };
+
   const handleEdit = (user) => {
     setEditingId(user.id);
     setEditData({
@@ -506,7 +519,11 @@ const AdminPage = () => {
       fullName: user.fullName,
       hasPaidFee: user.hasPaidFee,
       role: user.role,
-      roleIds: (user.roles || []).map((r) => r.id)
+      // 濾掉自動身分組（「會員」）。它不存在 user_roles，是後端依 has_paid_fee 推導後
+      // 補進回應的（admin.js:58），但送回去指派會被 users.js:259 以 400 擋下。
+      // 不濾的話，編輯任何「已繳費」使用者都會失敗——即使你只是想多加一個身分組，
+      // 送出的陣列仍會夾帶「會員」而讓整筆更新被退回。
+      roleIds: (user.roles || []).filter((r) => !r.isAuto).map((r) => r.id)
     });
   };
 
@@ -1401,11 +1418,36 @@ const AdminPage = () => {
                               </IconButton>
                             </Stack>
                           ) : (
-                            <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                              <IconButton onClick={() => handleEdit(managedUser)} title="編輯">
+                            // 四個操作鍵排成 2×2 並靠右。排成一列時在窄欄位裡會擠成一團，
+                            // 誤觸「刪除用戶」的代價又特別高。
+                            <Box
+                              sx={{
+                                display: 'inline-grid',
+                                gridTemplateColumns: 'repeat(2, auto)',
+                                justifyContent: 'end',
+                                gap: 0.25,
+                              }}
+                            >
+                              <IconButton
+                                size="small"
+                                color="warning"
+                                title={
+                                  managedUser.id === user?.id
+                                    ? '這就是你自己的身分'
+                                    : `以「${managedUser.username}」的身分檢視全站（唯讀）`
+                                }
+                                disabled={managedUser.id === user?.id}
+                                onClick={() =>
+                                  handleStartPreview('user', managedUser.id, `使用者「${managedUser.username}」`)
+                                }
+                              >
+                                <ViewIcon />
+                              </IconButton>
+                              <IconButton size="small" onClick={() => handleEdit(managedUser)} title="編輯">
                                 <EditIcon />
                               </IconButton>
                               <IconButton
+                                size="small"
                                 onClick={() => openPasswordDialog(managedUser.id)}
                                 color="info"
                                 title="重設密碼"
@@ -1413,6 +1455,7 @@ const AdminPage = () => {
                                 <LockResetIcon />
                               </IconButton>
                               <IconButton
+                                size="small"
                                 onClick={() => {
                                   setUserToDelete(managedUser);
                                   setDeleteUserDialog(true);
@@ -1423,7 +1466,7 @@ const AdminPage = () => {
                               >
                                 <PersonRemoveIcon />
                               </IconButton>
-                            </Stack>
+                            </Box>
                           )}
                         </TableCell>
                       </TableRow>
@@ -2624,6 +2667,14 @@ const AdminPage = () => {
                         {role.isAuto && <Chip label="自動授予" size="small" color="info" variant="outlined" />}
                       </Stack>
                       <Stack direction="row" spacing={0.5}>
+                        <IconButton
+                          size="small"
+                          color="warning"
+                          title={`以「${role.name}」的身分檢視全站（唯讀）`}
+                          onClick={() => handleStartPreview('role', role.id, `身分組「${role.name}」`)}
+                        >
+                          <ViewIcon fontSize="small" />
+                        </IconButton>
                         <IconButton size="small" onClick={() => openRoleDialog(role)} title="編輯">
                           <EditIcon fontSize="small" />
                         </IconButton>

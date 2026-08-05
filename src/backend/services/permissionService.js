@@ -72,6 +72,47 @@ const resolve = async (user) => {
 
 const hasPermission = (resolved, required) => permissionSatisfies(resolved?.rawPermissions, required);
 
+// 解析「只持有某一個身分組」的假想使用者，供管理台的「以身分組檢視」使用。
+// 刻意不套用自動身分組的推導——預覽的語意就是「單獨持有這個身分組會怎樣」。
+const resolveForRole = async (roleId) => {
+    const [role] = await sequelize.query(
+        `SELECT id, key, name, color, priority, is_auto AS isAuto FROM roles WHERE id = ?`,
+        { replacements: [roleId], type: sequelize.QueryTypes.SELECT }
+    );
+    if (!role) return null;
+
+    const rawPermissions = await getRawPermissions([role]);
+    return {
+        role,
+        resolved: {
+            roles: [{ id: role.id, key: role.key, name: role.name, color: role.color }],
+            rawPermissions,
+            permissions: expandPermissions(rawPermissions),
+            isAdmin: rawPermissions.has(WILDCARD)
+        }
+    };
+};
+
+// 預覽權限與「發起預覽者本人」取交集。
+//
+// 目前只有持有 '*' 的管理員能發起預覽，所以交集恆等於 target，這一步看似多餘。
+// 但它是結構性防線：哪天有人把發起條件放寬成 users.manage，
+// 少了這一步，一個只有用戶管理權限的人就能「預覽成管理員」而取得全站權限。
+// 保留它，那個洞就不會隨著一次看似無害的條件放寬而打開。
+const intersectResolved = (target, caller) => {
+    if (permissionSatisfies(caller?.rawPermissions, WILDCARD)) return target;
+
+    const rawPermissions = new Set(
+        [...target.rawPermissions].filter((p) => permissionSatisfies(caller?.rawPermissions, p))
+    );
+    return {
+        ...target,
+        rawPermissions,
+        permissions: expandPermissions(rawPermissions),
+        isAdmin: rawPermissions.has(WILDCARD)
+    };
+};
+
 // ---------------------------------------------------------------------------
 // 模塊存取
 //
@@ -133,4 +174,11 @@ const listModulesFor = async (user, resolved) => {
     return result;
 };
 
-module.exports = { resolve, hasPermission, canAccessModule, listModulesFor };
+module.exports = {
+    resolve,
+    resolveForRole,
+    intersectResolved,
+    hasPermission,
+    canAccessModule,
+    listModulesFor
+};
