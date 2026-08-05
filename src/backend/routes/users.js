@@ -73,6 +73,7 @@ router.get('/profile', async (req, res) => {
                 hasPaidFee: req.user.hasPaidFee,
                 roles: req.user.roles || [],
                 permissions: req.user.permissions || [],
+                isAdmin: !!req.permissions?.isAdmin,
                 modules,
                 stats: { uploadedExams: 0, uploadedCheatSheets: 0, reviews: 0 }
             });
@@ -101,6 +102,11 @@ router.get('/profile', async (req, res) => {
             ...user.toJSON(),
             roles: req.user.roles || [],
             permissions: req.user.permissions || [],
+            // 管理員判斷的權威來源。前端不可再自己從 role 欄位推導——
+            // 那個欄位不會隨身分組更新，新指派的管理員在前端會不被當成管理員。
+            // 展開後的 permissions 也判斷不出來：expandPermissions 遇到 '*' 會回傳
+            // 所有權限 key，但不含 '*' 本身。
+            isAdmin: !!req.permissions?.isAdmin,
             modules,
             stats: {
                 uploadedExams: stats[0],

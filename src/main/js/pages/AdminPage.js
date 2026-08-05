@@ -227,13 +227,17 @@ const AdminPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, navigate, authLoading, activeTab]);
 
-  // 用戶管理的身分組多選需要身分組清單
+  // 用戶管理的身分組多選需要身分組清單。
+  //
+  // 依賴一定要含 user：頁面直接載入時 activeTab 就是 0，但那一刻 user 還沒回來，
+  // hasPermission 是 false 所以不抓；之後 user 到了，effect 卻不會因為 activeTab
+  // 沒變而重跑，身分組選單就永遠是空的（先切到別的分頁再切回來才會好）。
   useEffect(() => {
     if (activeTab === 0 && hasPermission('roles.manage') && allRoles.length === 0) {
       fetchRoles();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  }, [activeTab, user]);
 
   // 課程評價的篩選條件變更時重新載入
   useEffect(() => {
@@ -518,7 +522,8 @@ const AdminPage = () => {
       studentId: user.studentId,
       fullName: user.fullName,
       hasPaidFee: user.hasPaidFee,
-      role: user.role,
+      // 刻意不再帶 role：舊欄位的編輯介面已移除，送出去只會讓後端寫入一個
+      // 沒有授權作用、又永遠追不上身分組的值。資料庫欄位保留供回滾用。
       // 濾掉自動身分組（「會員」）。它不存在 user_roles，是後端依 has_paid_fee 推導後
       // 補進回應的（admin.js:58），但送回去指派會被 users.js:259 以 400 擋下。
       // 不濾的話，編輯任何「已繳費」使用者都會失敗——即使你只是想多加一個身分組，
@@ -999,7 +1004,11 @@ const AdminPage = () => {
       managedUser.studentId
     ].some((value) => (value || '').toLowerCase().includes(keyword));
 
-    const matchRole = roleFilter === 'all' || managedUser.role === roleFilter;
+    // 依身分組篩選，不再看舊的 role 欄位——它不隨身分組更新，篩選結果會和
+    // 畫面上顯示的 chip 對不起來（明明標著「管理員」，選「管理員」卻篩不到）
+    const userRoles = managedUser.roles || [];
+    const matchRole = roleFilter === 'all'
+      || (roleFilter === 'none' ? userRoles.length === 0 : userRoles.some((r) => r.key === roleFilter));
     const matchPayment = paymentFilter === 'all'
       || (paymentFilter === 'paid' && managedUser.hasPaidFee)
       || (paymentFilter === 'unpaid' && !managedUser.hasPaidFee);
@@ -1011,8 +1020,8 @@ const AdminPage = () => {
   const activeUser = selectedUser || filteredUsers[0] || null;
   const userStats = {
     total: users.length,
-    admins: users.filter((managedUser) => managedUser.role === 'admin').length,
-    members: users.filter((managedUser) => managedUser.role === 'member').length,
+    admins: users.filter((u) => (u.roles || []).some((r) => r.key === 'admin')).length,
+    members: users.filter((u) => (u.roles || []).some((r) => r.key === 'member')).length,
     paid: users.filter((managedUser) => managedUser.hasPaidFee).length,
   };
 
@@ -1193,17 +1202,21 @@ const AdminPage = () => {
                     ),
                   }}
                 />
+                {/* 選項改由身分組清單動態產生。原本是寫死的三個舊 role 值，
+                    自訂身分組（例如「測試員」）永遠篩不到，而「一般用戶」在身分組模型下
+                    的正確語意是「沒有任何身分組」，不是某個 role 值。 */}
                 <FormControl sx={{ minWidth: 140 }}>
-                  <InputLabel>角色</InputLabel>
+                  <InputLabel>身分組</InputLabel>
                   <Select
                     value={roleFilter}
-                    label="角色"
+                    label="身分組"
                     onChange={(e) => setRoleFilter(e.target.value)}
                   >
                     <MenuItem value="all">全部</MenuItem>
-                    <MenuItem value="admin">管理員</MenuItem>
-                    <MenuItem value="member">會員</MenuItem>
-                    <MenuItem value="user">一般用戶</MenuItem>
+                    <MenuItem value="none">無身分組</MenuItem>
+                    {allRoles.map((r) => (
+                      <MenuItem key={r.id} value={r.key}>{r.name}</MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
                 <FormControl sx={{ minWidth: 140 }}>
@@ -1334,16 +1347,10 @@ const AdminPage = () => {
                         <TableCell>
                           {editingId === managedUser.id ? (
                             <Stack spacing={1}>
-                              <FormControl fullWidth size="small">
-                                <Select
-                                  value={editData.role}
-                                  onChange={(e) => setEditData({ ...editData, role: e.target.value })}
-                                >
-                                  <MenuItem value="admin">管理員</MenuItem>
-                                  <MenuItem value="member">會員</MenuItem>
-                                  <MenuItem value="user">一般用戶</MenuItem>
-                                </Select>
-                              </FormControl>
+                              {/* 這裡原本還有一個「管理員/會員/一般用戶」下拉，對應舊的 users.role 欄位。
+                                  該欄位已無授權作用（後端一律看身分組），留著只會和下方的身分組多選
+                                  並排出現、看起來像兩個等效的控制項，實際上只有一個有效。已移除。
+                                  資料庫欄位本身刻意保留，程式碼回滾時仍需要它。 */}
                               <Stack direction="row" spacing={1} alignItems="center">
                                 <Switch
                                   checked={editData.hasPaidFee}
@@ -1371,6 +1378,13 @@ const AdminPage = () => {
                                     </Stack>
                                   )}
                                 >
+                                  {allRoles.filter((r) => !r.isAuto).length === 0 && (
+                                    // 空選單一定要說明原因。/api/roles 需要 roles.manage，
+                                    // 沒有該權限的人會拿到空清單，看到一個沒東西的下拉選單卻不知為何
+                                    <MenuItem disabled value="">
+                                      {allRoles.length === 0 ? '載入中或無權限讀取身分組' : '沒有可指派的身分組'}
+                                    </MenuItem>
+                                  )}
                                   {allRoles.filter((r) => !r.isAuto).map((r) => (
                                     <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>
                                   ))}
@@ -1383,13 +1397,10 @@ const AdminPage = () => {
                               )}
                             </Stack>
                           ) : (
+                            // 這裡原本還會先顯示一個由舊 role 欄位推導的 chip，
+                            // 結果同一列出現兩個「管理員」（一個來自舊欄位、一個來自身分組），
+                            // 而且兩者可能不一致——身分組才是真正生效的那個。只留身分組。
                             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                              <Chip
-                                size="small"
-                                label={managedUser.role === 'admin' ? '管理員' : managedUser.role === 'member' ? '會員' : '一般用戶'}
-                                color={managedUser.role === 'admin' ? 'warning' : managedUser.role === 'member' ? 'info' : 'default'}
-                                variant={managedUser.role === 'user' ? 'outlined' : 'filled'}
-                              />
                               <Chip
                                 size="small"
                                 label={managedUser.hasPaidFee ? '已繳費' : '未繳費'}
@@ -1404,6 +1415,9 @@ const AdminPage = () => {
                                   sx={r.color ? { bgcolor: r.color, color: '#fff' } : undefined}
                                 />
                               ))}
+                              {(managedUser.roles || []).length === 0 && (
+                                <Chip size="small" label="無身分組" variant="outlined" />
+                              )}
                             </Stack>
                           )}
                         </TableCell>
@@ -1508,16 +1522,23 @@ const AdminPage = () => {
                     </Box>
                   </Stack>
 
+                  {/* 同列表：顯示實際生效的身分組，不再由舊 role 欄位推導 */}
                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                    <Chip
-                      label={activeUser.role === 'admin' ? '管理員' : activeUser.role === 'member' ? '會員' : '一般用戶'}
-                      color={activeUser.role === 'admin' ? 'warning' : activeUser.role === 'member' ? 'info' : 'default'}
-                    />
                     <Chip
                       label={activeUser.hasPaidFee ? '已繳費' : '未繳費'}
                       color={activeUser.hasPaidFee ? 'success' : 'default'}
                       variant={activeUser.hasPaidFee ? 'filled' : 'outlined'}
                     />
+                    {(activeUser.roles || []).map((r) => (
+                      <Chip
+                        key={r.id}
+                        label={r.name}
+                        sx={r.color ? { bgcolor: r.color, color: '#fff' } : undefined}
+                      />
+                    ))}
+                    {(activeUser.roles || []).length === 0 && (
+                      <Chip label="無身分組" variant="outlined" />
+                    )}
                   </Stack>
 
                   <Divider />

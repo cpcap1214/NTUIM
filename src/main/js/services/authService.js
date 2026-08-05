@@ -104,10 +104,12 @@ const authService = {
         return !!this.getToken();
     },
 
-    // 檢查是否為管理員
+    // 檢查是否為管理員。
+    // 與 AuthContext 同一套判斷：以後端解析的 isAdmin 為準，舊的 role 欄位只當退路，
+    // 因為它不會隨身分組更新（理由見 AuthContext 的說明）。
     isAdmin() {
         const user = this.getCurrentUser();
-        return user?.role === 'admin';
+        return user?.isAdmin ?? (user?.role === 'admin');
     },
 
     // 檢查是否已繳費
