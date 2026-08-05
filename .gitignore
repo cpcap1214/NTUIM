@@ -84,3 +84,6 @@ src/backend/database/backups/
 
 # 使用者上傳/seed 假資料
 uploads/
+
+# 除錯與測試文件
+docs/
