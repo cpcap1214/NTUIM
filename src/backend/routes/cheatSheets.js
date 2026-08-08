@@ -104,7 +104,7 @@ router.post('/upload',
     adminUpload.single('file'),
     handleUploadError,
     [
-        body('courseCode').notEmpty().withMessage('課程代碼為必填'),
+        body('courseCode').notEmpty().withMessage('課號為必填'),
         body('courseName').notEmpty().withMessage('課程名稱為必填'),
         body('title').notEmpty().withMessage('標題為必填'),
         body('description').optional().isString()
@@ -239,7 +239,7 @@ router.get('/:id/download', authenticateToken, async (req, res) => {
 router.put('/:id',
     authenticateToken,
     [
-        body('courseCode').optional().notEmpty().withMessage('課程代碼不能為空'),
+        body('courseCode').optional().notEmpty().withMessage('課號不能為空'),
         body('courseName').optional().notEmpty().withMessage('課程名稱不能為空'),
         body('title').optional().notEmpty().withMessage('標題不能為空'),
         body('description').optional().isString(),

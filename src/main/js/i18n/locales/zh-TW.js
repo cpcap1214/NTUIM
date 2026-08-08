@@ -112,7 +112,7 @@ const zhTW = {
 
         form: {
             courseName: '課程名稱',
-            courseCode: '課程代碼',
+            courseCode: '課號',
             professor: '授課教授',
             academicTerm: '學年期',
             courseNameHelper: '可輸入名稱後從選單選擇課程，自動帶入教授/課號/學期；找不到也可以直接手動輸入',
@@ -127,7 +127,7 @@ const zhTW = {
             courseContentHelper: '{{count}} / 1000 字（至少 5 字，內容會自動暫存草稿）',
             optionalFieldHelper: '{{count}} / 1000 字（選填）',
             commentHelper: '{{count}} / 1000 字（至少 50 字，評價通過審核後才會公開顯示；內容會自動暫存草稿）',
-            basicInfoRequired: '課程代碼、課程名稱、授課教授為必填',
+            basicInfoRequired: '課號、課程名稱、授課教授為必填',
             ratingsIncomplete: '請完成所有評分項目',
             draftRestored: '已還原上次未完成的草稿',
             dismissDraftNotice: '知道了',
@@ -193,7 +193,7 @@ const zhTW = {
 
     // 後端以 errorCode 回傳，前端統一在這裡查對應的中文訊息
     errors: {
-        COURSE_CODE_REQUIRED: '課程代碼為必填',
+        COURSE_CODE_REQUIRED: '課號為必填',
         COURSE_NAME_REQUIRED: '課程名稱為必填',
         PROFESSOR_REQUIRED: '授課教授為必填',
         YEAR_INVALID: '請輸入有效年份',

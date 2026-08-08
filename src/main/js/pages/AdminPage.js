@@ -694,7 +694,7 @@ const AdminPage = () => {
   const validateExamForm = () => {
     const newErrors = {};
     
-    if (!examForm.courseCode) newErrors.courseCode = '請輸入課程代碼';
+    if (!examForm.courseCode) newErrors.courseCode = '請輸入課號';
     if (!examForm.courseName) newErrors.courseName = '請輸入課程名稱';
     if (!examForm.professor) newErrors.professor = '請輸入教授姓名';
     if (!examForm.year) newErrors.year = '請選擇年份';
@@ -707,7 +707,7 @@ const AdminPage = () => {
   const validateCheatSheetForm = () => {
     const newErrors = {};
     
-    if (!cheatSheetForm.courseCode) newErrors.courseCode = '請輸入課程代碼';
+    if (!cheatSheetForm.courseCode) newErrors.courseCode = '請輸入課號';
     if (!cheatSheetForm.courseName) newErrors.courseName = '請輸入課程名稱';
     if (!cheatSheetForm.title) newErrors.title = '請輸入標題';
     if (!cheatSheetForm.description) newErrors.description = '請輸入描述';
@@ -1611,7 +1611,7 @@ const AdminPage = () => {
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="課程代碼"
+                label="課號"
                 placeholder="例如：IM1001"
                 value={examForm.courseCode}
                 onChange={(e) => handleExamChange('courseCode', e.target.value)}
@@ -1796,7 +1796,7 @@ const AdminPage = () => {
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="課程代碼"
+                label="課號"
                 placeholder="例如：IM1001"
                 value={cheatSheetForm.courseCode}
                 onChange={(e) => handleCheatSheetChange('courseCode', e.target.value)}

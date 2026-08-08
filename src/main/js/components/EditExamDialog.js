@@ -76,7 +76,7 @@ const EditExamDialog = ({
 
     const handleSaveInfo = async () => {
         if (!formData.courseCode.trim() || !formData.courseName.trim()) {
-            setError('課程代碼和課程名稱為必填');
+            setError('課號和課程名稱為必填');
             return;
         }
 
@@ -151,7 +151,7 @@ const EditExamDialog = ({
                         <Grid item xs={12} sm={6}>
                             <TextField
                                 fullWidth
-                                label="課程代碼"
+                                label="課號"
                                 value={formData.courseCode}
                                 onChange={(e) => handleInputChange('courseCode', e.target.value)}
                                 required

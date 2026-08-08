@@ -85,7 +85,7 @@ router.post('/upload',
     ]),
     handleUploadError,
     [
-        body('courseCode').notEmpty().withMessage('課程代碼為必填'),
+        body('courseCode').notEmpty().withMessage('課號為必填'),
         body('courseName').notEmpty().withMessage('課程名稱為必填'),
         body('year').isInt({ min: 2000, max: 2100 }).withMessage('請輸入有效年份'),
         body('semester').isIn(['1', '2', 'summer']).withMessage('請選擇學期'),
@@ -312,7 +312,7 @@ router.get('/:id/download/answer', authenticateToken, requirePermission('exams.d
 router.put('/:id',
     authenticateToken,
     [
-        body('courseCode').optional().notEmpty().withMessage('課程代碼不能為空'),
+        body('courseCode').optional().notEmpty().withMessage('課號不能為空'),
         body('courseName').optional().notEmpty().withMessage('課程名稱不能為空'),
         body('professor').optional().isString(),
         body('year').optional().isInt({ min: 2000, max: 2100 }).withMessage('請輸入有效年份'),

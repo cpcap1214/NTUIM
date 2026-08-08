@@ -134,7 +134,7 @@ router.get('/filters', async (req, res) => {
 router.post('/',
     authenticateToken,
     [
-        body('courseCode').trim().notEmpty().withMessage({ code: 'COURSE_CODE_REQUIRED', message: '課程代碼為必填' }),
+        body('courseCode').trim().notEmpty().withMessage({ code: 'COURSE_CODE_REQUIRED', message: '課號為必填' }),
         body('courseName').trim().notEmpty().withMessage({ code: 'COURSE_NAME_REQUIRED', message: '課程名稱為必填' }),
         body('professor').trim().notEmpty().withMessage({ code: 'PROFESSOR_REQUIRED', message: '授課教授為必填' }),
         body('year').isInt({ min: 2000, max: 2100 }).withMessage({ code: 'YEAR_INVALID', message: '請輸入有效年份' }),
@@ -449,7 +449,7 @@ router.get('/payouts/export', authenticateToken, requirePermission('courseReview
             return `"${text.replace(/"/g, '""')}"`;
         };
 
-        const header = ['評價ID', '姓名', '學號', 'Email', '課程名稱', '課程代碼', '教授', '學年期', '投稿時間', '發放狀態', '發放時間', '發放人'];
+        const header = ['評價ID', '姓名', '學號', 'Email', '課程名稱', '課號', '教授', '學年期', '投稿時間', '發放狀態', '發放時間', '發放人'];
         const rows = reviews.map((review) => [
             review.id,
             review.reviewer?.fullName,
