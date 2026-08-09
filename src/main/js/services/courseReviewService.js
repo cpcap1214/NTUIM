@@ -40,10 +40,17 @@ const courseReviewService = {
         }
     },
 
-    // 搜尋台大課程目錄，給「寫評價」表單的課程名稱自動完成下拉選單用
-    async searchCourseCatalog(keyword) {
+    // 搜尋台大課程目錄，給「寫評價」表單的課程名稱自動完成下拉選單用。
+    // 給了 year + semester 就只搜該學年期；不給則搜所有可填學期（表單的「全部」選項）。
+    async searchCourseCatalog(keyword, { year, semester, limit = 15 } = {}) {
         try {
-            const response = await api.get('/course-catalog/search', { params: { q: keyword, limit: 15 } });
+            const params = { q: keyword, limit };
+            // 兩個都有才送：後端是「兩者皆給才視為指定學期」，只送一個會被當成全部
+            if (year && semester) {
+                params.year = year;
+                params.semester = semester;
+            }
+            const response = await api.get('/course-catalog/search', { params });
             return response.data.data || [];
         } catch (error) {
             throw error.response?.data || error;
