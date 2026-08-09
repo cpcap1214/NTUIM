@@ -118,6 +118,7 @@ const zhTW = {
             allTerms: '全部',
             courseNameHelper: '先選學期，再輸入名稱從選單挑選，會自動帶入教授與課號；找不到也可以直接手動輸入',
             termRequiredForManualEntry: '學期選「全部」時請從選單挑選課程；若要手動輸入，請先指定具體學期',
+            searchTruncatedHint: '符合的課程過多，選單只顯示一部分。請輸入更完整的課程名稱，或直接輸入授課教授姓名',
             courseContent: '課程內容',
             teachingMethod: '教學方式',
             assignmentExamFormat: '作業與考試形式',

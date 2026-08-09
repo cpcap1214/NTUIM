@@ -104,7 +104,7 @@ describe('WriteReviewDialog 學期與課程搜尋', () => {
             () => {
                 expect(courseReviewService.searchCourseCatalog).toHaveBeenCalledWith(
                     '邏輯',
-                    expect.objectContaining({ year: '2025', semester: '2', limit: 15 })
+                    expect.objectContaining({ year: '2025', semester: '2', limit: 150 })
                 );
             },
             { timeout: 3000 }
@@ -145,12 +145,12 @@ describe('WriteReviewDialog 學期與課程搜尋', () => {
 
         fireEvent.change(nameInput(), { target: { value: '邏輯' } });
 
-        // 「全部」模式不帶學期、名額給到 30
+        // 「全部」模式不帶學期、名額再放大一級（跨三學期，筆數約三倍）
         await waitFor(
             () => {
                 expect(courseReviewService.searchCourseCatalog).toHaveBeenCalledWith(
                     '邏輯',
-                    expect.objectContaining({ year: undefined, semester: undefined, limit: 30 })
+                    expect.objectContaining({ year: undefined, semester: undefined, limit: 200 })
                 );
             },
             { timeout: 3000 }
@@ -174,6 +174,37 @@ describe('WriteReviewDialog 學期與課程搜尋', () => {
 
         await waitFor(() => expect(termField()).toHaveTextContent('114-1'));
         expect(professorInput()).toHaveValue('傅皓政');
+    });
+
+    test('結果剛好塞滿名額時，提示使用者縮小關鍵字', async () => {
+        // 回傳筆數等於 limit ＝ 可能還有沒顯示到的課程。不提示的話使用者會以為
+        // 那些課不存在——「國文、英文有缺」的回報就是這樣來的。
+        courseReviewService.searchCourseCatalog.mockResolvedValueOnce(
+            Array.from({ length: 150 }, (_, i) => ({
+                courseCode: `X${i}`,
+                courseName: '英文',
+                professor: `教授${i}`,
+                year: 2025,
+                semester: '2',
+            }))
+        );
+
+        renderDialog();
+        await waitFor(() => expect(termField()).toHaveTextContent('114-2'));
+        fireEvent.change(nameInput(), { target: { value: '英文' } });
+
+        expect(
+            await screen.findByText('courseReview.form.searchTruncatedHint', undefined, { timeout: 3000 })
+        ).toBeInTheDocument();
+    });
+
+    test('結果沒滿名額時不顯示截斷提示', async () => {
+        renderDialog();
+        await waitFor(() => expect(termField()).toHaveTextContent('114-2'));
+        fireEvent.change(nameInput(), { target: { value: '邏輯' } });
+
+        await waitFor(() => expect(courseReviewService.searchCourseCatalog).toHaveBeenCalled(), { timeout: 3000 });
+        expect(screen.queryByText('courseReview.form.searchTruncatedHint')).not.toBeInTheDocument();
     });
 
     test('停在「全部」又沒從選單挑課程時，送出被擋下', async () => {

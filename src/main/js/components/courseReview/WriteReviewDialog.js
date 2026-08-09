@@ -47,6 +47,12 @@ const emptyForm = {
 // 選著它送出時會被擋下（見 handleSubmit），學年期必須由挑中的課程帶入。
 const ALL_TERMS = 'all';
 
+// 搜尋結果的名額。開得大是因為一門課的每位教授各佔一列
+//（FL1008 英文有 24 位、FL1004 有 14 位），名額小的話整個選單會被同一門課佔滿：
+// 實測搜「英文」在 limit 15 時只涵蓋 54 個相異課號中的 1 個，150 才是全部。
+const SEARCH_LIMIT_SCOPED = 150;
+const SEARCH_LIMIT_ALL = 200;
+
 const METRIC_KEYS = ['quality', 'difficulty', 'sweetness', 'usefulness'];
 const METRIC_TEXT_FN = {
     quality: courseReviewService.getQualityText,
@@ -85,6 +91,8 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
     const [draftRestored, setDraftRestored] = useState(false);
     const [courseOptions, setCourseOptions] = useState([]);
     const [courseSearchLoading, setCourseSearchLoading] = useState(false);
+    // 結果是否被名額截斷；是的話要提示使用者縮小關鍵字，而不是讓他以為課程不存在
+    const [courseSearchTruncated, setCourseSearchTruncated] = useState(false);
     const [termOptions, setTermOptions] = useState([]);
     // 課號與教授是從下拉選單自動帶入的，帶入後就鎖起來不讓手動改，
     // 避免跟課程目錄的正確資料不一致；重新手打課程名稱就會解鎖。
@@ -208,24 +216,29 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
         const keyword = formData.courseName.trim();
         if (!keyword) {
             setCourseOptions([]);
+            setCourseSearchTruncated(false);
             setCourseSearchLoading(false);
             return;
         }
         const scoped = termSelection !== ALL_TERMS;
         const [scopedYear, scopedSemester] = scoped ? termSelection.split('-') : [];
+        // 「全部」要跨三個學期，筆數約三倍，名額再放大一級
+        const limit = scoped ? SEARCH_LIMIT_SCOPED : SEARCH_LIMIT_ALL;
         const timer = setTimeout(async () => {
             setCourseSearchLoading(true);
             try {
                 const results = await courseReviewService.searchCourseCatalog(keyword, {
                     year: scoped ? scopedYear : undefined,
                     semester: scoped ? scopedSemester : undefined,
-                    // 「全部」要跨學期，同一門課的每個學期都算一筆，名額要多給一些，
-                    // 否則較舊的學期會被最新學期擠掉（這正是原本只看得到 114-2 的原因）
-                    limit: scoped ? 15 : 30,
+                    limit,
                 });
                 setCourseOptions(results);
+                // 剛好塞滿名額就代表可能還有沒顯示到的課程，要讓使用者知道，
+                // 否則他會以為那些課不存在（這正是「國文、英文有缺」的來源）
+                setCourseSearchTruncated(results.length >= limit);
             } catch (e) {
                 setCourseOptions([]);
+                setCourseSearchTruncated(false);
             } finally {
                 setCourseSearchLoading(false);
             }
@@ -498,6 +511,11 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                         {!isEditing && (
                             <FormHelperText sx={{ mx: 1.75, mt: 0.5 }}>
                                 {t('courseReview.form.courseNameHelper')}
+                            </FormHelperText>
+                        )}
+                        {!isEditing && courseSearchTruncated && (
+                            <FormHelperText error sx={{ mx: 1.75 }}>
+                                {t('courseReview.form.searchTruncatedHint')}
                             </FormHelperText>
                         )}
                     </Grid>

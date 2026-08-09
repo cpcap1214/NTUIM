@@ -42,7 +42,10 @@ const courseReviewService = {
 
     // 搜尋台大課程目錄，給「寫評價」表單的課程名稱自動完成下拉選單用。
     // 給了 year + semester 就只搜該學年期；不給則搜所有可填學期（表單的「全部」選項）。
-    async searchCourseCatalog(keyword, { year, semester, limit = 15 } = {}) {
+    // limit 預設值刻意開得大：一門課有多位教授時每位各佔一列
+    //（FL1008 英文有 24 位），名額太小會讓整個選單都是同一門課。
+    // 實測 114-2 的「英文」共 117 筆、「國文」93 筆，150 可全數涵蓋。
+    async searchCourseCatalog(keyword, { year, semester, limit = 150 } = {}) {
         try {
             const params = { q: keyword, limit };
             // 兩個都有才送：後端是「兩者皆給才視為指定學期」，只送一個會被當成全部

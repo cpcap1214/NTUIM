@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { query, validationResult } = require('express-validator');
-const { CourseCatalog } = require('../models');
+const { CourseCatalog, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const { listReviewableTerms } = require('../utils/semesterEligibility');
 
@@ -23,7 +23,9 @@ router.get('/reviewable-terms', (req, res) => {
 // 都不給時搜所有可填學期，供表單的「全部」選項使用。
 router.get('/search', [
     query('q').isString().notEmpty(),
-    query('limit').optional().isInt({ min: 1, max: 30 }),
+    // 上限 200：熱門關鍵字的結果量被「同一門課多位教授」放大得很嚴重
+    //（FL1008 英文一門就有 24 位教授、各佔一列），名額太小會讓整頁都是同一門課。
+    query('limit').optional().isInt({ min: 1, max: 200 }),
     query('year').optional().isInt({ min: 1911 }),
     query('semester').optional().isIn(['1', '2', 'summer'])
 ], async (req, res) => {
@@ -76,11 +78,21 @@ router.get('/search', [
                     }
                 ]
             },
-            // 按「課程」分組而不是「學期優先」。原本是 year DESC, semester DESC，
-            // 配合 limit 會讓最新學期先填滿名額、較舊學期被擠掉：
-            // 實測搜「邏輯」共 28 筆，114-2 的 12 筆先佔滿，114-1 的 16 筆只分到 3 筆。
-            // 改成這個排序後，同一門課的不同學期會相鄰出現，兩個學期都看得到。
             order: [
+                // 相關性優先。少了這一段就是純字典序，會出現這種情形：
+                // 搜「國文」符合 93 筆，前 15 筆卻全是「中世紀英國文學」「中國文學史」，
+                // 而「大」(U+5927) 在 Unicode 排在「中初十國」之後，
+                // 64 筆「大學國文」整批被擠出畫面，看起來就像資料缺漏。
+                //
+                // order 子句不吃 replacements，用 sequelize.escape 安全內嵌，不要自己拼字串。
+                sequelize.literal(
+                    `CASE WHEN course_name LIKE ${sequelize.escape(`${q}%`)} THEN 0`
+                    + ` WHEN course_name LIKE ${sequelize.escape(keyword)} THEN 1`
+                    + ' ELSE 2 END'
+                ),
+                // 以下維持「按課程分組」。原本是 year DESC 優先，配合 limit 會讓最新學期
+                // 先填滿名額、較舊學期被擠掉（實測搜「邏輯」，114-1 的 16 筆只分到 3 筆）。
+                // 這樣排同一門課的不同學期會相鄰出現，兩個學期都看得到。
                 ['courseName', 'ASC'],
                 ['courseCode', 'ASC'],
                 ['professor', 'ASC'],
