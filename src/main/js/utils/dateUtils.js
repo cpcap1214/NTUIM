@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+
 // 日期格式化工具
 export const formatDate = (dateString, options = {}) => {
   if (!dateString) return '';
@@ -27,13 +29,13 @@ export const formatRelativeTime = (dateString) => {
     const now = new Date();
     const diffInSeconds = Math.floor((now - date) / 1000);
     
-    if (diffInSeconds < 60) return '剛剛';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} 分鐘前`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} 小時前`;
-    if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)} 天前`;
-    if (diffInSeconds < 31536000) return `${Math.floor(diffInSeconds / 2592000)} 個月前`;
+    if (diffInSeconds < 60) return i18n.t('time.justNow');
+    if (diffInSeconds < 3600) return i18n.t('time.minutesAgo', { count: Math.floor(diffInSeconds / 60) });
+    if (diffInSeconds < 86400) return i18n.t('time.hoursAgo', { count: Math.floor(diffInSeconds / 3600) });
+    if (diffInSeconds < 2592000) return i18n.t('time.daysAgo', { count: Math.floor(diffInSeconds / 86400) });
+    if (diffInSeconds < 31536000) return i18n.t('time.monthsAgo', { count: Math.floor(diffInSeconds / 2592000) });
     
-    return `${Math.floor(diffInSeconds / 31536000)} 年前`;
+    return i18n.t('time.yearsAgo', { count: Math.floor(diffInSeconds / 31536000) });
   } catch (error) {
     console.error('Invalid date string:', dateString);
     return dateString;
@@ -42,13 +44,13 @@ export const formatRelativeTime = (dateString) => {
 
 // 學年學期格式化
 export const formatSemester = (year, semester) => {
-  const semesterMap = {
-    '1': '上學期',
-    '2': '下學期',
-    '3': '暑期'
-  };
-  
-  return `${year} 學年 ${semesterMap[semester] || `第${semester}學期`}`;
+  // '3' 是這支工具函式沿用的舊暑期代碼；後端與課程評價功能用的是 'summer'
+  const key = { '1': '1', '2': '2', '3': 'summer' }[semester];
+  const semesterName = key
+    ? i18n.t(`courseReview.semester.${key}`)
+    : i18n.t('time.nthSemester', { n: semester });
+
+  return i18n.t('time.academicTerm', { year, semester: semesterName });
 };
 
 // 取得當前學年學期

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
@@ -14,6 +15,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 
 const LoginPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { login } = useAuth();
   const [formData, setFormData] = useState({ username: '', password: '' });
@@ -33,7 +35,7 @@ const LoginPage = () => {
       navigate('/');
     } catch (err) {
       console.error('登入錯誤:', err);
-      setError(err.error || err.message || '登入失敗，請檢查帳號密碼或網路連線');
+      setError(err.error || err.message || t('auth.loginFailed'));
     } finally {
       setLoading(false);
     }
@@ -52,10 +54,10 @@ const LoginPage = () => {
       >
         <Box sx={{ mb: 3 }}>
           <Typography variant="h3" component="h1" sx={{ fontWeight: 700, mb: 0.5 }}>
-            登入
+            {t('nav.login')}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            使用學號或使用者名稱登入
+            {t('auth.loginSubtitle')}
           </Typography>
         </Box>
 
@@ -70,7 +72,7 @@ const LoginPage = () => {
             <TextField
               fullWidth
               size="medium"
-              label="學號或使用者名稱"
+              label={t('auth.usernameOrStudentId')}
               name="username"
               value={formData.username}
               onChange={handleChange}
@@ -80,7 +82,7 @@ const LoginPage = () => {
             <TextField
               fullWidth
               size="medium"
-              label="密碼"
+              label={t('auth.password')}
               name="password"
               type="password"
               value={formData.password}
@@ -95,15 +97,15 @@ const LoginPage = () => {
               disabled={loading}
               sx={{ mt: 1 }}
             >
-              {loading ? <CircularProgress size={22} sx={{ color: 'inherit' }} /> : '登入'}
+              {loading ? <CircularProgress size={22} sx={{ color: 'inherit' }} /> : t('nav.login')}
             </Button>
           </Stack>
         </Box>
 
         <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', mt: 3 }}>
-          還沒有帳號？
+          {t('auth.noAccount')}
           <Link component={RouterLink} to="/register" sx={{ ml: 0.5, fontWeight: 500 }}>
-            立即註冊
+            {t('auth.registerNow')}
           </Link>
         </Typography>
       </Paper>

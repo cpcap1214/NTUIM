@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+
 // 表單驗證工具
 
 // 驗證電子郵件
@@ -48,7 +50,7 @@ export const createValidator = (rules) => {
         }
         
         if (rule.type === 'email' && value && !validateEmail(value)) {
-          fieldErrors.push(rule.message || '請輸入有效的電子郵件地址');
+          fieldErrors.push(rule.message || i18n.t('validation.email'));
         }
         
         if (rule.type === 'minLength' && value && !validateMinLength(value, rule.value)) {
@@ -60,11 +62,11 @@ export const createValidator = (rules) => {
         }
         
         if (rule.type === 'studentId' && value && !validateStudentId(value)) {
-          fieldErrors.push(rule.message || '請輸入有效的學號格式');
+          fieldErrors.push(rule.message || i18n.t('validation.studentId'));
         }
         
         if (rule.type === 'rating' && value && !validateRating(value)) {
-          fieldErrors.push(rule.message || '評分必須介於 1-5 之間');
+          fieldErrors.push(rule.message || i18n.t('validation.ratingRange'));
         }
         
         if (rule.type === 'custom' && rule.validator && !rule.validator(value)) {

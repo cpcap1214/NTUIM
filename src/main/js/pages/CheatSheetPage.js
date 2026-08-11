@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -33,6 +34,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../services/api';
 
 const CheatSheetPage = () => {
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [courseFilter, setCourseFilter] = useState('all');
@@ -42,15 +44,19 @@ const CheatSheetPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // 只在掛載時抓一次。fetchCheatSheets 現在會引用 t（i18n 的錯誤訊息），
+  // linter 因此不再視它為穩定值；把它加進依賴會造成無限重抓，
+  // 所以照專案既有做法明確關掉這條規則。
   useEffect(() => {
     fetchCheatSheets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchCheatSheets = async () => {
     try {
       setLoading(true);
       const response = await fetch(`${API_BASE_URL}/cheat-sheets`);
-      if (!response.ok) throw new Error('獲取大抄失敗');
+      if (!response.ok) throw new Error(t('cheatSheet.fetchFailed'));
       const result = await response.json();
       setCheatSheets(result.data || []);
     } catch (err) {
@@ -89,14 +95,14 @@ const CheatSheetPage = () => {
 
   const handleDownload = async (cheatSheetId, filename) => {
     if (!user) {
-      alert('請先登入才能下載大抄');
+      alert(t('cheatSheet.loginToDownload'));
       return;
     }
     try {
       const response = await fetch(`${API_BASE_URL}/cheat-sheets/${cheatSheetId}/download`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
-      if (!response.ok) throw new Error('下載失敗');
+      if (!response.ok) throw new Error(t('cheatSheet.downloadFailed'));
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -108,19 +114,20 @@ const CheatSheetPage = () => {
       window.URL.revokeObjectURL(url);
     } catch (e) {
       console.error('下載錯誤:', e);
-      alert('下載失敗，請稍後再試');
+      alert(t('cheatSheet.downloadFailedRetry'));
     }
   };
 
   const handlePreview = (cheatSheetId) => {
     if (!user) {
-      alert('請先登入才能預覽大抄');
+      alert(t('cheatSheet.loginToPreview'));
       return;
     }
     const token = localStorage.getItem('token');
     window.open(`${API_BASE_URL}/cheat-sheets/${cheatSheetId}/preview?token=${token}`, '_blank');
   };
 
+  // 這些鍵是資料庫裡實際的標籤字串，不是介面文案——抽到語言檔會讓配色在英文介面下失效
   const getTagColor = (tag) => {
     const colors = {
       資料庫: 'primary',
@@ -140,10 +147,10 @@ const CheatSheetPage = () => {
       <Box sx={{ py: 8, textAlign: 'center' }}>
         <DescriptionIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 1.5 }} />
         <Typography variant="h5" color="text.secondary" gutterBottom>
-          請先登入
+          {t('cheatSheet.loginRequired')}
         </Typography>
         <Typography variant="body2" color="text.disabled">
-          登入後即可瀏覽學習大抄
+          {t('cheatSheet.loginRequiredBody')}
         </Typography>
       </Box>
     );
@@ -156,12 +163,12 @@ const CheatSheetPage = () => {
       {/* Header */}
       <Box sx={{ mb: 3 }}>
         <Typography variant="h2" component="h1" sx={{ fontWeight: 700, mb: 0.5 }}>
-          學習大抄
+          {t('home.quickLinks.cheatSheetsTitle')}
         </Typography>
         <Typography variant="body2" color="text.secondary">
           {loading
-            ? '載入中…'
-            : `共 ${cheatSheets.length} 份 · 累計 ${totalDownloads} 次下載 · 涵蓋 ${allCourses.length} 門課程`}
+            ? t('common.loading')
+            : t('cheatSheet.stats', { count: cheatSheets.length, downloads: totalDownloads, courses: allCourses.length })}
         </Typography>
       </Box>
 
@@ -171,7 +178,7 @@ const CheatSheetPage = () => {
           <Grid item xs={12} md={6}>
             <TextField
               fullWidth
-              placeholder="搜尋標題、課程或內容…"
+              placeholder={t('cheatSheet.searchPlaceholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               InputProps={{
@@ -185,9 +192,9 @@ const CheatSheetPage = () => {
           </Grid>
           <Grid item xs={6} md={2}>
             <FormControl fullWidth size="small">
-              <InputLabel>課程</InputLabel>
-              <Select value={courseFilter} label="課程" onChange={(e) => setCourseFilter(e.target.value)}>
-                <MenuItem value="all">全部</MenuItem>
+              <InputLabel>{t('cheatSheet.courseFilter')}</InputLabel>
+              <Select value={courseFilter} label={t('cheatSheet.courseFilter')} onChange={(e) => setCourseFilter(e.target.value)}>
+                <MenuItem value="all">{t('common.all')}</MenuItem>
                 {allCourses.map((course) => (
                   <MenuItem key={course} value={course}>
                     {course}
@@ -198,9 +205,9 @@ const CheatSheetPage = () => {
           </Grid>
           <Grid item xs={6} md={2}>
             <FormControl fullWidth size="small">
-              <InputLabel>標籤</InputLabel>
-              <Select value={tagFilter} label="標籤" onChange={(e) => setTagFilter(e.target.value)}>
-                <MenuItem value="all">全部</MenuItem>
+              <InputLabel>{t('cheatSheet.form.tags')}</InputLabel>
+              <Select value={tagFilter} label={t('cheatSheet.form.tags')} onChange={(e) => setTagFilter(e.target.value)}>
+                <MenuItem value="all">{t('common.all')}</MenuItem>
                 {allTags.map((tag) => (
                   <MenuItem key={tag} value={tag}>
                     {tag}
@@ -211,11 +218,11 @@ const CheatSheetPage = () => {
           </Grid>
           <Grid item xs={12} md={2}>
             <FormControl fullWidth size="small">
-              <InputLabel>排序</InputLabel>
-              <Select value={sortBy} label="排序" onChange={(e) => setSortBy(e.target.value)}>
-                <MenuItem value="latest">最新上傳</MenuItem>
-                <MenuItem value="downloads">下載次數</MenuItem>
-                <MenuItem value="title">標題</MenuItem>
+              <InputLabel>{t('common.sort')}</InputLabel>
+              <Select value={sortBy} label={t('common.sort')} onChange={(e) => setSortBy(e.target.value)}>
+                <MenuItem value="latest">{t('exam.sort.latest')}</MenuItem>
+                <MenuItem value="downloads">{t('exam.sort.downloads')}</MenuItem>
+                <MenuItem value="title">{t('cheatSheet.form.title')}</MenuItem>
               </Select>
             </FormControl>
           </Grid>
@@ -228,7 +235,7 @@ const CheatSheetPage = () => {
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.25 }}>
             <TagIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
             <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 600 }}>
-              熱門標籤
+              {t('cheatSheet.popularTags')}
             </Typography>
           </Stack>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
@@ -256,7 +263,7 @@ const CheatSheetPage = () => {
       {loading && (
         <Box sx={{ textAlign: 'center', py: 8 }}>
           <Typography variant="body2" color="text.secondary">
-            載入大抄中…
+            {t('cheatSheet.loadingList')}
           </Typography>
         </Box>
       )}
@@ -335,14 +342,14 @@ const CheatSheetPage = () => {
                         {sheet.uploader ? sheet.uploader.fullName.charAt(0) : '?'}
                       </Avatar>
                       <Typography variant="caption" color="text.secondary" noWrap>
-                        {sheet.uploader ? sheet.uploader.fullName : '未知'}
+                        {sheet.uploader ? sheet.uploader.fullName : t('common.unknown')}
                       </Typography>
                     </Stack>
                     <Stack direction="row" spacing={1.5} alignItems="center">
                       <Stack direction="row" spacing={0.5} alignItems="center">
                         <DateIcon sx={{ fontSize: 13, color: 'text.disabled' }} />
                         <Typography variant="caption" color="text.disabled">
-                          {sheet.created_at ? new Date(sheet.created_at).toLocaleDateString('zh-TW') : '—'}
+                          {sheet.created_at ? new Date(sheet.created_at).toLocaleDateString(i18n.language) : '—'}
                         </Typography>
                       </Stack>
                       <Stack direction="row" spacing={0.5} alignItems="center">
@@ -363,7 +370,7 @@ const CheatSheetPage = () => {
                       onClick={() => handlePreview(sheet.id)}
                       sx={{ flex: 1 }}
                     >
-                      預覽
+                      {t('exam.preview')}
                     </Button>
                     <Button
                       variant="contained"
@@ -372,7 +379,7 @@ const CheatSheetPage = () => {
                       onClick={() => handleDownload(sheet.id, sheet.fileName || `${sheet.title}.pdf`)}
                       sx={{ flex: 1 }}
                     >
-                      下載
+                      {t('exam.download')}
                     </Button>
                   </Stack>
                 </CardContent>
@@ -387,10 +394,10 @@ const CheatSheetPage = () => {
         <Box sx={{ textAlign: 'center', py: 8 }}>
           <TagIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 1.5 }} />
           <Typography variant="subtitle1" color="text.secondary" gutterBottom>
-            {cheatSheets.length === 0 ? '目前沒有大抄' : '沒有找到符合條件的大抄'}
+            {t(cheatSheets.length === 0 ? 'cheatSheet.empty' : 'cheatSheet.noMatch')}
           </Typography>
           <Typography variant="body2" color="text.disabled">
-            {cheatSheets.length === 0 ? '請聯繫管理員上傳大抄' : '請嘗試調整搜尋條件或選擇不同的標籤'}
+            {t(cheatSheets.length === 0 ? 'cheatSheet.emptyHint' : 'cheatSheet.noMatchHint')}
           </Typography>
         </Box>
       )}

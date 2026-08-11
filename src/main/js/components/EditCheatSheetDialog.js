@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState, useEffect } from 'react';
 import {
     Dialog,
@@ -23,6 +24,7 @@ const EditCheatSheetDialog = ({
     onSave, 
     onFileUpdate 
 }) => {
+    const { t } = useTranslation();
     const [formData, setFormData] = useState({
         courseCode: '',
         courseName: '',
@@ -82,7 +84,7 @@ const EditCheatSheetDialog = ({
 
     const handleSaveInfo = async () => {
         if (!formData.courseCode.trim() || !formData.courseName.trim() || !formData.title.trim()) {
-            setError('課號、課程名稱和標題為必填');
+            setError(t('cheatSheet.form.requiredFields'));
             return;
         }
 
@@ -91,14 +93,14 @@ const EditCheatSheetDialog = ({
             await onSave(cheatSheet.id, formData);
             setError('');
         } catch (err) {
-            setError(err.message || '更新失敗');
+            setError(err.message || t('exam.form.updateFailed'));
         }
         setLoading(false);
     };
 
     const handleUpdateFile = async () => {
         if (!file) {
-            setError('請選擇要上傳的檔案');
+            setError(t('cheatSheet.form.pickFile'));
             return;
         }
 
@@ -111,7 +113,7 @@ const EditCheatSheetDialog = ({
             setFile(null);
             setError('');
         } catch (err) {
-            setError(err.message || '檔案更新失敗');
+            setError(err.message || t('exam.form.fileUpdateFailed'));
         }
         setLoading(false);
     };
@@ -138,14 +140,14 @@ const EditCheatSheetDialog = ({
                 {/* 基本資訊編輯 */}
                 <Paper sx={{ p: 2, mb: 3 }}>
                     <Typography variant="h6" gutterBottom>
-                        基本資訊
+                        {t('exam.form.basicInfo')}
                     </Typography>
                     
                     <Grid container spacing={2}>
                         <Grid item xs={12} sm={6}>
                             <TextField
                                 fullWidth
-                                label="課號"
+                                label={t('courseReview.form.courseCode')}
                                 value={formData.courseCode}
                                 onChange={(e) => handleInputChange('courseCode', e.target.value)}
                                 required
@@ -154,7 +156,7 @@ const EditCheatSheetDialog = ({
                         <Grid item xs={12} sm={6}>
                             <TextField
                                 fullWidth
-                                label="課程名稱"
+                                label={t('courseReview.form.courseName')}
                                 value={formData.courseName}
                                 onChange={(e) => handleInputChange('courseName', e.target.value)}
                                 required
@@ -163,7 +165,7 @@ const EditCheatSheetDialog = ({
                         <Grid item xs={12}>
                             <TextField
                                 fullWidth
-                                label="標題"
+                                label={t('cheatSheet.form.title')}
                                 value={formData.title}
                                 onChange={(e) => handleInputChange('title', e.target.value)}
                                 required
@@ -172,7 +174,7 @@ const EditCheatSheetDialog = ({
                         <Grid item xs={12}>
                             <TextField
                                 fullWidth
-                                label="描述"
+                                label={t('cheatSheet.form.description')}
                                 multiline
                                 rows={3}
                                 value={formData.description}
@@ -183,12 +185,12 @@ const EditCheatSheetDialog = ({
                         {/* 標籤管理 */}
                         <Grid item xs={12}>
                             <Typography variant="subtitle2" gutterBottom>
-                                標籤
+                                {t('cheatSheet.form.tags')}
                             </Typography>
                             <Box sx={{ mb: 2 }}>
                                 <TextField
                                     size="small"
-                                    label="新增標籤"
+                                    label={t('cheatSheet.form.addTag')}
                                     value={newTag}
                                     onChange={(e) => setNewTag(e.target.value)}
                                     onKeyPress={handleKeyPress}
@@ -200,7 +202,7 @@ const EditCheatSheetDialog = ({
                                     onClick={handleAddTag}
                                     disabled={!newTag.trim()}
                                 >
-                                    新增
+                                    {t('cheatSheet.form.add')}
                                 </Button>
                             </Box>
                             <Stack direction="row" flexWrap="wrap" gap={1}>
@@ -222,7 +224,7 @@ const EditCheatSheetDialog = ({
                             onClick={handleSaveInfo}
                             disabled={loading}
                         >
-                            更新資訊
+                            {t('exam.form.updateInfo')}
                         </Button>
                     </Box>
                 </Paper>
@@ -232,13 +234,13 @@ const EditCheatSheetDialog = ({
                 {/* 檔案管理 */}
                 <Paper sx={{ p: 2 }}>
                     <Typography variant="h6" gutterBottom>
-                        檔案管理
+                        {t('exam.form.fileManagement')}
                     </Typography>
                     
                     {/* 當前檔案資訊 */}
                     <Box sx={{ mb: 2 }}>
                         <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                            當前檔案：
+                            {t('exam.form.currentFiles')}
                         </Typography>
                         <Typography variant="body2">
                             {cheatSheet.fileName}
@@ -248,7 +250,7 @@ const EditCheatSheetDialog = ({
                     <Grid container spacing={2}>
                         <Grid item xs={12}>
                             <Typography variant="subtitle2" gutterBottom>
-                                更新檔案 (PDF)
+                                {t('cheatSheet.form.updateFilePdf')}
                             </Typography>
                             <input
                                 type="file"
@@ -266,7 +268,7 @@ const EditCheatSheetDialog = ({
                             onClick={handleUpdateFile}
                             disabled={loading || !file}
                         >
-                            更新檔案
+                            {t('exam.form.updateFile')}
                         </Button>
                     </Box>
                 </Paper>
@@ -274,7 +276,7 @@ const EditCheatSheetDialog = ({
             
             <DialogActions>
                 <Button onClick={handleClose}>
-                    關閉
+                    {t('common.close')}
                 </Button>
             </DialogActions>
         </Dialog>

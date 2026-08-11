@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   Box,
   Paper,
@@ -16,15 +17,15 @@ import { Lock as LockIcon, CheckCircle as CheckIcon } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-const PaymentWall = ({ feature = '此功能' }) => {
+// feature 是呼叫端傳進來的功能名稱（例如「考古題」），沒傳就用泛稱。
+// 預設值要在元件內取，不能寫在參數預設值裡——那會在模組載入時求值，i18n 可能還沒好。
+const PaymentWall = ({ feature }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const benefits = [
-    '參加系上活動有打折（比如真的超級好玩的系烤）',
-    '學術部考古題網站的權限（卷哥卷姐必備）',
-    '系學會網站完整功能',
-  ];
+  const featureName = feature || t('payment.thisFeature');
+  const benefits = t('payment.benefits', { returnObjects: true });
 
   return (
     <Box sx={{ display: 'flex', justifyContent: 'center', py: { xs: 3, md: 5 } }}>
@@ -55,26 +56,26 @@ const PaymentWall = ({ feature = '此功能' }) => {
             <LockIcon sx={{ fontSize: 26 }} />
           </Box>
           <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 0.5 }}>
-            {feature}需要繳交系學會費
+            {t('payment.title', { feature: featureName })}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            繳費後即可使用完整功能
+            {t('payment.subtitle')}
           </Typography>
         </Box>
 
         {user ? (
           <Alert severity="info" sx={{ mb: 3 }}>
-            您的帳號 <strong>{user.username}</strong> 尚未繳交系學會費
+            <Trans i18nKey="payment.unpaidNotice" values={{ username: user.username }} components={{ strong: <strong /> }} />
           </Alert>
         ) : (
           <Alert severity="warning" sx={{ mb: 3 }}>
-            請先登入或註冊帳號，並繳交系學會費以使用完整功能
+            {t('payment.loginFirst')}
           </Alert>
         )}
 
         <Box sx={{ mb: 3 }}>
           <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-            繳費後可享有
+            {t('payment.benefitsTitle')}
           </Typography>
           <List dense disablePadding>
             {benefits.map((benefit, index) => (
@@ -105,17 +106,17 @@ const PaymentWall = ({ feature = '此功能' }) => {
         >
           <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mb: 0.5 }}>
             <Typography variant="body2" color="text.secondary">
-              系學會費
+              {t('payment.feeLabel')}
             </Typography>
             <Typography variant="h5" sx={{ fontWeight: 700, color: 'primary.main' }}>
               NT$ 2,000
               <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 0.5 }}>
-                / 四年
+                {t('payment.perFourYears')}
               </Typography>
             </Typography>
           </Stack>
           <Typography variant="caption" color="text.secondary">
-            繳費資格採人工審核，每日晚間統一處理；通過後即可使用完整功能。
+            {t('payment.reviewNotice')}
           </Typography>
         </Box>
 
@@ -123,10 +124,10 @@ const PaymentWall = ({ feature = '此功能' }) => {
           {!user ? (
             <>
               <Button variant="contained" fullWidth size="large" onClick={() => navigate('/login')}>
-                登入
+                {t('nav.login')}
               </Button>
               <Button variant="outlined" fullWidth size="large" onClick={() => navigate('/register')}>
-                註冊
+                {t('auth.register')}
               </Button>
               <Button
                 variant="outlined"
@@ -134,7 +135,7 @@ const PaymentWall = ({ feature = '此功能' }) => {
                 size="large"
                 onClick={() => (window.location.href = 'mailto:imsa@ntu.im')}
               >
-                聯繫系學會
+                {t('payment.contactAssociation')}
               </Button>
             </>
           ) : (
@@ -145,10 +146,10 @@ const PaymentWall = ({ feature = '此功能' }) => {
                 size="large"
                 onClick={() => (window.location.href = 'mailto:imsa@ntu.im')}
               >
-                聯繫系學會
+                {t('payment.contactAssociation')}
               </Button>
               <Button variant="outlined" fullWidth size="large" onClick={() => navigate('/')}>
-                返回首頁
+                {t('guard.backHome')}
               </Button>
             </>
           )}

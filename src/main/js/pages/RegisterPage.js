@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
@@ -14,6 +15,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 
 const RegisterPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { register } = useAuth();
   const [formData, setFormData] = useState({
@@ -36,11 +38,11 @@ const RegisterPage = () => {
     setError('');
 
     if (formData.password !== formData.confirmPassword) {
-      setError('密碼與確認密碼不相符');
+      setError(t('auth.passwordMismatch'));
       return;
     }
     if (formData.password.length < 6) {
-      setError('密碼長度至少需要 6 個字元');
+      setError(t('auth.passwordTooShort'));
       return;
     }
 
@@ -53,7 +55,7 @@ const RegisterPage = () => {
       if (err.errors && Array.isArray(err.errors)) {
         setError(err.errors[0].msg);
       } else {
-        setError(err.error || '註冊失敗，請稍後再試');
+        setError(err.error || t('auth.registerFailed'));
       }
     } finally {
       setLoading(false);
@@ -73,10 +75,10 @@ const RegisterPage = () => {
       >
         <Box sx={{ mb: 3 }}>
           <Typography variant="h3" component="h1" sx={{ fontWeight: 700, mb: 0.5 }}>
-            註冊
+            {t('auth.register')}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            加入台大資管系學會
+            {t('auth.registerSubtitle')}
           </Typography>
         </Box>
 
@@ -91,17 +93,17 @@ const RegisterPage = () => {
             <TextField
               fullWidth
               size="medium"
-              label="學號"
+              label={t('auth.studentId')}
               name="studentId"
               value={formData.studentId}
               onChange={handleChange}
               required
-              placeholder="例：B09705001"
+              placeholder={t('auth.studentIdExample')}
             />
             <TextField
               fullWidth
               size="medium"
-              label="使用者名稱"
+              label={t('auth.username')}
               name="username"
               value={formData.username}
               onChange={handleChange}
@@ -110,7 +112,7 @@ const RegisterPage = () => {
             <TextField
               fullWidth
               size="medium"
-              label="真實姓名"
+              label={t('auth.fullName')}
               name="fullName"
               value={formData.fullName}
               onChange={handleChange}
@@ -119,29 +121,29 @@ const RegisterPage = () => {
             <TextField
               fullWidth
               size="medium"
-              label="電子郵件"
+              label={t('auth.email')}
               name="email"
               type="email"
               value={formData.email}
               onChange={handleChange}
               required
-              placeholder="例：student@ntu.edu.tw"
+              placeholder={t('auth.emailExample')}
             />
             <TextField
               fullWidth
               size="medium"
-              label="密碼"
+              label={t('auth.password')}
               name="password"
               type="password"
               value={formData.password}
               onChange={handleChange}
               required
-              helperText="至少 6 個字元"
+              helperText={t('auth.passwordHelper')}
             />
             <TextField
               fullWidth
               size="medium"
-              label="確認密碼"
+              label={t('auth.confirmPassword')}
               name="confirmPassword"
               type="password"
               value={formData.confirmPassword}
@@ -156,15 +158,15 @@ const RegisterPage = () => {
               disabled={loading}
               sx={{ mt: 1 }}
             >
-              {loading ? <CircularProgress size={22} sx={{ color: 'inherit' }} /> : '註冊'}
+              {loading ? <CircularProgress size={22} sx={{ color: 'inherit' }} /> : t('auth.register')}
             </Button>
           </Stack>
         </Box>
 
         <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', mt: 3 }}>
-          已經有帳號？
+          {t('auth.haveAccount')}
           <Link component={RouterLink} to="/login" sx={{ ml: 0.5, fontWeight: 500 }}>
-            立即登入
+            {t('auth.loginNow')}
           </Link>
         </Typography>
 
@@ -179,7 +181,7 @@ const RegisterPage = () => {
           }}
         >
           <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.6 }}>
-            註冊後若需要使用完整功能（下載考古題、上傳大抄等），請聯繫系學會繳交會費。
+            {t('auth.registerFeeNotice')}
           </Typography>
         </Box>
       </Paper>

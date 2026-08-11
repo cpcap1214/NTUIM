@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState } from 'react';
 import {
   Box,
@@ -43,81 +44,25 @@ const GOOGLE_FORM_OPEN_URL =
 const SHEET_URL =
   'https://docs.google.com/spreadsheets/d/1iTkjNC3meJ4e0EhR9zWprI39XiA6xrlQmMqWIODcWSE/edit?gid=996157442#gid=996157442';
 
-// 一目了然的數字統計
+// 一目了然的數字統計。
+// 這三個模組層常數只留結構（icon / accent / key），文案由 render 時用 t() 取——
+// 理由同 constants.js 的 NAVIGATION_ITEMS：模組載入時 i18n 可能還沒好，
+// 而且切換語言後模組層的陣列不會重算，畫面會卡在舊語言。
 const QUICK_STATS = [
-  {
-    icon: TimeIcon,
-    value: '5 年內',
-    label: '可上傳範圍',
-    hint: '以 114-1 為例：認可 110~114',
-    accent: '#1976d2',
-  },
-  {
-    icon: BoxIcon,
-    value: '4 份 / 次',
-    label: '審核單位',
-    hint: '累積 4 份才會發放回饋',
-    accent: '#0891b2',
-  },
-  {
-    icon: TrophyIcon,
-    value: 'NT$ 250',
-    label: '每次回饋',
-    hint: '通過審核即可獲得',
-    accent: '#059669',
-  },
-  {
-    icon: AssignmentIcon,
-    value: '32 份 / $2000',
-    label: '個人上限',
-    hint: '累積達上限後不再發放',
-    accent: '#d97706',
-  },
+  { icon: TimeIcon, key: 'range', accent: '#1976d2' },
+  { icon: BoxIcon, key: 'batch', accent: '#0891b2' },
+  { icon: TrophyIcon, key: 'reward', accent: '#059669' },
+  { icon: AssignmentIcon, key: 'cap', accent: '#d97706' },
 ];
 
 // 可上傳類別
 const CATEGORIES = [
-  {
-    icon: QuizIcon,
-    accent: '#0891b2',
-    title: '考古題',
-    desc: '限課程（必修 / 選修 / 通識）之期中 / 期末考',
-    bullets: [
-      '原始考題電子檔或題目掃描為主',
-      '整理後以 PDF 上傳',
-      '清晰且可辨識文字',
-      '微積分例外：僅收小考考古題',
-    ],
-  },
-  {
-    icon: DescriptionIcon,
-    accent: '#059669',
-    title: '大抄',
-    desc: '修課重點整理，幫助同學複習',
-    bullets: [
-      '不限手寫或打字',
-      '整理後以 PDF 上傳',
-      '清晰整齊且可辨識文字',
-      '由學術部審核是否錄用',
-    ],
-  },
+  { icon: QuizIcon, accent: '#0891b2', key: 'exam' },
+  { icon: DescriptionIcon, accent: '#059669', key: 'cheatSheet' },
 ];
 
 // 流程
-const STEPS = [
-  {
-    label: '檢視已上傳清單',
-    desc: '為避免重複上傳，先到 Google Sheet 確認檔案是否已存在',
-  },
-  {
-    label: '填寫表單上傳檔案',
-    desc: '使用 @ntu.edu.tw 信箱，依命名規則上傳 PDF',
-  },
-  {
-    label: '等待學術部審核',
-    desc: '累積達 4 份且通過審核，學術部會統一通知並發放獎勵',
-  },
-];
+const STEPS = ['checkList', 'fillForm', 'awaitReview'];
 
 const StatCard = ({ icon: Icon, value, label, hint, accent }) => (
   <Card sx={{ height: '100%' }}>
@@ -212,6 +157,7 @@ const CategoryCard = ({ icon: Icon, accent, title, desc, bullets }) => (
 );
 
 const ExamUploadPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const [rulesOpen, setRulesOpen] = useState(false);
@@ -280,8 +226,14 @@ const ExamUploadPage = () => {
       {/* Quick stats */}
       <Grid container spacing={2.5} sx={{ mb: 5 }}>
         {QUICK_STATS.map((s) => (
-          <Grid item xs={6} md={3} key={s.label}>
-            <StatCard {...s} />
+          <Grid item xs={6} md={3} key={s.key}>
+            <StatCard
+              icon={s.icon}
+              accent={s.accent}
+              value={t(`examUpload.stats.${s.key}.value`)}
+              label={t(`examUpload.stats.${s.key}.label`)}
+              hint={t(`examUpload.stats.${s.key}.hint`)}
+            />
           </Grid>
         ))}
       </Grid>
@@ -293,8 +245,14 @@ const ExamUploadPage = () => {
         </Typography>
         <Grid container spacing={2.5}>
           {CATEGORIES.map((c) => (
-            <Grid item xs={12} md={6} key={c.title}>
-              <CategoryCard {...c} />
+            <Grid item xs={12} md={6} key={c.key}>
+              <CategoryCard
+                icon={c.icon}
+                accent={c.accent}
+                title={t(`examUpload.categories.${c.key}.title`)}
+                desc={t(`examUpload.categories.${c.key}.desc`)}
+                bullets={t(`examUpload.categories.${c.key}.bullets`, { returnObjects: true })}
+              />
             </Grid>
           ))}
         </Grid>
@@ -363,14 +321,14 @@ const ExamUploadPage = () => {
                 },
               }}
             >
-              {STEPS.map((s) => (
-                <Step key={s.label}>
+              {STEPS.map((stepKey) => (
+                <Step key={stepKey}>
                   <StepLabel>
                     <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.25 }}>
-                      {s.label}
+                      {t(`examUpload.steps.${stepKey}.label`)}
                     </Typography>
                     <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.55 }}>
-                      {s.desc}
+                      {t(`examUpload.steps.${stepKey}.desc`)}
                     </Typography>
                   </StepLabel>
                 </Step>

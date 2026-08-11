@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState, useEffect } from 'react';
 import {
     Dialog,
@@ -25,6 +26,7 @@ const EditExamDialog = ({
     onSave, 
     onFileUpdate 
 }) => {
+    const { t } = useTranslation();
     const [formData, setFormData] = useState({
         courseCode: '',
         courseName: '',
@@ -76,7 +78,7 @@ const EditExamDialog = ({
 
     const handleSaveInfo = async () => {
         if (!formData.courseCode.trim() || !formData.courseName.trim()) {
-            setError('課號和課程名稱為必填');
+            setError(t('exam.form.codeAndNameRequired'));
             return;
         }
 
@@ -85,14 +87,14 @@ const EditExamDialog = ({
             await onSave(exam.id, formData);
             setError('');
         } catch (err) {
-            setError(err.message || '更新失敗');
+            setError(err.message || t('exam.form.updateFailed'));
         }
         setLoading(false);
     };
 
     const handleUpdateFiles = async () => {
         if (!files.questionFile && !files.answerFile && !removeAnswerFile) {
-            setError('請選擇要更新的檔案或移除答案檔案');
+            setError(t('exam.form.pickFileOrRemove'));
             return;
         }
 
@@ -117,7 +119,7 @@ const EditExamDialog = ({
             setRemoveAnswerFile(false);
             setError('');
         } catch (err) {
-            setError(err.message || '檔案更新失敗');
+            setError(err.message || t('exam.form.fileUpdateFailed'));
         }
         setLoading(false);
     };
@@ -144,14 +146,14 @@ const EditExamDialog = ({
                 {/* 基本資訊編輯 */}
                 <Paper sx={{ p: 2, mb: 3 }}>
                     <Typography variant="h6" gutterBottom>
-                        基本資訊
+                        {t('exam.form.basicInfo')}
                     </Typography>
                     
                     <Grid container spacing={2}>
                         <Grid item xs={12} sm={6}>
                             <TextField
                                 fullWidth
-                                label="課號"
+                                label={t('courseReview.form.courseCode')}
                                 value={formData.courseCode}
                                 onChange={(e) => handleInputChange('courseCode', e.target.value)}
                                 required
@@ -160,7 +162,7 @@ const EditExamDialog = ({
                         <Grid item xs={12} sm={6}>
                             <TextField
                                 fullWidth
-                                label="課程名稱"
+                                label={t('courseReview.form.courseName')}
                                 value={formData.courseName}
                                 onChange={(e) => handleInputChange('courseName', e.target.value)}
                                 required
@@ -169,7 +171,7 @@ const EditExamDialog = ({
                         <Grid item xs={12} sm={6}>
                             <TextField
                                 fullWidth
-                                label="教授"
+                                label={t('courseReview.detailField.professor')}
                                 value={formData.professor}
                                 onChange={(e) => handleInputChange('professor', e.target.value)}
                             />
@@ -178,7 +180,7 @@ const EditExamDialog = ({
                             <TextField
                                 fullWidth
                                 type="number"
-                                label="年份"
+                                label={t('exam.form.year')}
                                 value={formData.year}
                                 onChange={(e) => handleInputChange('year', parseInt(e.target.value))}
                                 inputProps={{ min: 2000, max: 2100 }}
@@ -189,7 +191,7 @@ const EditExamDialog = ({
                                 <InputLabel>學期</InputLabel>
                                 <Select
                                     value={formData.semester}
-                                    label="學期"
+                                    label={t('courseReview.detailField.academicTerm')}
                                     onChange={(e) => handleInputChange('semester', e.target.value)}
                                 >
                                     <MenuItem value="1">第一學期</MenuItem>
@@ -203,7 +205,7 @@ const EditExamDialog = ({
                                 <InputLabel>考試類型</InputLabel>
                                 <Select
                                     value={formData.examType}
-                                    label="考試類型"
+                                    label={t('exam.form.examType')}
                                     onChange={(e) => handleInputChange('examType', e.target.value)}
                                 >
                                     <MenuItem value="midterm">期中考</MenuItem>
@@ -216,7 +218,7 @@ const EditExamDialog = ({
                             <TextField
                                 fullWidth
                                 type="number"
-                                label="考試次數"
+                                label={t('exam.form.examAttempt')}
                                 value={formData.examAttempt}
                                 onChange={(e) => handleInputChange('examAttempt', parseInt(e.target.value))}
                                 inputProps={{ min: 1, max: 3 }}
@@ -230,7 +232,7 @@ const EditExamDialog = ({
                             onClick={handleSaveInfo}
                             disabled={loading}
                         >
-                            更新資訊
+                            {t('exam.form.updateInfo')}
                         </Button>
                     </Box>
                 </Paper>
@@ -240,20 +242,20 @@ const EditExamDialog = ({
                 {/* 檔案管理 */}
                 <Paper sx={{ p: 2 }}>
                     <Typography variant="h6" gutterBottom>
-                        檔案管理
+                        {t('exam.form.fileManagement')}
                     </Typography>
                     
                     {/* 當前檔案資訊 */}
                     <Box sx={{ mb: 2 }}>
                         <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                            當前檔案：
+                            {t('exam.form.currentFiles')}
                         </Typography>
                         <Typography variant="body2">
-                            題目檔案：{exam.questionFileName}
+                            {t('exam.form.questionFile', { name: exam.questionFileName })}
                         </Typography>
                         {exam.answerFileName && (
                             <Typography variant="body2">
-                                答案檔案：{exam.answerFileName}
+                                {t('exam.form.answerFile', { name: exam.answerFileName })}
                             </Typography>
                         )}
                     </Box>
@@ -261,7 +263,7 @@ const EditExamDialog = ({
                     <Grid container spacing={2}>
                         <Grid item xs={12} sm={6}>
                             <Typography variant="subtitle2" gutterBottom>
-                                更新題目檔案 (PDF)
+                                {t('exam.form.updateQuestionFile')}
                             </Typography>
                             <input
                                 type="file"
@@ -272,7 +274,7 @@ const EditExamDialog = ({
                         </Grid>
                         <Grid item xs={12} sm={6}>
                             <Typography variant="subtitle2" gutterBottom>
-                                更新答案檔案 (PDF)
+                                {t('exam.form.updateAnswerFile')}
                             </Typography>
                             <input
                                 type="file"
@@ -290,7 +292,7 @@ const EditExamDialog = ({
                                 color="error"
                                 onClick={() => setRemoveAnswerFile(!removeAnswerFile)}
                             >
-                                {removeAnswerFile ? '取消移除答案檔案' : '移除答案檔案'}
+                                {t(removeAnswerFile ? 'exam.form.cancelRemoveAnswer' : 'exam.form.removeAnswer')}
                             </Button>
                         </Box>
                     )}
@@ -302,7 +304,7 @@ const EditExamDialog = ({
                             onClick={handleUpdateFiles}
                             disabled={loading}
                         >
-                            更新檔案
+                            {t('exam.form.updateFile')}
                         </Button>
                     </Box>
                 </Paper>
@@ -310,7 +312,7 @@ const EditExamDialog = ({
             
             <DialogActions>
                 <Button onClick={handleClose}>
-                    關閉
+                    {t('common.close')}
                 </Button>
             </DialogActions>
         </Dialog>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Tabs, Tab, Chip, Stack } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
@@ -10,6 +11,7 @@ import { NAVIGATION_ITEMS } from '../../../resources/config/constants';
 const NavigationTabs = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { isModuleVisible, isModuleComingSoon } = useAuth();
 
   const visibleItems = NAVIGATION_ITEMS.filter((item) => isModuleVisible(item.moduleKey));
@@ -21,7 +23,7 @@ const NavigationTabs = () => {
     <Tabs
       value={currentPath}
       onChange={(_, newPath) => navigate(newPath)}
-      aria-label="網站導覽"
+      aria-label={t('nav.siteNavigation')}
       sx={{ minHeight: 48 }}
     >
       {visibleItems.map((item) => (
@@ -31,16 +33,16 @@ const NavigationTabs = () => {
           label={
             isModuleComingSoon(item.moduleKey) ? (
               <Stack direction="row" spacing={0.75} alignItems="center">
-                <span>{item.label}</span>
+                <span>{t(item.labelKey)}</span>
                 <Chip
-                  label="即將推出"
+                  label={t('nav.comingSoon')}
                   size="small"
                   color="warning"
                   sx={{ height: 18, fontSize: '0.65rem' }}
                 />
               </Stack>
             ) : (
-              item.label
+              t(item.labelKey)
             )
           }
           sx={{ minWidth: 'auto', px: 2 }}

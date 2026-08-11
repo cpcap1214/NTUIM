@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Box, Button, Chip, Stack, Typography } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useAuth } from '../../contexts/AuthContext';
@@ -9,6 +10,7 @@ import { useAuth } from '../../contexts/AuthContext';
 // 預覽成一般使用者時管理台會整個消失（那正是預期行為），
 // 橫幅若跟著不見，就只剩清 sessionStorage 才能脫困。
 const PreviewBanner = () => {
+  const { t } = useTranslation();
   const { preview, stopPreview } = useAuth();
   const [stopping, setStopping] = useState(false);
 
@@ -43,21 +45,21 @@ const PreviewBanner = () => {
             onClick={handleStop}
             disabled={stopping}
           >
-            {stopping ? '停用中…' : '停用檢視'}
+            {stopping ? t('preview.stopping') : t('preview.stop')}
           </Button>
         }
       >
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
           <Typography variant="body2" component="span">
-            正在以
+            {t('preview.viewingAs')}
           </Typography>
           <Chip
             size="small"
             color="warning"
-            label={preview.label || (preview.kind === 'role' ? '某個身分組' : '某位成員')}
+            label={preview.label || t(preview.kind === 'role' ? 'preview.someRole' : 'preview.someUser')}
           />
           <Typography variant="body2" component="span">
-            的身分檢視，全站權限與 API 回應都已切換。此模式為唯讀，無法變更任何資料。
+            {t('preview.viewingAsSuffix')}
           </Typography>
         </Stack>
       </Alert>

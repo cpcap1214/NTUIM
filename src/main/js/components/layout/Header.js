@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   AppBar,
@@ -37,7 +38,8 @@ import {
   OpenInNew as OpenInNewIcon,
 } from '@mui/icons-material';
 import NavigationTabs from './NavigationTabs';
-import { APP_CONFIG, NAVIGATION_ITEMS } from '../../../resources/config/constants';
+import LanguageSwitcher from './LanguageSwitcher';
+import { NAVIGATION_ITEMS } from '../../../resources/config/constants';
 import { useAuth } from '../../contexts/AuthContext';
 
 // Google 四色「G」logo（inline SVG，避免額外圖檔依賴）
@@ -85,13 +87,15 @@ const Header = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { user, logout, isAuthenticated, isAdmin, isModuleVisible, isModuleComingSoon } = useAuth();
 
+  // 移除了 { id: 'admin-upload', path: '/admin/upload' }：App.js 沒有那條路由，
+  // 點下去只會進到空白頁。該功能已由管理員控制台的「上傳考古題／上傳大抄」分頁取代。
   const adminNavItems = [
-    { id: 'admin-panel', label: '用戶管理', path: '/admin', icon: AdminIcon },
-    { id: 'admin-upload', label: '上傳資源', path: '/admin/upload', icon: UploadIcon },
-    { id: 'admin-exam-manage', label: '考古題管理', path: '/admin/exam-manage', icon: SchoolIcon },
-    { id: 'admin-cheatsheet-manage', label: '大抄管理', path: '/admin/cheatsheet-manage', icon: DescriptionIcon },
+    { id: 'admin-panel', labelKey: 'nav.adminPanel', path: '/admin', icon: AdminIcon },
+    { id: 'admin-exam-manage', labelKey: 'nav.adminExamManage', path: '/admin/exam-manage', icon: SchoolIcon },
+    { id: 'admin-cheatsheet-manage', labelKey: 'nav.adminCheatSheetManage', path: '/admin/cheatsheet-manage', icon: DescriptionIcon },
   ];
 
   const handleDrawerToggle = () => setMobileOpen((v) => !v);
@@ -111,10 +115,10 @@ const Header = () => {
     <Box sx={{ width: 280, height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ px: 2.5, py: 2.5 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'primary.main' }}>
-          {APP_CONFIG.name}
+          {t('app.name')}
         </Typography>
         <Typography variant="caption" color="text.secondary">
-          {APP_CONFIG.englishName}
+          {t('app.englishName')}
         </Typography>
       </Box>
       <Divider />
@@ -143,11 +147,11 @@ const Header = () => {
                   <IconComponent sx={{ fontSize: 20 }} />
                 </ListItemIcon>
                 <ListItemText
-                  primary={item.label}
+                  primary={t(item.labelKey)}
                   primaryTypographyProps={{ fontWeight: isActive ? 600 : 500, fontSize: '0.9rem' }}
                 />
                 {isModuleComingSoon(item.moduleKey) && (
-                  <Chip label="即將推出" size="small" color="warning" sx={{ height: 18, fontSize: '0.65rem' }} />
+                  <Chip label={t('nav.comingSoon')} size="small" color="warning" sx={{ height: 18, fontSize: '0.65rem' }} />
                 )}
               </ListItemButton>
             </ListItem>
@@ -161,7 +165,7 @@ const Header = () => {
               color="text.secondary"
               sx={{ px: 1.5, mt: 2, mb: 0.5, display: 'block', fontWeight: 600, letterSpacing: '0.04em' }}
             >
-              管理員功能
+              {t('nav.adminSection')}
             </Typography>
             {adminNavItems.map((item) => {
               const IconComponent = item.icon;
@@ -184,7 +188,7 @@ const Header = () => {
                       <IconComponent sx={{ fontSize: 20, color: isActive ? 'secondary.main' : 'text.secondary' }} />
                     </ListItemIcon>
                     <ListItemText
-                      primary={item.label}
+                      primary={t(item.labelKey)}
                       primaryTypographyProps={{
                         fontWeight: isActive ? 600 : 500,
                         fontSize: '0.875rem',
@@ -225,7 +229,7 @@ const Header = () => {
                 </Typography>
                 <Chip
                   size="small"
-                  label={user?.hasPaidFee ? '已繳會費' : '未繳會費'}
+                  label={t(user?.hasPaidFee ? 'nav.feePaid' : 'nav.feeUnpaid')}
                   color={user?.hasPaidFee ? 'success' : 'default'}
                   variant="outlined"
                   sx={{ height: 18, fontSize: '0.7rem' }}
@@ -233,7 +237,7 @@ const Header = () => {
               </Box>
               <IconButton
                 size="small"
-                aria-label="登出"
+                aria-label={t('nav.logout')}
                 onClick={() => {
                   handleLogout();
                   setMobileOpen(false);
@@ -252,7 +256,7 @@ const Header = () => {
               startIcon={<UploadIcon />}
               onClick={() => handleMobileNavigation('/upload-exam')}
             >
-              上傳考古題
+              {t('nav.uploadExam')}
             </Button>
           </Stack>
         ) : (
@@ -265,7 +269,7 @@ const Header = () => {
               setMobileOpen(false);
             }}
           >
-            登入 / 註冊
+            {t('nav.loginOrRegister')}
           </Button>
         )}
 
@@ -299,7 +303,7 @@ const Header = () => {
             '& .MuiButton-startIcon': { mr: 0.75 },
           }}
         >
-          加入 Google Workspace
+          {t('nav.joinWorkspaceShort')}
         </Button>
       </Box>
     </Box>
@@ -321,7 +325,7 @@ const Header = () => {
           {isMobile && (
             <IconButton
               edge="start"
-              aria-label="開啟選單"
+              aria-label={t('nav.openMenu')}
               onClick={handleDrawerToggle}
               sx={{ color: 'text.primary' }}
             >
@@ -362,7 +366,7 @@ const Header = () => {
                 sx={{ fontWeight: 700, color: 'primary.main', lineHeight: 1.2 }}
                 noWrap
               >
-                {APP_CONFIG.name}
+                {t('app.name')}
               </Typography>
               <Typography
                 variant="caption"
@@ -370,7 +374,7 @@ const Header = () => {
                 sx={{ display: { xs: 'none', sm: 'block' }, lineHeight: 1.2 }}
                 noWrap
               >
-                {APP_CONFIG.englishName}
+                {t('app.englishName')}
               </Typography>
             </Box>
           </Box>
@@ -382,6 +386,9 @@ const Header = () => {
               </Box>
 
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                {/* 放在工具列而不是使用者下拉選單裡：那個選單只在登入後出現，
+                    未登入的訪客也必須能切換語言 */}
+                <LanguageSwitcher size="small" />
                 <Button
                   variant="outlined"
                   size="small"
@@ -406,7 +413,7 @@ const Header = () => {
                     },
                   }}
                 >
-                  加入資管系 Google Workspace
+                  {t('nav.joinWorkspace')}
                 </Button>
 
                 {isAuthenticated ? (
@@ -422,7 +429,7 @@ const Header = () => {
                     startIcon={<LoginIcon />}
                     onClick={() => navigate('/login')}
                   >
-                    登入
+                    {t('nav.login')}
                   </Button>
                 )}
               </Box>
@@ -430,19 +437,25 @@ const Header = () => {
           )}
 
           {isMobile && !isAuthenticated && (
-            <Box sx={{ ml: 'auto' }}>
+            <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <LanguageSwitcher size="small" />
               <Button
                 variant="contained"
                 size="small"
                 startIcon={<LoginIcon />}
                 onClick={() => navigate('/login')}
               >
-                登入
+                {t('nav.login')}
               </Button>
             </Box>
           )}
           {isMobile && isAuthenticated && (
-            <IconButton onClick={handleUserMenuOpen} sx={{ ml: 'auto', p: 0.5 }}>
+            <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <LanguageSwitcher size="small" />
+            </Box>
+          )}
+          {isMobile && isAuthenticated && (
+            <IconButton onClick={handleUserMenuOpen} sx={{ p: 0.5 }}>
               <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: '0.85rem' }}>
                 {user?.username?.charAt(0).toUpperCase()}
               </Avatar>
@@ -489,7 +502,7 @@ const Header = () => {
               </Typography>
               <Chip
                 size="small"
-                label={user?.hasPaidFee ? '已繳會費' : '未繳會費'}
+                label={t(user?.hasPaidFee ? 'nav.feePaid' : 'nav.feeUnpaid')}
                 color={user?.hasPaidFee ? 'success' : 'default'}
                 variant="outlined"
                 sx={{ height: 20, fontSize: '0.7rem', flexShrink: 0 }}
@@ -508,14 +521,14 @@ const Header = () => {
               <UploadIcon fontSize="small" sx={{ color: 'primary.main' }} />
             </ListItemIcon>
             <Typography variant="body2" sx={{ fontWeight: 500 }}>
-              上傳考古題
+              {t('nav.uploadExam')}
             </Typography>
           </MenuItem>
           <MenuItem onClick={handleLogout} sx={{ py: 1 }}>
             <ListItemIcon sx={{ minWidth: 32 }}>
               <LogoutIcon fontSize="small" />
             </ListItemIcon>
-            <Typography variant="body2">登出</Typography>
+            <Typography variant="body2">{t('nav.logout')}</Typography>
           </MenuItem>
         </Menu>
       )}

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Box, Typography, Button, Paper } from '@mui/material';
@@ -13,6 +14,7 @@ const ProtectedRoute = ({
     requireModule = null,
     fallback = null
 }) => {
+    const { t } = useTranslation();
     const { user, loading, hasPermission, isModuleAccessible, isModuleComingSoon } = useAuth();
     const location = useLocation();
 
@@ -20,7 +22,7 @@ const ProtectedRoute = ({
     if (loading) {
         return (
             <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-                <Typography>載入中...</Typography>
+                <Typography>{t('common.loading')}</Typography>
             </Box>
         );
     }
@@ -33,15 +35,15 @@ const ProtectedRoute = ({
                 <Paper sx={{ p: 4, textAlign: 'center' }}>
                     <Lock sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
                     <Typography variant="h5" gutterBottom>
-                        {isModuleComingSoon(requireModule) ? '即將推出' : '此功能尚未開放'}
+                        {t(isModuleComingSoon(requireModule) ? 'nav.comingSoon' : 'guard.moduleUnavailableTitle')}
                     </Typography>
                     <Typography color="textSecondary" paragraph>
-                        {isModuleComingSoon(requireModule)
-                            ? '這項功能正在準備中，敬請期待'
-                            : '你目前沒有使用這項功能的權限'}
+                        {t(isModuleComingSoon(requireModule)
+                            ? 'guard.comingSoonBody'
+                            : 'guard.moduleUnavailableBody')}
                     </Typography>
                     <Button variant="contained" href="/" sx={{ mt: 2 }}>
-                        返回首頁
+                        {t('guard.backHome')}
                     </Button>
                 </Paper>
             </Box>
@@ -60,13 +62,13 @@ const ProtectedRoute = ({
                 <Paper sx={{ p: 4, textAlign: 'center' }}>
                     <AdminPanelSettings sx={{ fontSize: 60, color: 'error.main', mb: 2 }} />
                     <Typography variant="h5" gutterBottom>
-                        權限不足
+                        {t('guard.noPermissionTitle')}
                     </Typography>
                     <Typography color="textSecondary" paragraph>
-                        你的帳號沒有使用這項功能的權限
+                        {t('guard.noPermissionBody')}
                     </Typography>
                     <Button variant="contained" href="/" sx={{ mt: 2 }}>
-                        返回首頁
+                        {t('guard.backHome')}
                     </Button>
                 </Paper>
             </Box>
@@ -80,13 +82,13 @@ const ProtectedRoute = ({
                 <Paper sx={{ p: 4, textAlign: 'center' }}>
                     <AdminPanelSettings sx={{ fontSize: 60, color: 'error.main', mb: 2 }} />
                     <Typography variant="h5" gutterBottom>
-                        需要管理員權限
+                        {t('guard.adminRequiredTitle')}
                     </Typography>
                     <Typography color="textSecondary" paragraph>
-                        此頁面僅限管理員存取
+                        {t('guard.adminRequiredBody')}
                     </Typography>
                     <Button variant="contained" href="/" sx={{ mt: 2 }}>
-                        返回首頁
+                        {t('guard.backHome')}
                     </Button>
                 </Paper>
             </Box>
@@ -100,16 +102,16 @@ const ProtectedRoute = ({
                 <Paper sx={{ p: 4, textAlign: 'center' }}>
                     <Payment sx={{ fontSize: 60, color: 'warning.main', mb: 2 }} />
                     <Typography variant="h5" gutterBottom>
-                        需要繳交系學會費
+                        {t('guard.paymentRequiredTitle')}
                     </Typography>
                     <Typography color="textSecondary" paragraph>
-                        此功能僅開放給已繳交系學會費的會員使用
+                        {t('guard.paymentRequiredBody')}
                     </Typography>
                     <Typography variant="body2" color="textSecondary" paragraph>
-                        請聯繫系學會幹部或至系辦繳交會費
+                        {t('guard.paymentRequiredHint')}
                     </Typography>
                     <Button variant="contained" href="/about" sx={{ mt: 2 }}>
-                        聯絡我們
+                        {t('guard.contactUs')}
                     </Button>
                 </Paper>
             </Box>
@@ -142,13 +144,14 @@ export const RequireAdmin = ({ children, fallback }) => (
 
 // 登入狀態顯示組件
 export const AuthStatus = () => {
+    const { t } = useTranslation();
     const { user, isAuthenticated, getFeeStatusMessage } = useAuth();
 
     if (!isAuthenticated) {
         return (
             <Box display="flex" alignItems="center" gap={1}>
                 <Lock fontSize="small" />
-                <Typography variant="body2">未登入</Typography>
+                <Typography variant="body2">{t('guard.notLoggedIn')}</Typography>
             </Box>
         );
     }
@@ -156,7 +159,7 @@ export const AuthStatus = () => {
     return (
         <Box>
             <Typography variant="body2">
-                歡迎，{user.fullName || user.username}
+                {t('guard.welcome', { name: user.fullName || user.username })}
             </Typography>
             <Typography variant="caption" color="textSecondary">
                 {getFeeStatusMessage()}

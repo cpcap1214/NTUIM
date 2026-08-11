@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+
 // 檔案處理工具
 
 // 格式化檔案大小
@@ -59,14 +61,14 @@ export const uploadFile = (file, type = 'document') => {
   return new Promise((resolve, reject) => {
     // 檢查檔案類型
     if (!isPdfFile(file.name)) {
-      reject(new Error('只允許上傳 PDF 檔案'));
+      reject(new Error(i18n.t('validation.pdfOnly')));
       return;
     }
     
     // 檢查檔案大小 (假設限制 10MB)
     const maxSize = 10 * 1024 * 1024; // 10MB
     if (file.size > maxSize) {
-      reject(new Error('檔案大小不能超過 10MB'));
+      reject(new Error(i18n.t('validation.fileTooLarge')));
       return;
     }
     

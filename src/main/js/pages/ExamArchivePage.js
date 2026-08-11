@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -45,6 +46,7 @@ import PaymentWall from '../components/PaymentWall';
 import { API_BASE_URL } from '../services/api';
 
 const ExamArchivePage = () => {
+  const { t, i18n } = useTranslation();
   const { hasPaidFee } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [examTypeFilter, setExamTypeFilter] = useState('all');
@@ -55,15 +57,19 @@ const ExamArchivePage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // 只在掛載時抓一次。fetchExams 現在會引用 t（i18n 的錯誤訊息），
+  // linter 因此不再視它為穩定值；把它加進依賴會造成無限重抓，
+  // 所以照專案既有做法明確關掉這條規則。
   useEffect(() => {
     fetchExams();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchExams = async () => {
     try {
       setLoading(true);
       const response = await fetch(`${API_BASE_URL}/exams?limit=1000`);
-      if (!response.ok) throw new Error('獲取考古題失敗');
+      if (!response.ok) throw new Error(t('exam.fetchFailed'));
       const result = await response.json();
       setExams(result.data || []);
     } catch (err) {
@@ -101,14 +107,14 @@ const ExamArchivePage = () => {
 
   const handleDownload = async (examId, filename, fileType = 'question') => {
     if (!hasPaidFee) {
-      alert('請先繳交系學會費才能下載考古題');
+      alert(t('exam.payToDownload'));
       return;
     }
     try {
       const response = await fetch(`${API_BASE_URL}/exams/${examId}/download/${fileType}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
-      if (!response.ok) throw new Error('下載失敗');
+      if (!response.ok) throw new Error(t('cheatSheet.downloadFailed'));
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -120,13 +126,13 @@ const ExamArchivePage = () => {
       window.URL.revokeObjectURL(url);
     } catch (e) {
       console.error('下載錯誤:', e);
-      alert('下載失敗，請稍後再試');
+      alert(t('cheatSheet.downloadFailedRetry'));
     }
   };
 
   const handlePreview = (examId, fileType = 'question') => {
     if (!hasPaidFee) {
-      alert('請先繳交系學會費才能預覽考古題');
+      alert(t('exam.payToPreview'));
       return;
     }
     const token = localStorage.getItem('token');
@@ -134,7 +140,7 @@ const ExamArchivePage = () => {
   };
 
   if (!hasPaidFee) {
-    return <PaymentWall feature="考古題庫" />;
+    return <PaymentWall feature={t('home.quickLinks.examArchiveTitle')} />;
   }
 
   const totalDownloads = exams.reduce((sum, exam) => sum + (exam.downloadCount || 0), 0);
@@ -151,10 +157,10 @@ const ExamArchivePage = () => {
       >
         <Box>
           <Typography variant="h2" component="h1" sx={{ fontWeight: 700, mb: 0.5 }}>
-            考古題庫
+            {t('home.quickLinks.examArchiveTitle')}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {loading ? '載入中…' : `共 ${exams.length} 份 · 累計 ${totalDownloads} 次下載 · ${availableYears.length} 個學年`}
+            {loading ? t('common.loading') : t('exam.stats', { count: exams.length, downloads: totalDownloads, years: availableYears.length })}
           </Typography>
         </Box>
 
@@ -193,7 +199,7 @@ const ExamArchivePage = () => {
           <Grid item xs={12} md={6}>
             <TextField
               fullWidth
-              placeholder="搜尋課程名稱或教授…"
+              placeholder={t('exam.searchPlaceholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               InputProps={{
@@ -207,13 +213,13 @@ const ExamArchivePage = () => {
           </Grid>
           <Grid item xs={6} md={2}>
             <FormControl fullWidth size="small">
-              <InputLabel>考試類型</InputLabel>
+              <InputLabel>{t('exam.form.examType')}</InputLabel>
               <Select
                 value={examTypeFilter}
-                label="考試類型"
+                label={t('exam.form.examType')}
                 onChange={(e) => setExamTypeFilter(e.target.value)}
               >
-                <MenuItem value="all">全部</MenuItem>
+                <MenuItem value="all">{t('common.all')}</MenuItem>
                 {examTypes.map((type) => (
                   <MenuItem key={type} value={type}>
                     {type}
@@ -224,12 +230,12 @@ const ExamArchivePage = () => {
           </Grid>
           <Grid item xs={6} md={2}>
             <FormControl fullWidth size="small">
-              <InputLabel>年份</InputLabel>
-              <Select value={yearFilter} label="年份" onChange={(e) => setYearFilter(e.target.value)}>
-                <MenuItem value="all">全部</MenuItem>
+              <InputLabel>{t('exam.form.year')}</InputLabel>
+              <Select value={yearFilter} label={t('exam.form.year')} onChange={(e) => setYearFilter(e.target.value)}>
+                <MenuItem value="all">{t('common.all')}</MenuItem>
                 {availableYears.map((year) => (
                   <MenuItem key={year} value={year}>
-                    {year - 1911} 學年
+                    {t('exam.academicYear', { year: year - 1911 })}
                   </MenuItem>
                 ))}
               </Select>
@@ -237,11 +243,11 @@ const ExamArchivePage = () => {
           </Grid>
           <Grid item xs={12} md={2}>
             <FormControl fullWidth size="small">
-              <InputLabel>排序</InputLabel>
-              <Select value={sortBy} label="排序" onChange={(e) => setSortBy(e.target.value)}>
-                <MenuItem value="latest">最新上傳</MenuItem>
-                <MenuItem value="downloads">下載次數</MenuItem>
-                <MenuItem value="course">課程名稱</MenuItem>
+              <InputLabel>{t('common.sort')}</InputLabel>
+              <Select value={sortBy} label={t('common.sort')} onChange={(e) => setSortBy(e.target.value)}>
+                <MenuItem value="latest">{t('exam.sort.latest')}</MenuItem>
+                <MenuItem value="downloads">{t('exam.sort.downloads')}</MenuItem>
+                <MenuItem value="course">{t('courseReview.form.courseName')}</MenuItem>
               </Select>
             </FormControl>
           </Grid>
@@ -259,7 +265,7 @@ const ExamArchivePage = () => {
       {loading && (
         <Box sx={{ textAlign: 'center', py: 8 }}>
           <Typography variant="body2" color="text.secondary">
-            載入考古題中…
+            {t('exam.loadingList')}
           </Typography>
         </Box>
       )}
@@ -295,7 +301,7 @@ const ExamArchivePage = () => {
                       <Stack direction="row" spacing={0.5} alignItems="center">
                         <PersonIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
                         <Typography variant="caption" color="text.secondary" noWrap>
-                          {exam.professor || '未知教授'}
+                          {exam.professor || t('exam.unknownProfessor')}
                         </Typography>
                       </Stack>
                     </Box>
@@ -312,7 +318,7 @@ const ExamArchivePage = () => {
                     <Stack direction="row" spacing={0.75} alignItems="center">
                       <DateIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
                       <Typography variant="caption" color="text.secondary">
-                        {exam.created_at ? new Date(exam.created_at).toLocaleDateString('zh-TW') : '未知日期'}
+                        {exam.created_at ? new Date(exam.created_at).toLocaleDateString(i18n.language) : t('exam.unknownDate')}
                       </Typography>
                     </Stack>
                     <Stack direction="row" spacing={0.75} alignItems="center">
@@ -333,7 +339,7 @@ const ExamArchivePage = () => {
                         onClick={() => handlePreview(exam.id, 'question')}
                         sx={{ flex: 1 }}
                       >
-                        預覽題目
+                        {t('exam.previewQuestions')}
                       </Button>
                       <Button
                         variant="contained"
@@ -349,7 +355,7 @@ const ExamArchivePage = () => {
                         }
                         sx={{ flex: 1 }}
                       >
-                        下載題目
+                        {t('exam.downloadQuestions')}
                       </Button>
                     </Stack>
 
@@ -363,7 +369,7 @@ const ExamArchivePage = () => {
                           onClick={() => handlePreview(exam.id, 'answer')}
                           sx={{ flex: 1 }}
                         >
-                          預覽答案
+                          {t('exam.previewAnswers')}
                         </Button>
                         <Button
                           variant="contained"
@@ -380,7 +386,7 @@ const ExamArchivePage = () => {
                           }
                           sx={{ flex: 1 }}
                         >
-                          下載答案
+                          {t('exam.downloadAnswers')}
                         </Button>
                       </Stack>
                     )}
@@ -437,7 +443,7 @@ const ExamArchivePage = () => {
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2" color="text.secondary">
-                      {exam.created_at ? new Date(exam.created_at).toLocaleDateString('zh-TW') : '—'}
+                      {exam.created_at ? new Date(exam.created_at).toLocaleDateString(i18n.language) : '—'}
                     </Typography>
                   </TableCell>
                   <TableCell align="right">
@@ -448,12 +454,12 @@ const ExamArchivePage = () => {
                   <TableCell align="center">
                     <Stack direction="row" spacing={0.25} justifyContent="center" alignItems="center" divider={<Divider orientation="vertical" flexItem />}>
                       <Stack direction="row" spacing={0.25}>
-                        <Tooltip title="預覽題目">
+                        <Tooltip title={t('exam.previewQuestions')}>
                           <IconButton size="small" onClick={() => handlePreview(exam.id, 'question')}>
                             <ViewIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="下載題目">
+                        <Tooltip title={t('exam.downloadQuestions')}>
                           <IconButton
                             size="small"
                             color="primary"
@@ -472,12 +478,12 @@ const ExamArchivePage = () => {
                       </Stack>
                       {exam.answerFileName && (
                         <Stack direction="row" spacing={0.25}>
-                          <Tooltip title="預覽答案">
+                          <Tooltip title={t('exam.previewAnswers')}>
                             <IconButton size="small" color="success" onClick={() => handlePreview(exam.id, 'answer')}>
                               <ViewIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
-                          <Tooltip title="下載答案">
+                          <Tooltip title={t('exam.downloadAnswers')}>
                             <IconButton
                               size="small"
                               color="success"
@@ -509,10 +515,10 @@ const ExamArchivePage = () => {
         <Box sx={{ textAlign: 'center', py: 8 }}>
           <SchoolIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 1.5 }} />
           <Typography variant="subtitle1" color="text.secondary" gutterBottom>
-            {exams.length === 0 ? '目前沒有考古題' : '沒有找到符合條件的考古題'}
+            {t(exams.length === 0 ? 'exam.empty' : 'exam.noMatch')}
           </Typography>
           <Typography variant="body2" color="text.disabled">
-            {exams.length === 0 ? '請聯繫管理員上傳考古題' : '請嘗試調整搜尋條件或篩選器'}
+            {t(exams.length === 0 ? 'exam.emptyHint' : 'exam.noMatchHint')}
           </Typography>
         </Box>
       )}

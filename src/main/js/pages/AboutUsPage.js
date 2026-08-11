@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState } from 'react';
 import {
   Box,
@@ -22,13 +23,17 @@ import {
   GitHub as GitHubIcon,
 } from '@mui/icons-material';
 import { staffMembers, aboutSummary } from '../../resources/data/mockData';
-import { APP_CONFIG } from '../../resources/config/constants';
 
 const AboutUsPage = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState(0);
 
   const handleTabChange = (_, newValue) => setActiveTab(newValue);
 
+  // 這兩個中文字串是「比對資料值」而不是顯示給使用者的文案：
+  // mockData 裡的 position 就是中文（'會長'、'學術部長'…），所以判斷式要跟著用中文。
+  // 抽到語言檔會讓篩選在英文介面下失效——比對的是資料，不是介面語言。
+  // 幹部職稱本身要多語系的話，得先改成資料端帶 key（例如 positionKey），是另一件事。
   const presidents = staffMembers.filter((m) => m.position.includes('會長'));
   const directors = staffMembers.filter((m) => m.position.includes('部長') && !m.position.includes('會長'));
 
@@ -112,14 +117,14 @@ const AboutUsPage = () => {
                 lineHeight: 1.2,
               }}
             >
-              關於我們
+              {t('nav.about')}
             </Typography>
             <Typography
               variant="subtitle1"
               color="text.secondary"
               sx={{ fontWeight: 500, mb: 1.5 }}
             >
-              {APP_CONFIG.fullName}
+              {t('app.fullName')}
             </Typography>
             {aboutSummary.description && (
               <Typography
@@ -137,8 +142,8 @@ const AboutUsPage = () => {
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 4 }}>
         <Tabs value={activeTab} onChange={handleTabChange} centered>
-          <Tab label="幹部團隊" />
-          <Tab label="聯絡我們" />
+          <Tab label={t('about.staffTab')} />
+          <Tab label={t('about.contactTab')} />
         </Tabs>
       </Box>
 
@@ -150,7 +155,7 @@ const AboutUsPage = () => {
             color="text.secondary"
             sx={{ display: 'block', textAlign: 'center', letterSpacing: '0.12em', mb: 1.5 }}
           >
-            核心幹部
+            {t('about.coreStaff')}
           </Typography>
           <Grid container spacing={3} justifyContent="center" sx={{ mb: 5 }}>
             {presidents.map((member) => (
@@ -184,7 +189,7 @@ const AboutUsPage = () => {
             color="text.secondary"
             sx={{ display: 'block', textAlign: 'center', letterSpacing: '0.12em', mb: 1.5 }}
           >
-            各部部長
+            {t('about.directors')}
           </Typography>
           <Grid container spacing={2.5} justifyContent="center">
             {directors.map((member) => (
@@ -232,7 +237,7 @@ const AboutUsPage = () => {
                 </Box>
                 <Box>
                   <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.25 }}>
-                    電子郵件
+                    {t('auth.email')}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     imsa@ntu.im
@@ -258,10 +263,10 @@ const AboutUsPage = () => {
                 </Box>
                 <Box>
                   <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.25 }}>
-                    系辦地點
+                    {t('about.officeLabel')}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    管理學院一號館 7 樓 資訊管理學系辦公室
+                    {t('about.officeAddress')}
                   </Typography>
                 </Box>
               </Stack>

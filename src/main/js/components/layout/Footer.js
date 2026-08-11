@@ -1,9 +1,11 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Box, Typography, Link, Divider, Grid, Stack } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import { APP_CONFIG } from '../../../resources/config/constants';
 
 const Footer = () => {
+  const { t } = useTranslation();
   const currentYear = new Date().getFullYear();
 
   const linkSx = {
@@ -28,21 +30,16 @@ const Footer = () => {
         <Grid container spacing={4}>
           <Grid item xs={12} md={6}>
             <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'primary.main', mb: 0.5 }}>
-              {APP_CONFIG.name}
+              {t('app.name')}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              {APP_CONFIG.fullName}
+              {t('app.fullName')}
             </Typography>
-            {APP_CONFIG.description && (
-              <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 480, lineHeight: 1.7 }}>
-                {APP_CONFIG.description}
-              </Typography>
-            )}
           </Grid>
 
           <Grid item xs={6} md={3}>
             <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5 }}>
-              聯絡資訊
+              {t('footer.contact')}
             </Typography>
             <Stack spacing={1}>
               <Link href="mailto:imsa@ntu.im" underline="hover" sx={linkSx}>
@@ -71,7 +68,7 @@ const Footer = () => {
 
           <Grid item xs={6} md={3}>
             <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5 }}>
-              相關連結
+              {t('footer.links')}
             </Typography>
             <Stack spacing={1}>
               <Link
@@ -81,7 +78,7 @@ const Footer = () => {
                 rel="noopener noreferrer"
                 sx={linkSx}
               >
-                資管系官網
+                {t('footer.deptSite')}
               </Link>
               <Link
                 href="https://www.ntu.edu.tw"
@@ -90,7 +87,7 @@ const Footer = () => {
                 rel="noopener noreferrer"
                 sx={linkSx}
               >
-                台大官網
+                {t('footer.ntuSite')}
               </Link>
               <Link
                 href="https://github.com/ntu-im-sa"
@@ -117,7 +114,7 @@ const Footer = () => {
           }}
         >
           <Typography variant="caption" color="text.secondary">
-            © {currentYear} {APP_CONFIG.fullName}
+            © {currentYear} {t('app.fullName')}
           </Typography>
           <Link
             component={RouterLink}
@@ -130,7 +127,7 @@ const Footer = () => {
               '&:hover': { color: 'primary.main' },
             }}
           >
-            v{APP_CONFIG.version} · 版本紀錄
+            v{APP_CONFIG.version} · {t('nav.changelog')}
           </Link>
         </Box>
       </Box>

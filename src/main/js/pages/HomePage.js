@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -29,6 +30,7 @@ const iconMap = {
 };
 
 const HomePage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, isAuthenticated, hasPaidFee } = useAuth();
   const [stats, setStats] = useState({ courseReviews: 0, exams: 0, cheatSheets: 0 });
@@ -65,32 +67,32 @@ const HomePage = () => {
   const quickLinks = [
     {
       id: 'course-reviews',
-      title: '課程評價',
-      description: '查看學長姐的課程評價與選課建議',
+      title: t('nav.courseReviews'),
+      description: t('home.quickLinks.courseReviews'),
       icon: 'rate_review',
       path: '/course-reviews',
       stats: stats.courseReviews,
-      unit: '份評價',
+      unit: t('home.units.reviews'),
       accent: '#1976d2',
     },
     {
       id: 'exam-archive',
-      title: '考古題庫',
-      description: '歷年考古題下載與參考',
+      title: t('home.quickLinks.examArchiveTitle'),
+      description: t('home.quickLinks.examArchive'),
       icon: 'quiz',
       path: '/exam-archive',
       stats: stats.exams,
-      unit: '份考古題',
+      unit: t('home.units.exams'),
       accent: '#0891b2',
     },
     {
       id: 'cheat-sheets',
-      title: '學習大抄',
-      description: '課程重點整理與筆記分享',
+      title: t('home.quickLinks.cheatSheetsTitle'),
+      description: t('home.quickLinks.cheatSheets'),
       icon: 'description',
       path: '/cheat-sheets',
       stats: stats.cheatSheets,
-      unit: '份大抄',
+      unit: t('home.units.cheatSheets'),
       accent: '#059669',
     },
   ];
@@ -131,10 +133,10 @@ const HomePage = () => {
               </Box>
               <Box>
                 <Typography variant="subtitle1" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
-                  登入解鎖完整功能
+                  {t('home.banner.loginTitle')}
                 </Typography>
                 <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
-                  下載考古題、瀏覽大抄、查看課程評價
+                  {t('home.banner.loginBody')}
                 </Typography>
               </Box>
             </Stack>
@@ -149,7 +151,7 @@ const HomePage = () => {
                   '&:hover': { bgcolor: 'rgba(255,255,255,0.92)' },
                 }}
               >
-                登入
+                {t('nav.login')}
               </Button>
               <Button
                 variant="outlined"
@@ -160,7 +162,7 @@ const HomePage = () => {
                   '&:hover': { borderColor: '#ffffff', bgcolor: 'rgba(255,255,255,0.08)' },
                 }}
               >
-                註冊
+                {t('auth.register')}
               </Button>
             </Stack>
           </Stack>
@@ -203,10 +205,10 @@ const HomePage = () => {
               </Box>
               <Box>
                 <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#92400e', lineHeight: 1.3 }}>
-                  哈囉 {user?.fullName || user?.username}，尚未繳交系學會費
+                  {t('home.banner.unpaidTitle', { name: user?.fullName || user?.username })}
                 </Typography>
                 <Typography variant="body2" sx={{ color: '#a16207' }}>
-                  繳費後即可下載考古題與使用完整功能
+                  {t('home.banner.unpaidBody')}
                 </Typography>
               </Box>
             </Stack>
@@ -218,7 +220,7 @@ const HomePage = () => {
                 '&:hover': { bgcolor: '#b45309' },
               }}
             >
-              聯繫繳費
+              {t('home.banner.contactToPay')}
             </Button>
           </Stack>
         </Card>
@@ -280,7 +282,7 @@ const HomePage = () => {
       {/* Quick Links */}
       <Box sx={{ mb: { xs: 4, md: 5 } }}>
         <Typography variant="h3" component="h2" sx={{ fontWeight: 700, mb: 2.5 }}>
-          快速入口
+          {t('home.quickAccess')}
         </Typography>
 
         <Grid container spacing={{ xs: 2, md: 2.5 }}>
@@ -331,7 +333,7 @@ const HomePage = () => {
                       sx={{ width: '100%', pt: 1, borderTop: '1px solid', borderColor: 'divider' }}
                     >
                       <Typography variant="caption" color="text.secondary">
-                        {loading ? '載入中…' : `${link.stats} ${link.unit}`}
+                        {loading ? t('common.loading') : `${link.stats} ${link.unit}`}
                       </Typography>
                       <ArrowForwardIcon sx={{ fontSize: 18, color: 'text.disabled' }} />
                     </Stack>

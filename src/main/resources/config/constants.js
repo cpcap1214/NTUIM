@@ -1,44 +1,46 @@
+// 名稱走 i18n（app.name / app.fullName），這裡不再放寫死的字串。
+// version 之類的非文案資訊留著。
 export const APP_CONFIG = {
-  name: '台大資管系學會',
-  fullName: '國立台灣大學資訊管理學系學會',
-  englishName: 'NTU IM Student Association',
-  description: '',
   version: '1.6.7',
 };
 
 // moduleKey 對應後端 modules 表的 key。有 moduleKey 的項目會受模塊開放狀態影響
 // （未開放時標示「即將推出」或整個隱藏），沒有 moduleKey 的項目一律顯示。
+//
+// 這裡放的是 labelKey 而不是 label：這個模組在載入時就求值了，
+// 若直接寫 t('nav.home')，i18n 可能還沒初始化，而且切換語言後這個陣列不會重算，
+// 導覽列會卡在舊語言。翻譯一律由元件在 render 時做。
 export const NAVIGATION_ITEMS = [
   {
     id: 'home',
-    label: '首頁',
+    labelKey: 'nav.home',
     path: '/',
     icon: 'home',
   },
   {
     id: 'course-reviews',
-    label: '課程評價',
+    labelKey: 'nav.courseReviews',
     path: '/course-reviews',
     icon: 'rate_review',
     moduleKey: 'courseReviews',
   },
   {
     id: 'exam-archive',
-    label: '考古題',
+    labelKey: 'nav.examArchive',
     path: '/exam-archive',
     icon: 'quiz',
     moduleKey: 'exams',
   },
   {
     id: 'cheat-sheets',
-    label: '大抄',
+    labelKey: 'nav.cheatSheets',
     path: '/cheat-sheets',
     icon: 'description',
     moduleKey: 'cheatSheets',
   },
   {
     id: 'about',
-    label: '關於我們',
+    labelKey: 'nav.about',
     path: '/about',
     icon: 'info',
   },
