@@ -67,7 +67,7 @@ router.get('/', [
         });
     } catch (error) {
         console.error('取得大抄列表錯誤:', error);
-        res.status(500).json({ error: '取得大抄失敗' });
+        res.status(500).json({ error: '取得大抄失敗', errorCode: 'FETCH_CHEATSHEETS_FAILED' });
     }
 });
 
@@ -87,13 +87,13 @@ router.get('/:id', async (req, res) => {
         });
 
         if (!cheatSheet) {
-            return res.status(404).json({ error: '大抄不存在' });
+            return res.status(404).json({ error: '大抄不存在', errorCode: 'CHEATSHEET_NOT_FOUND' });
         }
 
         res.json(cheatSheet);
     } catch (error) {
         console.error('取得大抄詳情錯誤:', error);
-        res.status(500).json({ error: '取得大抄失敗' });
+        res.status(500).json({ error: '取得大抄失敗', errorCode: 'FETCH_CHEATSHEETS_FAILED' });
     }
 });
 
@@ -104,9 +104,9 @@ router.post('/upload',
     adminUpload.single('file'),
     handleUploadError,
     [
-        body('courseCode').notEmpty().withMessage('課號為必填'),
-        body('courseName').notEmpty().withMessage('課程名稱為必填'),
-        body('title').notEmpty().withMessage('標題為必填'),
+        body('courseCode').notEmpty().withMessage({ code: 'COURSE_CODE_REQUIRED', message: '課號為必填' }),
+        body('courseName').notEmpty().withMessage({ code: 'COURSE_NAME_REQUIRED', message: '課程名稱為必填' }),
+        body('title').notEmpty().withMessage({ code: 'TITLE_REQUIRED', message: '標題為必填' }),
         body('description').optional().isString()
     ],
     async (req, res) => {
@@ -120,7 +120,7 @@ router.post('/upload',
         }
 
         if (!req.file) {
-            return res.status(400).json({ error: '請選擇要上傳的檔案' });
+            return res.status(400).json({ error: '請選擇要上傳的檔案', errorCode: 'FILE_REQUIRED' });
         }
 
         try {
@@ -165,7 +165,7 @@ router.post('/upload',
                 fs.unlinkSync(req.file.path);
             }
             console.error('上傳大抄錯誤:', error);
-            res.status(500).json({ error: '上傳失敗' });
+            res.status(500).json({ error: '上傳失敗', errorCode: 'UPLOAD_FAILED' });
         }
     }
 );
@@ -176,7 +176,7 @@ router.get('/:id/preview', authenticateToken, async (req, res) => {
         const cheatSheet = await CheatSheet.findByPk(req.params.id);
         
         if (!cheatSheet) {
-            return res.status(404).json({ error: '大抄不存在' });
+            return res.status(404).json({ error: '大抄不存在', errorCode: 'CHEATSHEET_NOT_FOUND' });
         }
 
         const filePath = path.resolve(cheatSheet.filePath);
@@ -184,7 +184,7 @@ router.get('/:id/preview', authenticateToken, async (req, res) => {
         // 檢查檔案是否存在
         if (!fs.existsSync(filePath)) {
             console.error('大抄檔案不存在:', filePath);
-            return res.status(404).json({ error: '大抄檔案不存在' });
+            return res.status(404).json({ error: '大抄檔案不存在', errorCode: 'CHEATSHEET_FILE_NOT_FOUND' });
         }
 
         // 設定為在線預覽（而非下載）
@@ -199,7 +199,7 @@ router.get('/:id/preview', authenticateToken, async (req, res) => {
         
     } catch (error) {
         console.error('預覽大抄錯誤:', error);
-        res.status(500).json({ error: '預覽失敗，請稍後再試' });
+        res.status(500).json({ error: '預覽失敗，請稍後再試', errorCode: 'PREVIEW_FAILED' });
     }
 });
 
@@ -209,12 +209,12 @@ router.get('/:id/download', authenticateToken, async (req, res) => {
         const cheatSheet = await CheatSheet.findByPk(req.params.id);
 
         if (!cheatSheet) {
-            return res.status(404).json({ error: '大抄不存在' });
+            return res.status(404).json({ error: '大抄不存在', errorCode: 'CHEATSHEET_NOT_FOUND' });
         }
 
         // 檢查檔案是否存在
         if (!fs.existsSync(cheatSheet.filePath)) {
-            return res.status(404).json({ error: '檔案不存在' });
+            return res.status(404).json({ error: '檔案不存在', errorCode: 'FILE_NOT_FOUND' });
         }
 
         // 更新下載次數
@@ -231,7 +231,7 @@ router.get('/:id/download', authenticateToken, async (req, res) => {
         res.sendFile(path.resolve(cheatSheet.filePath));
     } catch (error) {
         console.error('下載大抄錯誤:', error);
-        res.status(500).json({ error: '下載失敗' });
+        res.status(500).json({ error: '下載失敗', errorCode: 'DOWNLOAD_FAILED' });
     }
 });
 
@@ -239,9 +239,9 @@ router.get('/:id/download', authenticateToken, async (req, res) => {
 router.put('/:id',
     authenticateToken,
     [
-        body('courseCode').optional().notEmpty().withMessage('課號不能為空'),
-        body('courseName').optional().notEmpty().withMessage('課程名稱不能為空'),
-        body('title').optional().notEmpty().withMessage('標題不能為空'),
+        body('courseCode').optional().notEmpty().withMessage({ code: 'COURSE_CODE_EMPTY', message: '課號不能為空' }),
+        body('courseName').optional().notEmpty().withMessage({ code: 'COURSE_NAME_EMPTY', message: '課程名稱不能為空' }),
+        body('title').optional().notEmpty().withMessage({ code: 'TITLE_EMPTY', message: '標題不能為空' }),
         body('description').optional().isString(),
         body('tags').optional().isArray()
     ],
@@ -255,12 +255,12 @@ router.put('/:id',
             const cheatSheet = await CheatSheet.findByPk(req.params.id);
 
             if (!cheatSheet) {
-                return res.status(404).json({ error: '大抄不存在' });
+                return res.status(404).json({ error: '大抄不存在', errorCode: 'CHEATSHEET_NOT_FOUND' });
             }
 
             // 檢查權限
             if (!isOwnerOrHasPermission(req, cheatSheet.uploadedBy, 'cheatSheets.manage')) {
-                return res.status(403).json({ error: '無權修改此大抄' });
+                return res.status(403).json({ error: '無權修改此大抄', errorCode: 'NO_PERMISSION_EDIT_CHEATSHEET' });
             }
 
             // 更新資訊
@@ -279,7 +279,7 @@ router.put('/:id',
             });
         } catch (error) {
             console.error('更新大抄錯誤:', error);
-            res.status(500).json({ error: '更新失敗' });
+            res.status(500).json({ error: '更新失敗', errorCode: 'UPDATE_FAILED_GENERIC' });
         }
     }
 );
@@ -298,7 +298,7 @@ router.put('/:id/file',
                 if (req.file && fs.existsSync(req.file.path)) {
                     fs.unlinkSync(req.file.path);
                 }
-                return res.status(404).json({ error: '大抄不存在' });
+                return res.status(404).json({ error: '大抄不存在', errorCode: 'CHEATSHEET_NOT_FOUND' });
             }
 
             // 檢查權限
@@ -307,11 +307,11 @@ router.put('/:id/file',
                 if (req.file && fs.existsSync(req.file.path)) {
                     fs.unlinkSync(req.file.path);
                 }
-                return res.status(403).json({ error: '無權修改此大抄' });
+                return res.status(403).json({ error: '無權修改此大抄', errorCode: 'NO_PERMISSION_EDIT_CHEATSHEET' });
             }
 
             if (!req.file) {
-                return res.status(400).json({ error: '請選擇要上傳的檔案' });
+                return res.status(400).json({ error: '請選擇要上傳的檔案', errorCode: 'FILE_REQUIRED' });
             }
 
             // 刪除舊檔案
@@ -337,7 +337,7 @@ router.put('/:id/file',
                 fs.unlinkSync(req.file.path);
             }
             console.error('更新大抄檔案錯誤:', error);
-            res.status(500).json({ error: '檔案更新失敗' });
+            res.status(500).json({ error: '檔案更新失敗', errorCode: 'FILE_UPDATE_FAILED' });
         }
     }
 );
@@ -348,12 +348,12 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         const cheatSheet = await CheatSheet.findByPk(req.params.id);
 
         if (!cheatSheet) {
-            return res.status(404).json({ error: '大抄不存在' });
+            return res.status(404).json({ error: '大抄不存在', errorCode: 'CHEATSHEET_NOT_FOUND' });
         }
 
         // 檢查權限
         if (!isOwnerOrHasPermission(req, cheatSheet.uploadedBy, 'cheatSheets.manage')) {
-            return res.status(403).json({ error: '無權刪除此大抄' });
+            return res.status(403).json({ error: '無權刪除此大抄', errorCode: 'NO_PERMISSION_DELETE_CHEATSHEET' });
         }
 
         // 刪除檔案
@@ -367,7 +367,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         res.json({ message: '大抄已刪除' });
     } catch (error) {
         console.error('刪除大抄錯誤:', error);
-        res.status(500).json({ error: '刪除失敗' });
+        res.status(500).json({ error: '刪除失敗', errorCode: 'DELETE_FAILED_GENERIC' });
     }
 });
 

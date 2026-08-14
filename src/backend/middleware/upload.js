@@ -148,9 +148,13 @@ const adminUpload = multer({
 const handleUploadError = (error, req, res, next) => {
     if (error instanceof multer.MulterError) {
         if (error.code === 'FILE_TOO_LARGE') {
-            return res.status(400).json({ error: '檔案大小超過限制' });
+            return res.status(400).json({ error: '檔案大小超過限制', errorCode: 'FILE_TOO_LARGE' });
         }
-        return res.status(400).json({ error: `上傳錯誤: ${error.message}` });
+        return res.status(400).json({
+            error: `上傳錯誤: ${error.message}`,
+            errorCode: 'UPLOAD_ERROR',
+            params: { message: error.message }
+        });
     } else if (error) {
         return res.status(400).json({ error: error.message });
     }

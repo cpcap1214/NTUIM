@@ -8,7 +8,13 @@ export const translateApiError = (err, fallback) => {
     if (!err) return defaultFallback;
 
     if (err.errorCode) {
-        return i18n.t(`errors.${err.errorCode}`, { defaultValue: err.error || defaultFallback });
+        // params 是後端對帶插值的訊息額外送出的變數（例如 { field }、{ name }）。
+        // 沒有它的話，像「此{{field}}已被註冊」這種譯文會留著佔位符，
+        // 而後端的中文原文又只在 defaultValue 裡，切成英文就看不到正確內容。
+        return i18n.t(`errors.${err.errorCode}`, {
+            ...(err.params || {}),
+            defaultValue: err.error || defaultFallback,
+        });
     }
 
     const firstError = err.errors?.[0];

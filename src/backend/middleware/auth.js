@@ -109,7 +109,7 @@ const authenticateToken = async (req, res, next) => {
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
     if (!token) {
-        return res.status(401).json({ error: '未提供認證令牌' });
+        return res.status(401).json({ error: '未提供認證令牌', errorCode: 'AUTH_TOKEN_MISSING' });
     }
 
     try {
@@ -121,7 +121,7 @@ const authenticateToken = async (req, res, next) => {
         });
 
         if (!user) {
-            return res.status(404).json({ error: '使用者不存在' });
+            return res.status(404).json({ error: '使用者不存在', errorCode: 'USER_NOT_FOUND' });
         }
 
         req.user = user.toJSON();
@@ -144,9 +144,9 @@ const authenticateToken = async (req, res, next) => {
         }
     } catch (error) {
         if (error.name === 'TokenExpiredError') {
-            return res.status(401).json({ error: '認證令牌已過期' });
+            return res.status(401).json({ error: '認證令牌已過期', errorCode: 'AUTH_TOKEN_EXPIRED' });
         }
-        return res.status(403).json({ error: '無效的認證令牌' });
+        return res.status(403).json({ error: '無效的認證令牌', errorCode: 'AUTH_TOKEN_INVALID' });
     }
 
     // 預覽刻意放在上面的 try/catch 之外：它有自己的錯誤語意，
@@ -235,7 +235,7 @@ const requireModuleAccess = (moduleKey) => async (req, res, next) => {
 // 同理不帶 requirePayment 欄位，那會觸發 api.js 的原生 alert()。
 const requirePermission = (permission) => (req, res, next) => {
     if (!permissionService.hasPermission(req.permissions, permission)) {
-        return res.status(403).json({ error: '權限不足', requiredPermission: permission });
+        return res.status(403).json({ error: '權限不足', errorCode: 'PERMISSION_DENIED', requiredPermission: permission });
     }
     next();
 };
@@ -260,7 +260,7 @@ const requireOwnerOrAdmin = (paramName = 'id') => {
             || req.user.id === parseInt(resourceUserId)) {
             next();
         } else {
-            res.status(403).json({ error: '無權限執行此操作' });
+            res.status(403).json({ error: '無權限執行此操作', errorCode: 'OPERATION_NOT_ALLOWED' });
         }
     };
 };
@@ -285,7 +285,7 @@ const refreshToken = async (req, res) => {
     const { refreshToken } = req.body;
 
     if (!refreshToken) {
-        return res.status(401).json({ error: '未提供重新整理令牌' });
+        return res.status(401).json({ error: '未提供重新整理令牌', errorCode: 'AUTH_REFRESH_MISSING' });
     }
 
     try {
@@ -293,13 +293,13 @@ const refreshToken = async (req, res) => {
         const user = await User.findByPk(decoded.userId);
 
         if (!user) {
-            return res.status(404).json({ error: '使用者不存在' });
+            return res.status(404).json({ error: '使用者不存在', errorCode: 'USER_NOT_FOUND' });
         }
 
         const newToken = generateToken(user);
         res.json({ token: newToken });
     } catch (error) {
-        res.status(403).json({ error: '無效的重新整理令牌' });
+        res.status(403).json({ error: '無效的重新整理令牌', errorCode: 'AUTH_REFRESH_INVALID' });
     }
 };
 

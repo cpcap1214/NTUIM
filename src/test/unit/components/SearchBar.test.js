@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { ThemeProvider } from '@mui/material/styles';
 import { SearchBar } from '../../../main/js/components/common';
 import theme from '../../../main/js/theme';
+import '@testing-library/jest-dom';
 
 const renderWithTheme = (component) => {
   return render(

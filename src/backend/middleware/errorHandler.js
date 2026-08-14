@@ -8,7 +8,7 @@ const errorHandler = (err, req, res, next) => {
     // Sequelize 錯誤處理
     if (err.name === 'SequelizeValidationError') {
         return res.status(400).json({
-            error: '資料驗證失敗',
+            error: '資料驗證失敗', errorCode: 'VALIDATION_FAILED',
             details: err.errors.map(e => ({
                 field: e.path,
                 message: e.message
@@ -18,7 +18,7 @@ const errorHandler = (err, req, res, next) => {
 
     if (err.name === 'SequelizeUniqueConstraintError') {
         return res.status(409).json({
-            error: '資料重複',
+            error: '資料重複', errorCode: 'DUPLICATE_DATA',
             details: err.errors.map(e => ({
                 field: e.path,
                 value: e.value,
@@ -29,7 +29,7 @@ const errorHandler = (err, req, res, next) => {
 
     if (err.name === 'SequelizeDatabaseError') {
         return res.status(500).json({
-            error: '資料庫錯誤',
+            error: '資料庫錯誤', errorCode: 'DATABASE_ERROR',
             message: process.env.NODE_ENV === 'development' ? err.message : '資料庫操作失敗'
         });
     }
@@ -37,14 +37,14 @@ const errorHandler = (err, req, res, next) => {
     // JWT 錯誤處理
     if (err.name === 'JsonWebTokenError') {
         return res.status(401).json({
-            error: '認證失敗',
+            error: '認證失敗', errorCode: 'AUTH_FAILED',
             message: '無效的認證令牌'
         });
     }
 
     if (err.name === 'TokenExpiredError') {
         return res.status(401).json({
-            error: '認證過期',
+            error: '認證過期', errorCode: 'AUTH_EXPIRED',
             message: '認證令牌已過期，請重新登入'
         });
     }
@@ -53,19 +53,19 @@ const errorHandler = (err, req, res, next) => {
     if (err.name === 'MulterError') {
         if (err.code === 'LIMIT_FILE_SIZE') {
             return res.status(413).json({
-                error: '檔案太大',
+                error: '檔案太大', errorCode: 'FILE_TOO_LARGE',
                 message: `檔案大小超過限制 (最大: ${process.env.UPLOAD_MAX_SIZE || '10MB'})`
             });
         }
         if (err.code === 'LIMIT_FILE_COUNT') {
             return res.status(400).json({
-                error: '檔案數量過多',
+                error: '檔案數量過多', errorCode: 'TOO_MANY_FILES',
                 message: '一次只能上傳一個檔案'
             });
         }
         if (err.code === 'LIMIT_UNEXPECTED_FILE') {
             return res.status(400).json({
-                error: '非預期的欄位',
+                error: '非預期的欄位', errorCode: 'UNEXPECTED_FIELD',
                 message: '檔案欄位名稱錯誤'
             });
         }
@@ -83,7 +83,7 @@ const errorHandler = (err, req, res, next) => {
     const isDevelopment = process.env.NODE_ENV === 'development';
     
     res.status(500).json({
-        error: '伺服器內部錯誤',
+        error: '伺服器內部錯誤', errorCode: 'INTERNAL_ERROR',
         message: isDevelopment ? err.message : '處理請求時發生錯誤',
         ...(isDevelopment && { stack: err.stack })
     });
@@ -92,7 +92,7 @@ const errorHandler = (err, req, res, next) => {
 // 404 處理
 const notFoundHandler = (req, res) => {
     res.status(404).json({
-        error: '找不到資源',
+        error: '找不到資源', errorCode: 'RESOURCE_NOT_FOUND',
         message: `路徑 ${req.originalUrl} 不存在`,
         method: req.method
     });

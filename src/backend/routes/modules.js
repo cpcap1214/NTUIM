@@ -18,7 +18,7 @@ router.get('/', optionalAuth, async (req, res) => {
         res.json({ data: modules });
     } catch (error) {
         console.error('取得模塊清單錯誤:', error);
-        res.status(500).json({ error: '取得模塊清單失敗' });
+        res.status(500).json({ error: '取得模塊清單失敗', errorCode: 'FETCH_MODULES_FAILED' });
     }
 });
 
@@ -51,7 +51,7 @@ router.get('/admin', authenticateToken, requirePermission('modules.manage'), asy
         res.json({ data: result });
     } catch (error) {
         console.error('取得模塊設定錯誤:', error);
-        res.status(500).json({ error: '取得模塊設定失敗' });
+        res.status(500).json({ error: '取得模塊設定失敗', errorCode: 'FETCH_MODULE_SETTINGS_FAILED' });
     }
 });
 
@@ -69,7 +69,7 @@ router.put('/:key', authenticateToken, requirePermission('modules.manage'), [
 
     try {
         const module = await Module.findOne({ where: { key: req.params.key } });
-        if (!module) return res.status(404).json({ error: '模塊不存在' });
+        if (!module) return res.status(404).json({ error: '模塊不存在', errorCode: 'MODULE_NOT_FOUND' });
 
         const { visibility, showWhenRestricted, roleIds, userIds } = req.body;
 
@@ -93,7 +93,7 @@ router.put('/:key', authenticateToken, requirePermission('modules.manage'), [
         res.json({ message: '模塊設定已更新', data: module });
     } catch (error) {
         console.error('更新模塊設定錯誤:', error);
-        res.status(500).json({ error: '更新模塊設定失敗' });
+        res.status(500).json({ error: '更新模塊設定失敗', errorCode: 'UPDATE_MODULE_SETTINGS_FAILED' });
     }
 });
 

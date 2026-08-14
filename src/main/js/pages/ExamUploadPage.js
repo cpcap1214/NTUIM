@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import React, { useState } from 'react';
 import {
   Box,
@@ -162,19 +162,28 @@ const ExamUploadPage = () => {
   const { isAuthenticated, user } = useAuth();
   const [rulesOpen, setRulesOpen] = useState(false);
 
+  // 規範條文裡的行內標記。語言檔寫 <red>…</red> / <b>…</b>，
+  // 由 <Trans> 對到實際樣式，譯者只要照抄標籤即可，不必碰 sx。
+  const inlineMarks = {
+    red: <Box component="span" sx={{ color: '#dc2626' }} />,
+    redBold: <Box component="span" sx={{ color: '#dc2626', fontWeight: 700 }} />,
+    b: <strong />,
+  };
+
+
   // 未登入：請先登入
   if (!isAuthenticated) {
     return (
       <Box sx={{ py: 8, textAlign: 'center' }}>
         <UploadIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 1.5 }} />
         <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-          請先登入
+          {t('examUpload.loginRequired')}
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          登入後即可上傳考古題與大抄
+          {t('examUpload.loginRequiredBody')}
         </Typography>
         <Button variant="contained" onClick={() => navigate('/login')}>
-          前往登入
+          {t('examUpload.goToLogin')}
         </Button>
       </Box>
     );
@@ -194,7 +203,7 @@ const ExamUploadPage = () => {
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
             <Chip
               size="small"
-              label="114-1 起適用"
+              label={t('examUpload.effectiveFrom')}
               sx={{
                 height: 22,
                 fontSize: '0.72rem',
@@ -205,10 +214,10 @@ const ExamUploadPage = () => {
             />
           </Stack>
           <Typography variant="h2" component="h1" sx={{ fontWeight: 700, mb: 0.5 }}>
-            上傳考古題
+            {t('nav.uploadExam')}
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            哈囉 {user?.fullName || user?.username}，貢獻考古題或大抄，幫助學弟妹也賺取回饋
+            {t('examUpload.greeting', { name: user?.fullName || user?.username })}
           </Typography>
         </Box>
         <Stack direction="row" spacing={1}>
@@ -218,7 +227,7 @@ const ExamUploadPage = () => {
             startIcon={<MenuBookIcon />}
             onClick={() => setRulesOpen(true)}
           >
-            查看完整規範
+            {t('examUpload.viewFullRules')}
           </Button>
         </Stack>
       </Stack>
@@ -241,7 +250,7 @@ const ExamUploadPage = () => {
       {/* Categories */}
       <Box sx={{ mb: 5 }}>
         <Typography variant="h3" component="h2" sx={{ fontWeight: 700, mb: 2.5 }}>
-          可上傳項目
+          {t('examUpload.eligibleItems')}
         </Typography>
         <Grid container spacing={2.5}>
           {CATEGORIES.map((c) => (
@@ -269,34 +278,39 @@ const ExamUploadPage = () => {
           '& .MuiAlert-icon': { mt: 0.25 },
         }}
       >
-        <AlertTitle sx={{ fontWeight: 700, mb: 1 }}>上傳前請注意</AlertTitle>
+        <AlertTitle sx={{ fontWeight: 700, mb: 1 }}>{t('examUpload.notice.title')}</AlertTitle>
         <Stack spacing={0.75}>
           <Typography variant="body2" sx={{ lineHeight: 1.6 }}>
-            <strong>五年內</strong>：含當前學期往前推（114-1 認可 110~114）。超過範圍不計入回饋。
+            <Trans i18nKey="examUpload.notice.range" components={inlineMarks} />
           </Typography>
           <Typography variant="body2" sx={{ lineHeight: 1.6 }}>
-            <strong>解答規範</strong>：若有解答請一併附上，但<strong>請勿自行撰寫答案</strong>（若確定滿分例外）。
+            <Trans i18nKey="examUpload.notice.answers" components={inlineMarks} />
           </Typography>
           <Typography variant="body2" sx={{ lineHeight: 1.6 }}>
-            <strong>檔案命名</strong>：
-            <Box
-              component="code"
-              sx={{
-                ml: 0.5,
-                px: 0.75,
-                py: 0.25,
-                bgcolor: 'rgba(15, 23, 42, 0.06)',
-                borderRadius: 0.5,
-                fontFamily: 'ui-monospace, "SF Mono", Consolas, monospace',
-                fontSize: '0.85em',
+            <Trans
+              i18nKey="examUpload.notice.naming"
+              components={{
+                ...inlineMarks,
+                code: (
+                  <Box
+                    component="code"
+                    sx={{
+                      mx: 0.5,
+                      px: 0.75,
+                      py: 0.25,
+                      bgcolor: 'rgba(15, 23, 42, 0.06)',
+                      borderRadius: 0.5,
+                      fontFamily: 'ui-monospace, Consolas, monospace',
+                      fontSize: '0.85em',
+                    }}
+                  />
+                ),
               }}
-            >
-              年份_學期_科目名_考試類別
-            </Box>
-            （例：112-1_程式設計_期末.pdf）
+              values={{ pattern: t('examUpload.namingPattern') }}
+            />
           </Typography>
           <Typography variant="body2" sx={{ lineHeight: 1.6 }}>
-            <strong>未依命名格式者，不做計算</strong>。若考題與答案分開，請分成兩個檔案上傳。
+            <Trans i18nKey="examUpload.notice.namingWarning" components={inlineMarks} />
           </Typography>
         </Stack>
       </Alert>
@@ -304,7 +318,7 @@ const ExamUploadPage = () => {
       {/* Process steps */}
       <Box sx={{ mb: 5 }}>
         <Typography variant="h3" component="h2" sx={{ fontWeight: 700, mb: 2.5 }}>
-          上傳流程
+          {t('examUpload.processTitle')}
         </Typography>
         <Card>
           <CardContent sx={{ py: 3, px: { xs: 2, md: 4 } }}>
@@ -350,7 +364,7 @@ const ExamUploadPage = () => {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                檢視已上傳清單（Google Sheet）
+                {t('examUpload.viewSheetButton')}
               </Button>
             </Stack>
           </CardContent>
@@ -366,7 +380,7 @@ const ExamUploadPage = () => {
           sx={{ mb: 2 }}
         >
           <Typography variant="h3" component="h2" sx={{ fontWeight: 700 }}>
-            上傳表單
+            {t('examUpload.formTitle')}
           </Typography>
           <Button
             size="small"
@@ -376,7 +390,7 @@ const ExamUploadPage = () => {
             rel="noopener noreferrer"
             sx={{ color: 'primary.main' }}
           >
-            在新分頁開啟
+            {t('examUpload.openInNewTab')}
           </Button>
         </Stack>
 
@@ -410,7 +424,7 @@ const ExamUploadPage = () => {
             >
               <iframe
                 src={GOOGLE_FORM_EMBED_URL}
-                title="資管考古上傳表單"
+                title={t('examUpload.iframeTitle')}
                 loading="lazy"
                 style={{
                   width: '100%',
@@ -419,7 +433,7 @@ const ExamUploadPage = () => {
                   display: 'block',
                 }}
               >
-                載入中…
+                {t('common.loading')}
               </iframe>
             </Box>
           </Box>
@@ -430,7 +444,7 @@ const ExamUploadPage = () => {
           color="text.disabled"
           sx={{ display: 'block', textAlign: 'center', mt: 1.5 }}
         >
-          填寫過程可在表單內滾動；若內容過長或顯示異常，請點右上角「在新分頁開啟」。
+          {t('examUpload.formHint')}
         </Typography>
       </Box>
 
@@ -447,10 +461,10 @@ const ExamUploadPage = () => {
           <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
             <Box>
               <Typography variant="h5" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
-                資管系考古上傳規範
+                {t('examUpload.rules.title')}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                114-1 起適用
+                {t('examUpload.effectiveFrom')}
               </Typography>
             </Box>
             <IconButton onClick={() => setRulesOpen(false)} size="small">
@@ -463,21 +477,14 @@ const ExamUploadPage = () => {
             {/* 一、可上傳項目 */}
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-                一、可上傳<Box component="span" sx={{ color: '#dc2626' }}>五年內</Box>之
+                <Trans i18nKey="examUpload.rules.s1.title" components={inlineMarks} />
               </Typography>
               <Stack spacing={1} sx={{ pl: 0.5 }}>
                 <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
-                  ・<strong>考古題 / 大抄</strong>：限課程（必修 / 選修 / 通識）之
-                  <Box component="span" sx={{ color: '#dc2626', fontWeight: 700 }}>
-                    期中 / 期末考
-                  </Box>
+                  <Trans i18nKey="examUpload.rules.s1.exams" components={inlineMarks} />
                 </Typography>
                 <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
-                  ・<strong>微積分</strong>：僅限上傳
-                  <Box component="span" sx={{ color: '#dc2626', fontWeight: 700 }}>
-                    小考
-                  </Box>
-                  考古題
+                  <Trans i18nKey="examUpload.rules.s1.calculus" components={inlineMarks} />
                 </Typography>
               </Stack>
             </Box>
@@ -485,7 +492,7 @@ const ExamUploadPage = () => {
             {/* 二、五年範圍 */}
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-                二、五年內 = <Box component="span" sx={{ color: '#dc2626' }}>含當前學期</Box>往前推五年
+                <Trans i18nKey="examUpload.rules.s2.title" components={inlineMarks} />
               </Typography>
               <Stack spacing={1.5} sx={{ pl: 0.5 }}>
                 <Box
@@ -497,11 +504,10 @@ const ExamUploadPage = () => {
                   }}
                 >
                   <Typography variant="body2" sx={{ fontWeight: 600, color: '#059669', mb: 0.25 }}>
-                    例子一 ✌
+                    {t('examUpload.rules.s2.example1Label')}
                   </Typography>
                   <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
-                    現在 114-1（認可 110~114 之考古），融融上傳 111~114 年的統計學考古共 4 份
-                    → 通過審核，拿到回饋獎勵 <strong>NT$ 250</strong>
+                    <Trans i18nKey="examUpload.rules.s2.example1" components={inlineMarks} />
                   </Typography>
                 </Box>
                 <Box
@@ -513,11 +519,10 @@ const ExamUploadPage = () => {
                   }}
                 >
                   <Typography variant="body2" sx={{ fontWeight: 600, color: '#dc2626', mb: 0.25 }}>
-                    例子二 ✗
+                    {t('examUpload.rules.s2.example2Label')}
                   </Typography>
                   <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
-                    現在 114-1，某同學上傳 1993~1996 年的資結考古共 4 份 → 因
-                    <strong>超過規定時間</strong>，拿不到回饋獎勵
+                    <Trans i18nKey="examUpload.rules.s2.example2" components={inlineMarks} />
                   </Typography>
                 </Box>
               </Stack>
@@ -528,20 +533,14 @@ const ExamUploadPage = () => {
             {/* 三、注意事項與獎勵 */}
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-                三、注意事項與獎勵
+                {t('examUpload.rules.s3.title')}
               </Typography>
               <Stack spacing={1} sx={{ pl: 0.5 }}>
                 <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
-                  ・<strong>解答規範</strong>：若有解答請一併附上；
-                  <Box component="span" sx={{ color: '#dc2626' }}>
-                    請勿自行撰寫答案
-                  </Box>
-                  （若確定滿分例外）
+                  <Trans i18nKey="examUpload.rules.s3.answers" components={inlineMarks} />
                 </Typography>
                 <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
-                  ・<strong>回饋獎勵</strong>：每次上傳
-                  <strong>4 份考古題 / 大抄</strong>（不含系訂必修），待審核通過即可獲得
-                  <strong> NT$ 250 </strong>獎勵
+                  <Trans i18nKey="examUpload.rules.s3.reward" components={inlineMarks} />
                 </Typography>
               </Stack>
             </Box>
@@ -549,18 +548,10 @@ const ExamUploadPage = () => {
             {/* 四、上限 */}
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-                四、上傳份數 / 回饋上限 ⚠
+                {t('examUpload.rules.s4.title')}
               </Typography>
               <Typography variant="body2" sx={{ lineHeight: 1.7, pl: 0.5, mb: 1 }}>
-                為了讓每位同學都有公平繳交考古題的機會，每位同學在累積繳交滿{' '}
-                <Box component="span" sx={{ color: '#dc2626', fontWeight: 700 }}>
-                  32 份
-                </Box>{' '}
-                並獲得{' '}
-                <Box component="span" sx={{ color: '#dc2626', fontWeight: 700 }}>
-                  NT$ 2000
-                </Box>{' '}
-                獎金後，將不再繼續發放獎金。
+                <Trans i18nKey="examUpload.rules.s4.body" components={inlineMarks} />
               </Typography>
               <Box
                 sx={{
@@ -572,11 +563,10 @@ const ExamUploadPage = () => {
                 }}
               >
                 <Typography variant="body2" sx={{ fontWeight: 600, color: '#92400e', mb: 0.25 }}>
-                  例子
+                  {t('examUpload.rules.s4.exampleLabel')}
                 </Typography>
                 <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
-                  吱吱上傳 110~114 年共 99 份考古 + 課程評價 → 雖通過審核，但因回饋獎勵
-                  <strong>上限僅能拿到 NT$ 2000</strong>
+                  <Trans i18nKey="examUpload.rules.s4.example" components={inlineMarks} />
                 </Typography>
               </Box>
             </Box>
@@ -586,32 +576,32 @@ const ExamUploadPage = () => {
             {/* 五、上傳格式 */}
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-                五、上傳格式
+                {t('examUpload.rules.s5.title')}
               </Typography>
               <Stack spacing={2}>
                 <Box>
                   <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#0891b2', mb: 0.5 }}>
-                    考古題
+                    {t('examUpload.categories.exam.title')}
                   </Typography>
                   <Stack spacing={0.5} sx={{ pl: 0.5 }}>
                     <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
-                      ・<strong>形式</strong>：原始考題電子檔及題目掃描為主，整理後以 PDF 上傳
+                      <Trans i18nKey="examUpload.rules.s5.examFormat" components={inlineMarks} />
                     </Typography>
                     <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
-                      ・<strong>要求</strong>：清晰且可辨識文字
+                      <Trans i18nKey="examUpload.rules.s5.examQuality" components={inlineMarks} />
                     </Typography>
                   </Stack>
                 </Box>
                 <Box>
                   <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#059669', mb: 0.5 }}>
-                    大抄
+                    {t('examUpload.categories.cheatSheet.title')}
                   </Typography>
                   <Stack spacing={0.5} sx={{ pl: 0.5 }}>
                     <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
-                      ・<strong>形式</strong>：不限手寫或打字，整理後以 PDF 上傳
+                      <Trans i18nKey="examUpload.rules.s5.cheatSheetFormat" components={inlineMarks} />
                     </Typography>
                     <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
-                      ・<strong>要求</strong>：清晰整齊且可辨識文字，有助同學複習考試（學術部會再審核）
+                      <Trans i18nKey="examUpload.rules.s5.cheatSheetQuality" components={inlineMarks} />
                     </Typography>
                   </Stack>
                 </Box>
@@ -623,50 +613,51 @@ const ExamUploadPage = () => {
             {/* 六、上傳流程 */}
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-                六、上傳流程
+                {t('examUpload.rules.s6.title')}
               </Typography>
               <Stack spacing={1.5}>
                 <Box>
                   <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.25 }}>
-                    1. 檢視已上傳之考古
+                    {t('examUpload.rules.s6.step1Title')}
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7, pl: 1.5 }}>
-                    為避免重複上傳，請先點擊上方流程區的「檢視已上傳清單」按鈕，至 Google Sheet 確認
+                    {t('examUpload.rules.s6.step1Body')}
                   </Typography>
                 </Box>
                 <Box>
                   <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.25 }}>
-                    2. 填寫表單
+                    {t('examUpload.rules.s6.step2Title')}
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7, pl: 1.5 }}>
-                    使用台大信箱（@ntu.edu.tw）填寫；檔案命名：
-                    <Box
-                      component="code"
-                      sx={{
-                        ml: 0.5,
-                        px: 0.75,
-                        py: 0.25,
-                        bgcolor: 'rgba(15, 23, 42, 0.06)',
-                        borderRadius: 0.5,
-                        fontFamily: 'ui-monospace, "SF Mono", Consolas, monospace',
-                        fontSize: '0.85em',
+                    <Trans
+                      i18nKey="examUpload.rules.s6.step2Body"
+                      components={{
+                        ...inlineMarks,
+                        code: (
+                          <Box
+                            component="code"
+                            sx={{
+                              mx: 0.5,
+                              px: 0.75,
+                              py: 0.25,
+                              bgcolor: 'rgba(15, 23, 42, 0.06)',
+                              borderRadius: 0.5,
+                              fontFamily: 'ui-monospace, Consolas, monospace',
+                              fontSize: '0.85em',
+                            }}
+                          />
+                        ),
                       }}
-                    >
-                      年份_學期_科目名_考試類別
-                    </Box>
-                    （例：112-1_程式設計_期末.pdf）。
-                    <Box component="span" sx={{ color: '#dc2626' }}>
-                      未依命名格式者不做計算
-                    </Box>
-                    ；若考題與答案分開，請分成兩個檔案上傳
+                      values={{ pattern: t('examUpload.namingPattern') }}
+                    />
                   </Typography>
                 </Box>
                 <Box>
                   <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.25 }}>
-                    3. 等待審核
+                    {t('examUpload.rules.s6.step3Title')}
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7, pl: 1.5 }}>
-                    待審核通過 & 累積達 4 份後，學術部將於統一時間通知並發放回饋獎勵
+                    {t('examUpload.rules.s6.step3Body')}
                   </Typography>
                 </Box>
               </Stack>

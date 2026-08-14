@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -41,6 +42,7 @@ import cheatSheetService from '../services/cheatSheetService';
 import EditCheatSheetDialog from '../components/EditCheatSheetDialog';
 
 const CheatSheetManagePage = () => {
+  const { t, i18n } = useTranslation();
   const { user, isAdmin } = useAuth();
   const [cheatSheets, setCheatSheets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -55,6 +57,9 @@ const CheatSheetManagePage = () => {
   // 從 API 獲取大抄資料
   useEffect(() => {
     fetchCheatSheets();
+    // fetchCheatSheets 現在引用 t（i18n 訊息），linter 不再視它為穩定值；
+    // 加進依賴會無限重抓，照專案既有做法關掉這條規則
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchCheatSheets = async () => {
@@ -63,7 +68,7 @@ const CheatSheetManagePage = () => {
       const response = await fetch(`${API_BASE_URL}/cheat-sheets`);
       
       if (!response.ok) {
-        throw new Error('獲取大抄失敗');
+        throw new Error(t('cheatSheet.fetchFailed'));
       }
       
       const result = await response.json();
@@ -93,7 +98,7 @@ const CheatSheetManagePage = () => {
       });
 
       if (!response.ok) {
-        throw new Error('刪除失敗');
+        throw new Error(t('manage.deleteFailed'));
       }
 
       // 重新獲取資料
@@ -101,14 +106,14 @@ const CheatSheetManagePage = () => {
       
       setSnackbar({
         open: true,
-        message: '大抄已成功刪除',
+        message: t('manage.cheatSheetDeleted'),
         severity: 'success'
       });
     } catch (error) {
       console.error('刪除大抄錯誤:', error);
       setSnackbar({
         open: true,
-        message: error.message || '刪除失敗',
+        message: error.message || t('manage.deleteFailed'),
         severity: 'error'
       });
     } finally {
@@ -133,12 +138,12 @@ const CheatSheetManagePage = () => {
       await fetchCheatSheets(); // 重新載入資料
       setSnackbar({
         open: true,
-        message: '大抄資訊已更新',
+        message: t('manage.cheatSheetInfoUpdated'),
         severity: 'success'
       });
     } catch (error) {
       console.error('更新大抄錯誤:', error);
-      throw new Error(error.error || '更新失敗');
+      throw new Error(error.error || t('exam.form.updateFailed'));
     }
   };
 
@@ -148,12 +153,12 @@ const CheatSheetManagePage = () => {
       await fetchCheatSheets(); // 重新載入資料
       setSnackbar({
         open: true,
-        message: '大抄檔案已更新',
+        message: t('manage.cheatSheetFileUpdated'),
         severity: 'success'
       });
     } catch (error) {
       console.error('更新大抄檔案錯誤:', error);
-      throw new Error(error.error || '檔案更新失敗');
+      throw new Error(error.error || t('exam.form.fileUpdateFailed'));
     }
   };
 
@@ -178,7 +183,7 @@ const CheatSheetManagePage = () => {
       });
       
       if (!response.ok) {
-        throw new Error('下載失敗');
+        throw new Error(t('cheatSheet.downloadFailed'));
       }
       
       const blob = await response.blob();
@@ -194,12 +199,13 @@ const CheatSheetManagePage = () => {
       console.error('下載錯誤:', error);
       setSnackbar({
         open: true,
-        message: '下載失敗，請稍後再試',
+        message: t('cheatSheet.downloadFailedRetry'),
         severity: 'error'
       });
     }
   };
 
+  // 這些鍵是資料庫裡實際的標籤字串，不是介面文案——抽到語言檔會讓配色在英文介面下失效
   const getTagColor = (tag) => {
     const colors = {
       '資料庫': 'primary',
@@ -226,10 +232,10 @@ const CheatSheetManagePage = () => {
       <Container maxWidth="lg">
         <Box sx={{ py: 4, textAlign: 'center' }}>
           <Typography variant="h5" color="error">
-            權限不足
+            {t('guard.noPermissionTitle')}
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            只有管理員可以存取此頁面
+            {t('guard.adminRequiredBody')}
           </Typography>
         </Box>
       </Container>
@@ -242,10 +248,10 @@ const CheatSheetManagePage = () => {
         {/* Header */}
         <Box sx={{ mb: 4 }}>
           <Typography variant="h3" component="h1" gutterBottom sx={{ fontWeight: 700 }}>
-            大抄管理
+            {t('nav.adminCheatSheetManage')}
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            管理系統中的所有學習大抄，可檢視、下載和刪除
+            {t('manage.cheatSheetDescription')}
           </Typography>
         </Box>
 
@@ -253,7 +259,7 @@ const CheatSheetManagePage = () => {
         <Paper sx={{ p: 2, mb: 3 }}>
           <TextField
             fullWidth
-            placeholder="搜尋標題、課程或內容..."
+            placeholder={t('cheatSheet.searchPlaceholder')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             InputProps={{
@@ -277,7 +283,7 @@ const CheatSheetManagePage = () => {
         {loading && (
           <Box sx={{ textAlign: 'center', py: 8 }}>
             <Typography variant="h6" color="text.secondary">
-              載入大抄中...
+              {t('cheatSheet.loadingList')}
             </Typography>
           </Box>
         )}
@@ -353,7 +359,7 @@ const CheatSheetManagePage = () => {
                           </Stack>
                         ) : (
                           <Typography variant="caption" color="text.disabled">
-                            無標籤
+                            {t('manage.noTags')}
                           </Typography>
                         )}
                       </Box>
@@ -374,17 +380,17 @@ const CheatSheetManagePage = () => {
                           {sheet.uploader ? sheet.uploader.fullName.charAt(0) : '?'}
                         </Avatar>
                         <Typography variant="body2">
-                          {sheet.uploader?.fullName || '未知'}
+                          {sheet.uploader?.fullName || t('common.unknown')}
                         </Typography>
                       </Box>
                     </TableCell>
                     <TableCell>
-                      {sheet.created_at ? new Date(sheet.created_at).toLocaleDateString('zh-TW') : '未知'}
+                      {sheet.created_at ? new Date(sheet.created_at).toLocaleDateString(i18n.language) : t('common.unknown')}
                     </TableCell>
                     <TableCell align="right">{sheet.downloadCount || 0}</TableCell>
                     <TableCell align="center">
                       <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                        <Tooltip title="預覽">
+                        <Tooltip title={t('exam.preview')}>
                           <IconButton 
                             size="small" 
                             onClick={() => handlePreview(sheet.id)}
@@ -392,7 +398,7 @@ const CheatSheetManagePage = () => {
                             <ViewIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="下載">
+                        <Tooltip title={t('exam.download')}>
                           <IconButton 
                             size="small" 
                             color="primary"
@@ -401,7 +407,7 @@ const CheatSheetManagePage = () => {
                             <DownloadIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="編輯">
+                        <Tooltip title={t('common.edit')}>
                           <IconButton 
                             size="small" 
                             color="info"
@@ -410,7 +416,7 @@ const CheatSheetManagePage = () => {
                             <EditIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="刪除">
+                        <Tooltip title={t('common.delete')}>
                           <IconButton 
                             size="small" 
                             color="error"
@@ -433,10 +439,10 @@ const CheatSheetManagePage = () => {
           <Box sx={{ textAlign: 'center', py: 8 }}>
             <TagIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
             <Typography variant="h6" color="text.secondary" gutterBottom>
-              {cheatSheets.length === 0 ? '目前沒有大抄' : '沒有找到符合條件的大抄'}
+              {t(cheatSheets.length === 0 ? 'cheatSheet.empty' : 'cheatSheet.noMatch')}
             </Typography>
             <Typography variant="body2" color="text.disabled">
-              {cheatSheets.length === 0 ? '請先上傳大抄' : '請嘗試調整搜尋條件'}
+              {t(cheatSheets.length === 0 ? 'manage.uploadCheatSheetFirst' : 'manage.adjustSearch')}
             </Typography>
           </Box>
         )}
@@ -449,17 +455,17 @@ const CheatSheetManagePage = () => {
           <DialogTitle>確認刪除大抄</DialogTitle>
           <DialogContent>
             <DialogContentText>
-              確定要刪除「{cheatSheetToDelete?.title}」嗎？
+              {t('manage.confirmDeleteCheatSheet', { name: cheatSheetToDelete?.title })}
               <br />
-              此操作無法復原，檔案將永久刪除。
+              {t('manage.deleteIrreversible')}
             </DialogContentText>
           </DialogContent>
           <DialogActions>
             <Button onClick={handleDeleteCancel}>
-              取消
+              {t('common.cancel')}
             </Button>
             <Button onClick={handleDeleteConfirm} color="error" variant="contained">
-              確認刪除
+              {t('courseReview.admin.confirmDelete')}
             </Button>
           </DialogActions>
         </Dialog>

@@ -1,7 +1,10 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Box, Typography, Paper, Stack, Chip, Divider } from '@mui/material';
 import { APP_CONFIG } from '../../resources/config/constants';
 
+// 這些鍵對應下方 CHANGELOG 裡的分類名稱（資料本身就是中文），不是介面文案。
+// 歷史更新內容依決策保持原文不翻譯，所以這裡也維持中文鍵。
 const CATEGORY_META = {
   新功能: { color: '#059669', bg: 'rgba(5, 150, 105, 0.1)' },
   優化: { color: '#0891b2', bg: 'rgba(8, 145, 178, 0.1)' },
@@ -145,6 +148,7 @@ const CHANGELOG = [
 ];
 
 const ChangelogPage = () => {
+  const { t } = useTranslation();
   const totalReleases = CHANGELOG.length;
   const firstDate = CHANGELOG[CHANGELOG.length - 1].date;
   const latestDate = CHANGELOG[0].date;
@@ -154,10 +158,10 @@ const ChangelogPage = () => {
       {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h2" component="h1" sx={{ fontWeight: 700, mb: 0.5 }}>
-          版本紀錄
+          {t('nav.changelog')}
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          {totalReleases} 個版本 · {firstDate} 起持續更新至 {latestDate}
+          {t('changelog.summary', { count: totalReleases, from: firstDate, to: latestDate })}
         </Typography>
       </Box>
 
@@ -336,7 +340,7 @@ const ChangelogPage = () => {
       {/* Footer note */}
       <Box sx={{ mt: 5, py: 3, borderTop: '1px solid', borderColor: 'divider', textAlign: 'center' }}>
         <Typography variant="caption" color="text.disabled">
-          目前版本：v{APP_CONFIG.version}
+          {t('changelog.currentVersion', { version: APP_CONFIG.version })}
         </Typography>
       </Box>
     </Box>

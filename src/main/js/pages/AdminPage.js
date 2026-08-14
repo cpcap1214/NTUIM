@@ -82,7 +82,7 @@ const PERMISSION_TO_TAB = {
 const CONSOLE_PERMISSIONS = Object.keys(PERMISSION_TO_TAB);
 
 const AdminPage = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   // isAdmin 一律取自 AuthContext（全前端唯一來源），這個檔案原本自己重複推導了 4 次
   const { user, loading: authLoading, updateUser, isAdmin: hasAdminRole, hasPermission, startPreview } = useAuth();
   const navigate = useNavigate();
@@ -198,7 +198,7 @@ const AdminPage = () => {
     // 只要持有任何一項後台權限就能進來，實際看得到哪些功能由 adminSections 各自的權限決定
     if (!CONSOLE_PERMISSIONS.some((p) => hasPermission(p))) {
       console.log('User does not have console access, redirecting to home');
-      alert('您沒有權限訪問此頁面');
+      alert(t('admin.noAccess'));
       navigate('/');
       return;
     }
@@ -277,7 +277,7 @@ const AdminPage = () => {
       setAllRoles(roles);
       setPermissionCatalog(catalog);
     } catch (err) {
-      setError(translateApiError(err, '取得身分組失敗'));
+      setError(translateApiError(err, t('admin.roles.fetchFailed')));
     } finally {
       setRoleLoading(false);
     }
@@ -299,9 +299,9 @@ const AdminPage = () => {
       }
       setRoleDialog(false);
       await fetchRoles();
-      setSuccess('身分組已儲存');
+      setSuccess(t('admin.roles.saved'));
     } catch (err) {
-      setError(translateApiError(err, '儲存身分組失敗'));
+      setError(translateApiError(err, t('admin.roles.saveFailed')));
     }
   };
 
@@ -309,9 +309,9 @@ const AdminPage = () => {
     try {
       await roleService.deleteRole(roleToDelete.id);
       await fetchRoles();
-      setSuccess('身分組已刪除');
+      setSuccess(t('admin.roles.deleted'));
     } catch (err) {
-      setError(translateApiError(err, '刪除身分組失敗'));
+      setError(translateApiError(err, t('admin.roles.deleteFailed')));
     } finally {
       setRoleDeleteDialog(false);
       setRoleToDelete(null);
@@ -323,7 +323,7 @@ const AdminPage = () => {
       setModuleLoading(true);
       setModuleSettings(await moduleService.getModuleSettings());
     } catch (err) {
-      setError(translateApiError(err, '取得模塊設定失敗'));
+      setError(translateApiError(err, t('admin.modules.fetchFailed')));
     } finally {
       setModuleLoading(false);
     }
@@ -333,9 +333,9 @@ const AdminPage = () => {
     try {
       await moduleService.updateModule(key, payload);
       await fetchModuleSettings();
-      setSuccess('模塊設定已更新');
+      setSuccess(t('admin.modules.saved'));
     } catch (err) {
-      setError(translateApiError(err, '更新模塊設定失敗'));
+      setError(translateApiError(err, t('admin.modules.saveFailed')));
     }
   };
 
@@ -448,7 +448,7 @@ const AdminPage = () => {
       });
       
       if (!response.ok) {
-        throw new Error('無法獲取用戶資料');
+        throw new Error(t('admin.users.fetchFailed'));
       }
       
       const data = await response.json();
@@ -468,7 +468,7 @@ const AdminPage = () => {
       const response = await fetch(`${API_BASE_URL}/exams?limit=1000`);
       
       if (!response.ok) {
-        throw new Error('獲取考古題失敗');
+        throw new Error(t('exam.fetchFailed'));
       }
       
       const result = await response.json();
@@ -488,7 +488,7 @@ const AdminPage = () => {
       const response = await fetch(`${API_BASE_URL}/cheat-sheets`);
       
       if (!response.ok) {
-        throw new Error('獲取大抄失敗');
+        throw new Error(t('cheatSheet.fetchFailed'));
       }
       
       const result = await response.json();
@@ -510,7 +510,7 @@ const AdminPage = () => {
       await startPreview(kind, id, label);
       navigate('/');
     } catch (err) {
-      setError(translateApiError(err, '無法切換檢視身分'));
+      setError(translateApiError(err, t('admin.previewSwitchFailed')));
     }
   };
 
@@ -549,7 +549,7 @@ const AdminPage = () => {
       });
 
       if (!response.ok) {
-        throw new Error('更新失敗');
+        throw new Error(t('exam.form.updateFailed'));
       }
 
       await response.json();
@@ -560,7 +560,7 @@ const AdminPage = () => {
         await roleService.setUserRoles(userId, editData.roleIds);
       }
 
-      setSuccess('用戶資料已更新');
+      setSuccess(t('admin.users.updated'));
       setEditingId(null);
 
       // 如果更新的是當前登入用戶，同步更新 AuthContext
@@ -576,13 +576,13 @@ const AdminPage = () => {
 
       fetchUsers();
     } catch (err) {
-      setError(translateApiError(err, err.message || '更新失敗'));
+      setError(translateApiError(err, err.message || t('exam.form.updateFailed')));
     }
   };
 
   const handlePasswordChange = async () => {
     if (!newPassword) {
-      setError('請輸入新密碼');
+      setError(t('admin.users.enterNewPassword'));
       return;
     }
 
@@ -597,10 +597,10 @@ const AdminPage = () => {
       });
 
       if (!response.ok) {
-        throw new Error('密碼更新失敗');
+        throw new Error(t('admin.users.passwordUpdateFailed'));
       }
 
-      setSuccess('密碼已更新');
+      setSuccess(t('admin.users.passwordUpdated'));
       setNewPasswordDialog(false);
       setNewPassword('');
       setSelectedUserId(null);
@@ -622,10 +622,10 @@ const AdminPage = () => {
       });
 
       if (!response.ok) {
-        throw new Error('刪除用戶失敗');
+        throw new Error(t('admin.users.deleteFailed'));
       }
 
-      setSuccess(`用戶 ${userToDelete.username} 已刪除`);
+      setSuccess(t('admin.users.deleted', { name: userToDelete.username }));
       setDeleteUserDialog(false);
       setUserToDelete(null);
       fetchUsers();
@@ -671,12 +671,12 @@ const AdminPage = () => {
     if (!file) return;
 
     if (file.type !== 'application/pdf') {
-      setUploadMessage({ type: 'error', text: '只能上傳 PDF 檔案' });
+      setUploadMessage({ type: 'error', text: t('admin.upload.pdfOnly') });
       return;
     }
 
     if (file.size > 50 * 1024 * 1024) {
-      setUploadMessage({ type: 'error', text: '檔案大小不能超過 50MB' });
+      setUploadMessage({ type: 'error', text: t('admin.upload.tooLarge') });
       return;
     }
 
@@ -694,11 +694,11 @@ const AdminPage = () => {
   const validateExamForm = () => {
     const newErrors = {};
     
-    if (!examForm.courseCode) newErrors.courseCode = '請輸入課號';
-    if (!examForm.courseName) newErrors.courseName = '請輸入課程名稱';
-    if (!examForm.professor) newErrors.professor = '請輸入教授姓名';
-    if (!examForm.year) newErrors.year = '請選擇年份';
-    if (!examForm.questionFile) newErrors.questionFile = '請選擇要上傳的題目 PDF 檔案';
+    if (!examForm.courseCode) newErrors.courseCode = t('admin.upload.courseCodeRequired');
+    if (!examForm.courseName) newErrors.courseName = t('admin.upload.courseNameRequired');
+    if (!examForm.professor) newErrors.professor = t('admin.upload.professorRequired');
+    if (!examForm.year) newErrors.year = t('admin.upload.yearRequired');
+    if (!examForm.questionFile) newErrors.questionFile = t('admin.upload.questionFileRequired');
 
     setUploadErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -707,12 +707,12 @@ const AdminPage = () => {
   const validateCheatSheetForm = () => {
     const newErrors = {};
     
-    if (!cheatSheetForm.courseCode) newErrors.courseCode = '請輸入課號';
-    if (!cheatSheetForm.courseName) newErrors.courseName = '請輸入課程名稱';
-    if (!cheatSheetForm.title) newErrors.title = '請輸入標題';
-    if (!cheatSheetForm.description) newErrors.description = '請輸入描述';
-    if (cheatSheetForm.tags.length === 0) newErrors.tags = '請至少新增一個標籤';
-    if (!cheatSheetForm.file) newErrors.file = '請選擇要上傳的 PDF 檔案';
+    if (!cheatSheetForm.courseCode) newErrors.courseCode = t('admin.upload.courseCodeRequired');
+    if (!cheatSheetForm.courseName) newErrors.courseName = t('admin.upload.courseNameRequired');
+    if (!cheatSheetForm.title) newErrors.title = t('admin.upload.titleRequired');
+    if (!cheatSheetForm.description) newErrors.description = t('admin.upload.descriptionRequired');
+    if (cheatSheetForm.tags.length === 0) newErrors.tags = t('admin.upload.tagRequired');
+    if (!cheatSheetForm.file) newErrors.file = t('admin.upload.fileRequired');
 
     setUploadErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -747,10 +747,10 @@ const AdminPage = () => {
       });
 
       if (!response.ok) {
-        throw new Error('上傳失敗');
+        throw new Error(t('admin.upload.failed'));
       }
 
-      setUploadMessage({ type: 'success', text: '考古題上傳成功！' });
+      setUploadMessage({ type: 'success', text: t('admin.upload.examSuccess') });
 
       setExamForm((prev) => ({
         ...prev,
@@ -760,7 +760,7 @@ const AdminPage = () => {
       
       setUploadProgress(100);
     } catch (error) {
-      setUploadMessage({ type: 'error', text: error.message || '上傳失敗，請稍後再試' });
+      setUploadMessage({ type: 'error', text: error.message || t('admin.upload.failedRetry') });
     } finally {
       setUploading(false);
       setTimeout(() => setUploadProgress(0), 1000);
@@ -791,10 +791,10 @@ const AdminPage = () => {
       });
 
       if (!response.ok) {
-        throw new Error('上傳失敗');
+        throw new Error(t('admin.upload.failed'));
       }
 
-      setUploadMessage({ type: 'success', text: '大抄上傳成功！' });
+      setUploadMessage({ type: 'success', text: t('admin.upload.cheatSheetSuccess') });
       
       setCheatSheetForm({
         courseCode: '',
@@ -808,7 +808,7 @@ const AdminPage = () => {
       
       setUploadProgress(100);
     } catch (error) {
-      setUploadMessage({ type: 'error', text: error.message || '上傳失敗，請稍後再試' });
+      setUploadMessage({ type: 'error', text: error.message || t('admin.upload.failedRetry') });
     } finally {
       setUploading(false);
       setTimeout(() => setUploadProgress(0), 1000);
@@ -833,14 +833,14 @@ const AdminPage = () => {
       });
 
       if (!response.ok) {
-        throw new Error('刪除失敗');
+        throw new Error(t('manage.deleteFailed'));
       }
 
       await fetchExams();
-      setSuccess('考古題已成功刪除');
+      setSuccess(t('manage.examDeleted'));
     } catch (error) {
       console.error('刪除考古題錯誤:', error);
-      setError(error.message || '刪除失敗');
+      setError(error.message || t('manage.deleteFailed'));
     } finally {
       setExamDeleteDialog(false);
       setExamToDelete(null);
@@ -861,7 +861,7 @@ const AdminPage = () => {
       });
       
       if (!response.ok) {
-        throw new Error('下載失敗');
+        throw new Error(t('cheatSheet.downloadFailed'));
       }
       
       const blob = await response.blob();
@@ -875,7 +875,7 @@ const AdminPage = () => {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('下載錯誤:', error);
-      setError('下載失敗，請稍後再試');
+      setError(t('cheatSheet.downloadFailedRetry'));
     }
   };
 
@@ -897,14 +897,14 @@ const AdminPage = () => {
       });
 
       if (!response.ok) {
-        throw new Error('刪除失敗');
+        throw new Error(t('manage.deleteFailed'));
       }
 
       await fetchCheatSheets();
-      setSuccess('大抄已成功刪除');
+      setSuccess(t('manage.cheatSheetDeleted'));
     } catch (error) {
       console.error('刪除大抄錯誤:', error);
-      setError(error.message || '刪除失敗');
+      setError(error.message || t('manage.deleteFailed'));
     } finally {
       setCheatSheetDeleteDialog(false);
       setCheatSheetToDelete(null);
@@ -925,7 +925,7 @@ const AdminPage = () => {
       });
       
       if (!response.ok) {
-        throw new Error('下載失敗');
+        throw new Error(t('cheatSheet.downloadFailed'));
       }
       
       const blob = await response.blob();
@@ -939,10 +939,11 @@ const AdminPage = () => {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('下載錯誤:', error);
-      setError('下載失敗，請稍後再試');
+      setError(t('cheatSheet.downloadFailedRetry'));
     }
   };
 
+  // 這些鍵是資料庫裡實際的標籤字串，不是介面文案
   const getTagColor = (tag) => {
     const colors = {
       '資料庫': 'primary',
@@ -1045,16 +1046,16 @@ const AdminPage = () => {
   //   考古題管理   大抄管理     課程評價管理
   //   上傳考古題   上傳大抄     發放回饋金
   const adminSections = [
-    { label: '用戶管理', description: '查詢、編輯、重設密碼', value: 0, permission: 'users.manage' },
-    { label: '身分組管理', description: '建立身分組、調整權限與成員', value: 7, permission: 'roles.manage' },
-    { label: '模塊管理', description: '設定各功能開放給哪些身分組', value: 8, permission: 'modules.manage' },
+    { labelKey: 'nav.adminPanel', descKey: 'admin.sections.users', value: 0, permission: 'users.manage' },
+    { labelKey: 'admin.roles.title', descKey: 'admin.sections.roles', value: 7, permission: 'roles.manage' },
+    { labelKey: 'admin.modules.title', descKey: 'admin.sections.modules', value: 8, permission: 'modules.manage' },
 
-    { label: '考古題管理', description: '搜尋、預覽、刪除', value: 3, permission: 'exams.manage' },
-    { label: '大抄管理', description: '檢視內容與清理資料', value: 4, permission: 'cheatSheets.manage' },
+    { labelKey: 'nav.adminExamManage', descKey: 'admin.sections.examManage', value: 3, permission: 'exams.manage' },
+    { labelKey: 'nav.adminCheatSheetManage', descKey: 'admin.sections.cheatSheetManage', value: 4, permission: 'cheatSheets.manage' },
     { label: t('courseReview.admin.title'), description: t('courseReview.admin.description'), value: 5, permission: 'courseReviews.moderate' },
 
-    { label: '上傳考古題', description: '新增題目與答案檔案', value: 1, permission: 'exams.upload' },
-    { label: '上傳大抄', description: '建立課程重點整理', value: 2, permission: 'cheatSheets.upload' },
+    { labelKey: 'nav.uploadExam', descKey: 'admin.sections.examUpload', value: 1, permission: 'exams.upload' },
+    { labelKey: 'admin.uploadCheatSheet', descKey: 'admin.sections.cheatSheetUpload', value: 2, permission: 'cheatSheets.upload' },
     { label: t('courseReview.payout.title'), description: t('courseReview.payout.description'), value: 6, permission: 'courseReviews.payout' },
   ].filter((section) => hasPermission(section.permission));
 
@@ -1071,9 +1072,9 @@ const AdminPage = () => {
     return (
       <Container sx={{ mt: 4 }}>
         <Alert severity="error">
-          您沒有權限訪問此頁面
+          {t('admin.noAccess')}
           <br />
-          調試資訊：用戶名={user?.username}，角色={user?.role}
+          {t('admin.debugInfo', { username: user?.username, role: user?.role })}
         </Alert>
       </Container>
     );
@@ -1084,10 +1085,10 @@ const AdminPage = () => {
       <Stack spacing={3}>
         <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 3 }}>
           <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
-            管理員控制台
+            {t('admin.consoleTitle')}
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            直接切到要處理的工作區，不使用滑動式分頁。
+            {t('admin.consoleSubtitle')}
           </Typography>
           <Grid container spacing={2}>
             {adminSections.map((section) => (
@@ -1110,10 +1111,10 @@ const AdminPage = () => {
                   }}
                 >
                   <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
-                    {section.label}
+                    {t(section.labelKey)}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {section.description}
+                    {t(section.descKey)}
                   </Typography>
                 </Paper>
               </Grid>
@@ -1191,7 +1192,7 @@ const AdminPage = () => {
               >
                 <TextField
                   fullWidth
-                  placeholder="搜尋帳號、姓名、Email、學號"
+                  placeholder={t('admin.users.searchPlaceholder')}
                   value={userSearchTerm}
                   onChange={(e) => setUserSearchTerm(e.target.value)}
                   InputProps={{
@@ -1209,7 +1210,7 @@ const AdminPage = () => {
                   <InputLabel>身分組</InputLabel>
                   <Select
                     value={roleFilter}
-                    label="身分組"
+                    label={t('admin.roles.label')}
                     onChange={(e) => setRoleFilter(e.target.value)}
                   >
                     <MenuItem value="all">全部</MenuItem>
@@ -1223,7 +1224,7 @@ const AdminPage = () => {
                   <InputLabel>繳費</InputLabel>
                   <Select
                     value={paymentFilter}
-                    label="繳費"
+                    label={t('admin.users.paymentFilter')}
                     onChange={(e) => setPaymentFilter(e.target.value)}
                   >
                     <MenuItem value="all">全部</MenuItem>
@@ -1235,7 +1236,7 @@ const AdminPage = () => {
 
               <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
                 <Typography variant="body2" color="text.secondary">
-                  顯示 {filteredUsers.length} / {users.length} 位用戶
+                  {t('admin.users.showing', { shown: filteredUsers.length, total: users.length })}
                 </Typography>
                 {(userSearchTerm || roleFilter !== 'all' || paymentFilter !== 'all') && (
                   <Button
@@ -1246,7 +1247,7 @@ const AdminPage = () => {
                       setPaymentFilter('all');
                     }}
                   >
-                    清除篩選
+                    {t('admin.users.clearFilters')}
                   </Button>
                 )}
               </Stack>
@@ -1281,13 +1282,13 @@ const AdminPage = () => {
                             <Stack spacing={1} sx={{ minWidth: 220 }}>
                               <TextField
                                 size="small"
-                                label="姓名"
+                                label={t('auth.fullName')}
                                 value={editData.fullName}
                                 onChange={(e) => setEditData({ ...editData, fullName: e.target.value })}
                               />
                               <TextField
                                 size="small"
-                                label="帳號"
+                                label={t('auth.username')}
                                 value={editData.username}
                                 onChange={(e) => setEditData({ ...editData, username: e.target.value })}
                               />
@@ -1313,7 +1314,7 @@ const AdminPage = () => {
                             <Stack spacing={1}>
                               <TextField
                                 size="small"
-                                label="學號"
+                                label={t('auth.studentId')}
                                 fullWidth
                                 value={editData.studentId}
                                 onChange={(e) => setEditData({ ...editData, studentId: e.target.value })}
@@ -1329,17 +1330,17 @@ const AdminPage = () => {
                           ) : (
                             <Stack spacing={0.5}>
                               <Typography variant="body2">
-                                學號：{managedUser.studentId || '-'}
+                                {t('admin.users.studentIdLine', { value: managedUser.studentId || '-' })}
                               </Typography>
                               <Typography
                                 variant="body2"
                                 color="text.secondary"
                                 sx={{ wordBreak: 'break-word' }}
                               >
-                                {managedUser.email || '未填寫 Email'}
+                                {managedUser.email || t('admin.users.noEmail')}
                               </Typography>
                               <Typography variant="caption" color="text.secondary">
-                                註冊：{managedUser.created_at ? new Date(managedUser.created_at).toLocaleString('zh-TW') : '-'}
+                                {t('admin.users.registeredLine', { value: managedUser.created_at ? new Date(managedUser.created_at).toLocaleString(i18n.language) : '-' })}
                               </Typography>
                             </Stack>
                           )}
@@ -1357,7 +1358,7 @@ const AdminPage = () => {
                                   onChange={(e) => setEditData({ ...editData, hasPaidFee: e.target.checked })}
                                 />
                                 <Typography variant="body2">
-                                  {editData.hasPaidFee ? '已繳費' : '未繳費'}
+                                  {t(editData.hasPaidFee ? 'admin.users.paid' : 'admin.users.unpaid')}
                                 </Typography>
                               </Stack>
                               {/* 身分組（可複選）。取代原本的「總務權限」開關——
@@ -1367,7 +1368,7 @@ const AdminPage = () => {
                                 <Select
                                   multiple
                                   value={editData.roleIds || []}
-                                  label="身分組"
+                                  label={t('admin.roles.label')}
                                   onChange={(e) => setEditData({ ...editData, roleIds: e.target.value })}
                                   renderValue={(selected) => (
                                     <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
@@ -1382,7 +1383,7 @@ const AdminPage = () => {
                                     // 空選單一定要說明原因。/api/roles 需要 roles.manage，
                                     // 沒有該權限的人會拿到空清單，看到一個沒東西的下拉選單卻不知為何
                                     <MenuItem disabled value="">
-                                      {allRoles.length === 0 ? '載入中或無權限讀取身分組' : '沒有可指派的身分組'}
+                                      {t(allRoles.length === 0 ? 'admin.roles.loadingOrNoAccess' : 'admin.roles.noneAssignable')}
                                     </MenuItem>
                                   )}
                                   {allRoles.filter((r) => !r.isAuto).map((r) => (
@@ -1392,7 +1393,7 @@ const AdminPage = () => {
                               </FormControl>
                               {allRoles.some((r) => r.isAuto) && (
                                 <Typography variant="caption" color="text.secondary">
-                                  「會員」依繳費狀態自動授予，不在此指派
+                                  {t('admin.roles.memberAutoHint')}
                                 </Typography>
                               )}
                             </Stack>
@@ -1403,7 +1404,7 @@ const AdminPage = () => {
                             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                               <Chip
                                 size="small"
-                                label={managedUser.hasPaidFee ? '已繳費' : '未繳費'}
+                                label={t(managedUser.hasPaidFee ? 'admin.users.paid' : 'admin.users.unpaid')}
                                 color={managedUser.hasPaidFee ? 'success' : 'default'}
                                 variant={managedUser.hasPaidFee ? 'filled' : 'outlined'}
                               />
@@ -1416,7 +1417,7 @@ const AdminPage = () => {
                                 />
                               ))}
                               {(managedUser.roles || []).length === 0 && (
-                                <Chip size="small" label="無身分組" variant="outlined" />
+                                <Chip size="small" label={t('admin.roles.none')} variant="outlined" />
                               )}
                             </Stack>
                           )}
@@ -1424,10 +1425,10 @@ const AdminPage = () => {
                         <TableCell align="right" onClick={(event) => event.stopPropagation()}>
                           {editingId === managedUser.id ? (
                             <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                              <IconButton color="primary" onClick={() => handleSave(managedUser.id)} title="儲存">
+                              <IconButton color="primary" onClick={() => handleSave(managedUser.id)} title={t('common.save')}>
                                 <SaveIcon />
                               </IconButton>
-                              <IconButton color="secondary" onClick={handleCancel} title="取消">
+                              <IconButton color="secondary" onClick={handleCancel} title={t('common.cancel')}>
                                 <CancelIcon />
                               </IconButton>
                             </Stack>
@@ -1447,8 +1448,8 @@ const AdminPage = () => {
                                 color="warning"
                                 title={
                                   managedUser.id === user?.id
-                                    ? '這就是你自己的身分'
-                                    : `以「${managedUser.username}」的身分檢視全站（唯讀）`
+                                    ? t('admin.preview.selfHint')
+                                    : t('admin.preview.asUser', { name: managedUser.username })
                                 }
                                 disabled={managedUser.id === user?.id}
                                 onClick={() =>
@@ -1457,14 +1458,14 @@ const AdminPage = () => {
                               >
                                 <ViewIcon />
                               </IconButton>
-                              <IconButton size="small" onClick={() => handleEdit(managedUser)} title="編輯">
+                              <IconButton size="small" onClick={() => handleEdit(managedUser)} title={t('common.edit')}>
                                 <EditIcon />
                               </IconButton>
                               <IconButton
                                 size="small"
                                 onClick={() => openPasswordDialog(managedUser.id)}
                                 color="info"
-                                title="重設密碼"
+                                title={t('admin.users.resetPassword')}
                               >
                                 <LockResetIcon />
                               </IconButton>
@@ -1475,7 +1476,7 @@ const AdminPage = () => {
                                   setDeleteUserDialog(true);
                                 }}
                                 color="error"
-                                title={managedUser.id === user?.id ? '不能刪除自己的帳號' : '刪除用戶'}
+                                title={t(managedUser.id === user?.id ? 'admin.users.cannotDeleteSelf' : 'admin.users.deleteUser')}
                                 disabled={managedUser.id === user?.id}
                               >
                                 <PersonRemoveIcon />
@@ -1493,7 +1494,7 @@ const AdminPage = () => {
                 <Box sx={{ py: 6, textAlign: 'center' }}>
                   <Typography variant="h6" gutterBottom>沒有符合條件的用戶</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    請調整搜尋字詞或篩選條件。
+                    {t('admin.users.adjustFilters')}
                   </Typography>
                 </Box>
               )}
@@ -1503,7 +1504,7 @@ const AdminPage = () => {
           <Grid item xs={12} lg={4}>
             <Paper sx={{ p: 3, borderRadius: 3, position: 'sticky', top: 24 }}>
               <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-                用戶詳情
+                {t('admin.users.detailTitle')}
               </Typography>
 
               {activeUser ? (
@@ -1525,7 +1526,7 @@ const AdminPage = () => {
                   {/* 同列表：顯示實際生效的身分組，不再由舊 role 欄位推導 */}
                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                     <Chip
-                      label={activeUser.hasPaidFee ? '已繳費' : '未繳費'}
+                      label={t(activeUser.hasPaidFee ? 'admin.users.paid' : 'admin.users.unpaid')}
                       color={activeUser.hasPaidFee ? 'success' : 'default'}
                       variant={activeUser.hasPaidFee ? 'filled' : 'outlined'}
                     />
@@ -1537,7 +1538,7 @@ const AdminPage = () => {
                       />
                     ))}
                     {(activeUser.roles || []).length === 0 && (
-                      <Chip label="無身分組" variant="outlined" />
+                      <Chip label={t('admin.roles.none')} variant="outlined" />
                     )}
                   </Stack>
 
@@ -1545,15 +1546,15 @@ const AdminPage = () => {
 
                   <Box>
                     <Typography variant="body2" color="text.secondary">學號</Typography>
-                    <Typography>{activeUser.studentId || '未填寫'}</Typography>
+                    <Typography>{activeUser.studentId || t('admin.users.notProvided')}</Typography>
                   </Box>
                   <Box>
                     <Typography variant="body2" color="text.secondary">Email</Typography>
-                    <Typography sx={{ wordBreak: 'break-word' }}>{activeUser.email || '未填寫'}</Typography>
+                    <Typography sx={{ wordBreak: 'break-word' }}>{activeUser.email || t('admin.users.notProvided')}</Typography>
                   </Box>
                   <Box>
                     <Typography variant="body2" color="text.secondary">註冊時間</Typography>
-                    <Typography>{activeUser.created_at ? new Date(activeUser.created_at).toLocaleString('zh-TW') : '未知'}</Typography>
+                    <Typography>{activeUser.created_at ? new Date(activeUser.created_at).toLocaleString(i18n.language) : t('common.unknown')}</Typography>
                   </Box>
 
                   <Divider />
@@ -1565,7 +1566,7 @@ const AdminPage = () => {
                       onClick={() => handleEdit(activeUser)}
                       disabled={editingId === activeUser.id}
                     >
-                      編輯這位用戶
+                      {t('admin.users.editThisUser')}
                     </Button>
                     <Button
                       variant="outlined"
@@ -1573,26 +1574,26 @@ const AdminPage = () => {
                       startIcon={<LockResetIcon />}
                       onClick={() => openPasswordDialog(activeUser.id)}
                     >
-                      重設密碼
+                      {t('admin.users.resetPassword')}
                     </Button>
                     <Button
                       variant="outlined"
                       color="error"
                       startIcon={<PersonRemoveIcon />}
-                      title={activeUser.id === user?.id ? '不能刪除自己的帳號' : undefined}
+                      title={activeUser.id === user?.id ? t('admin.users.cannotDeleteSelf') : undefined}
                       disabled={activeUser.id === user?.id}
                       onClick={() => {
                         setUserToDelete(activeUser);
                         setDeleteUserDialog(true);
                       }}
                     >
-                      刪除此用戶
+                      {t('admin.users.deleteThisUser')}
                     </Button>
                   </Stack>
                 </Stack>
               ) : (
                 <Typography variant="body2" color="text.secondary">
-                  目前沒有可顯示的用戶資料。
+                  {t('admin.users.empty')}
                 </Typography>
               )}
             </Paper>
@@ -1604,15 +1605,15 @@ const AdminPage = () => {
       {activeTab === 1 && (
         <Paper sx={{ p: 4 }}>
           <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
-            上傳考古題
+            {t('nav.uploadExam')}
           </Typography>
           
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="課號"
-                placeholder="例如：IM1001"
+                label={t('courseReview.form.courseCode')}
+                placeholder={t('admin.upload.courseCodeExample')}
                 value={examForm.courseCode}
                 onChange={(e) => handleExamChange('courseCode', e.target.value)}
                 error={!!uploadErrors.courseCode}
@@ -1622,8 +1623,8 @@ const AdminPage = () => {
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="課程名稱"
-                placeholder="例如：資訊管理導論"
+                label={t('courseReview.form.courseName')}
+                placeholder={t('admin.upload.courseNameExample')}
                 value={examForm.courseName}
                 onChange={(e) => handleExamChange('courseName', e.target.value)}
                 error={!!uploadErrors.courseName}
@@ -1633,8 +1634,8 @@ const AdminPage = () => {
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="教授姓名"
-                placeholder="例如：王教授"
+                label={t('admin.upload.professorLabel')}
+                placeholder={t('admin.upload.professorExample')}
                 value={examForm.professor}
                 onChange={(e) => handleExamChange('professor', e.target.value)}
                 error={!!uploadErrors.professor}
@@ -1645,7 +1646,7 @@ const AdminPage = () => {
               <TextField
                 fullWidth
                 type="number"
-                label="年份（民國）"
+                label={t('admin.upload.yearRocLabel')}
                 value={examForm.year}
                 onChange={(e) => handleExamChange('year', parseInt(e.target.value))}
                 error={!!uploadErrors.year}
@@ -1658,7 +1659,7 @@ const AdminPage = () => {
                 <InputLabel>學期</InputLabel>
                 <Select
                   value={examForm.semester}
-                  label="學期"
+                  label={t('courseReview.detailField.academicTerm')}
                   onChange={(e) => handleExamChange('semester', e.target.value)}
                 >
                   <MenuItem value="1">上學期</MenuItem>
@@ -1672,7 +1673,7 @@ const AdminPage = () => {
                 <InputLabel>考試類型</InputLabel>
                 <Select
                   value={examForm.examType}
-                  label="考試類型"
+                  label={t('exam.form.examType')}
                   onChange={(e) => handleExamChange('examType', e.target.value)}
                 >
                   <MenuItem value="midterm">期中考</MenuItem>
@@ -1685,7 +1686,7 @@ const AdminPage = () => {
               <TextField
                 fullWidth
                 type="number"
-                label="第幾次考試"
+                label={t('exam.form.examAttempt')}
                 value={examForm.examAttempt}
                 onChange={(e) => handleExamChange('examAttempt', parseInt(e.target.value))}
                 inputProps={{ min: 1, max: 10 }}
@@ -1694,7 +1695,7 @@ const AdminPage = () => {
             {/* 題目檔案上傳 */}
             <Grid item xs={12} md={6}>
               <Typography variant="h6" gutterBottom>
-                題目檔案 <span style={{ color: 'red' }}>*</span>
+                {t('admin.upload.questionFileLabel')} <span style={{ color: 'red' }}>*</span>
               </Typography>
               <Box sx={{ border: '1px dashed #ccc', p: 2, textAlign: 'center' }}>
                 <input
@@ -1711,12 +1712,12 @@ const AdminPage = () => {
                     startIcon={<CloudUploadIcon />}
                     sx={{ mb: 1 }}
                   >
-                    選擇題目 PDF
+                    {t('admin.upload.pickQuestionPdf')}
                   </Button>
                 </label>
                 {examForm.questionFile && (
                   <Typography variant="body2" color="success.main">
-                    已選擇：{examForm.questionFile.name}
+                    {t('admin.upload.selected', { name: examForm.questionFile.name })}
                   </Typography>
                 )}
                 {uploadErrors.questionFile && (
@@ -1730,7 +1731,7 @@ const AdminPage = () => {
             {/* 答案檔案上傳 */}
             <Grid item xs={12} md={6}>
               <Typography variant="h6" gutterBottom>
-                答案檔案 <span style={{ color: 'gray' }}>(可選)</span>
+                {t('admin.upload.answerFileLabel')} <span style={{ color: 'gray' }}>{t('admin.upload.optionalTag')}</span>
               </Typography>
               <Box sx={{ border: '1px dashed #ccc', p: 2, textAlign: 'center' }}>
                 <input
@@ -1748,16 +1749,16 @@ const AdminPage = () => {
                     sx={{ mb: 1 }}
                     color="secondary"
                   >
-                    選擇答案 PDF
+                    {t('admin.upload.pickAnswerPdf')}
                   </Button>
                 </label>
                 {examForm.answerFile && (
                   <Typography variant="body2" color="success.main">
-                    已選擇：{examForm.answerFile.name}
+                    {t('admin.upload.selected', { name: examForm.answerFile.name })}
                   </Typography>
                 )}
                 <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-                  不是每個考古題都有答案，可以不上傳
+                  {t('admin.upload.answerOptionalHint')}
                 </Typography>
               </Box>
             </Grid>
@@ -1779,7 +1780,7 @@ const AdminPage = () => {
               disabled={uploading}
               startIcon={<CloudUploadIcon />}
             >
-              {uploading ? '上傳中...' : '上傳考古題'}
+              {t(uploading ? 'admin.upload.uploading' : 'nav.uploadExam')}
             </Button>
           </Box>
         </Paper>
@@ -1789,15 +1790,15 @@ const AdminPage = () => {
       {activeTab === 2 && (
         <Paper sx={{ p: 4 }}>
           <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
-            上傳學習大抄
+            {t('admin.uploadCheatSheet')}
           </Typography>
           
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="課號"
-                placeholder="例如：IM1001"
+                label={t('courseReview.form.courseCode')}
+                placeholder={t('admin.upload.courseCodeExample')}
                 value={cheatSheetForm.courseCode}
                 onChange={(e) => handleCheatSheetChange('courseCode', e.target.value)}
                 error={!!uploadErrors.courseCode}
@@ -1807,8 +1808,8 @@ const AdminPage = () => {
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="課程名稱"
-                placeholder="例如：資訊管理導論"
+                label={t('courseReview.form.courseName')}
+                placeholder={t('admin.upload.courseNameExample')}
                 value={cheatSheetForm.courseName}
                 onChange={(e) => handleCheatSheetChange('courseName', e.target.value)}
                 error={!!uploadErrors.courseName}
@@ -1818,8 +1819,8 @@ const AdminPage = () => {
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="大抄標題"
-                placeholder="例如：期末考重點整理"
+                label={t('admin.upload.cheatSheetTitleLabel')}
+                placeholder={t('admin.upload.cheatSheetTitleExample')}
                 value={cheatSheetForm.title}
                 onChange={(e) => handleCheatSheetChange('title', e.target.value)}
                 error={!!uploadErrors.title}
@@ -1831,8 +1832,8 @@ const AdminPage = () => {
                 fullWidth
                 multiline
                 rows={3}
-                label="描述"
-                placeholder="簡述大抄內容..."
+                label={t('cheatSheet.form.description')}
+                placeholder={t('admin.upload.cheatSheetDescExample')}
                 value={cheatSheetForm.description}
                 onChange={(e) => handleCheatSheetChange('description', e.target.value)}
                 error={!!uploadErrors.description}
@@ -1843,8 +1844,8 @@ const AdminPage = () => {
               <Box sx={{ mb: 2 }}>
                 <TextField
                   fullWidth
-                  label="標籤"
-                  placeholder="輸入標籤後按 Enter 或點擊新增"
+                  label={t('cheatSheet.form.tags')}
+                  placeholder={t('admin.upload.tagPlaceholder')}
                   value={cheatSheetForm.currentTag}
                   onChange={(e) => handleCheatSheetChange('currentTag', e.target.value)}
                   onKeyPress={(e) => {
@@ -1896,12 +1897,12 @@ const AdminPage = () => {
                     startIcon={<CloudUploadIcon />}
                     sx={{ mb: 1 }}
                   >
-                    選擇 PDF 檔案
+                    {t('admin.upload.pickPdf')}
                   </Button>
                 </label>
                 {cheatSheetForm.file && (
                   <Typography variant="body2" color="success.main">
-                    已選擇：{cheatSheetForm.file.name}
+                    {t('admin.upload.selected', { name: cheatSheetForm.file.name })}
                   </Typography>
                 )}
                 {uploadErrors.file && (
@@ -1929,7 +1930,7 @@ const AdminPage = () => {
               disabled={uploading}
               startIcon={<CloudUploadIcon />}
             >
-              {uploading ? '上傳中...' : '上傳大抄'}
+              {t(uploading ? 'admin.upload.uploading' : 'admin.uploadCheatSheet')}
             </Button>
           </Box>
         </Paper>
@@ -1939,17 +1940,17 @@ const AdminPage = () => {
       {activeTab === 3 && (
         <Paper sx={{ p: 2 }}>
           <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
-            考古題管理
+            {t('nav.adminExamManage')}
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            管理系統中的所有考古題，可檢視、下載和刪除
+            {t('manage.examDescription')}
           </Typography>
 
           {/* 搜尋欄 */}
           <Paper sx={{ p: 2, mb: 3 }}>
             <TextField
               fullWidth
-              placeholder="搜尋課程名稱、代碼或教授..."
+              placeholder={t('courseReview.admin.searchPlaceholder')}
               value={examSearchTerm}
               onChange={(e) => setExamSearchTerm(e.target.value)}
               InputProps={{
@@ -1966,7 +1967,7 @@ const AdminPage = () => {
           {examLoading && (
             <Box sx={{ textAlign: 'center', py: 8 }}>
               <Typography variant="h6" color="text.secondary">
-                載入考古題中...
+                {t('exam.loadingList')}
               </Typography>
             </Box>
           )}
@@ -2021,7 +2022,7 @@ const AdminPage = () => {
                             <PictureAsPdfIcon sx={{ fontSize: 16, color: 'error.main' }} />
                             <Box>
                               <Typography variant="caption" display="block" sx={{ fontWeight: 500 }}>
-                                題目: {exam.questionFileName}
+                                {t('admin.manage.questionLine', { name: exam.questionFileName })}
                               </Typography>
                               <Typography variant="caption" color="text.secondary">
                                 {(exam.questionFileSize / 1024 / 1024).toFixed(2)} MB
@@ -2033,7 +2034,7 @@ const AdminPage = () => {
                               <PictureAsPdfIcon sx={{ fontSize: 16, color: 'success.main' }} />
                               <Box>
                                 <Typography variant="caption" display="block" sx={{ fontWeight: 500 }}>
-                                  答案: {exam.answerFileName}
+                                  {t('admin.manage.answerLine', { name: exam.answerFileName })}
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary">
                                   {(exam.answerFileSize / 1024 / 1024).toFixed(2)} MB
@@ -2043,16 +2044,16 @@ const AdminPage = () => {
                           )}
                         </Box>
                       </TableCell>
-                      <TableCell>{exam.uploader?.fullName || '未知'}</TableCell>
+                      <TableCell>{exam.uploader?.fullName || t('common.unknown')}</TableCell>
                       <TableCell>
-                        {exam.created_at ? new Date(exam.created_at).toLocaleDateString('zh-TW') : '未知'}
+                        {exam.created_at ? new Date(exam.created_at).toLocaleDateString(i18n.language) : t('common.unknown')}
                       </TableCell>
                       <TableCell align="right">{exam.downloadCount || 0}</TableCell>
                       <TableCell align="center">
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center' }}>
                           {/* 題目操作 */}
                           <Box sx={{ display: 'flex', gap: 0.5 }}>
-                            <Tooltip title="預覽題目">
+                            <Tooltip title={t('exam.previewQuestions')}>
                               <IconButton 
                                 size="small" 
                                 onClick={() => handleExamPreview(exam.id, 'question')}
@@ -2060,7 +2061,7 @@ const AdminPage = () => {
                                 <ViewIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
-                            <Tooltip title="下載題目">
+                            <Tooltip title={t('exam.downloadQuestions')}>
                               <IconButton 
                                 size="small" 
                                 color="primary"
@@ -2074,7 +2075,7 @@ const AdminPage = () => {
                           {/* 答案操作（如果有答案） */}
                           {exam.answerFileName && (
                             <Box sx={{ display: 'flex', gap: 0.5 }}>
-                              <Tooltip title="預覽答案">
+                              <Tooltip title={t('exam.previewAnswers')}>
                                 <IconButton 
                                   size="small" 
                                   color="success"
@@ -2083,7 +2084,7 @@ const AdminPage = () => {
                                   <ViewIcon fontSize="small" />
                                 </IconButton>
                               </Tooltip>
-                              <Tooltip title="下載答案">
+                              <Tooltip title={t('exam.downloadAnswers')}>
                                 <IconButton 
                                   size="small" 
                                   color="success"
@@ -2096,7 +2097,7 @@ const AdminPage = () => {
                           )}
                           
                           {/* 刪除操作 */}
-                          <Tooltip title="刪除">
+                          <Tooltip title={t('common.delete')}>
                             <IconButton 
                               size="small" 
                               color="error"
@@ -2118,10 +2119,10 @@ const AdminPage = () => {
           {!examLoading && filteredExams.length === 0 && (
             <Box sx={{ textAlign: 'center', py: 8 }}>
               <Typography variant="h6" color="text.secondary" gutterBottom>
-                {exams.length === 0 ? '目前沒有考古題' : '沒有找到符合條件的考古題'}
+                {t(exams.length === 0 ? 'exam.empty' : 'exam.noMatch')}
               </Typography>
               <Typography variant="body2" color="text.disabled">
-                {exams.length === 0 ? '請先上傳考古題' : '請嘗試調整搜尋條件'}
+                {t(exams.length === 0 ? 'manage.uploadExamFirst' : 'manage.adjustSearch')}
               </Typography>
             </Box>
           )}
@@ -2132,17 +2133,17 @@ const AdminPage = () => {
       {activeTab === 4 && (
         <Paper sx={{ p: 2 }}>
           <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
-            大抄管理
+            {t('nav.adminCheatSheetManage')}
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            管理系統中的所有學習大抄，可檢視、下載和刪除
+            {t('manage.cheatSheetDescription')}
           </Typography>
 
           {/* 搜尋欄 */}
           <Paper sx={{ p: 2, mb: 3 }}>
             <TextField
               fullWidth
-              placeholder="搜尋標題、課程或內容..."
+              placeholder={t('cheatSheet.searchPlaceholder')}
               value={cheatSheetSearchTerm}
               onChange={(e) => setCheatSheetSearchTerm(e.target.value)}
               InputProps={{
@@ -2159,7 +2160,7 @@ const AdminPage = () => {
           {cheatSheetLoading && (
             <Box sx={{ textAlign: 'center', py: 8 }}>
               <Typography variant="h6" color="text.secondary">
-                載入大抄中...
+                {t('cheatSheet.loadingList')}
               </Typography>
             </Box>
           )}
@@ -2235,7 +2236,7 @@ const AdminPage = () => {
                             </Stack>
                           ) : (
                             <Typography variant="caption" color="text.disabled">
-                              無標籤
+                              {t('manage.noTags')}
                             </Typography>
                           )}
                         </Box>
@@ -2256,17 +2257,17 @@ const AdminPage = () => {
                             {sheet.uploader ? sheet.uploader.fullName.charAt(0) : '?'}
                           </Avatar>
                           <Typography variant="body2">
-                            {sheet.uploader?.fullName || '未知'}
+                            {sheet.uploader?.fullName || t('common.unknown')}
                           </Typography>
                         </Box>
                       </TableCell>
                       <TableCell>
-                        {sheet.created_at ? new Date(sheet.created_at).toLocaleDateString('zh-TW') : '未知'}
+                        {sheet.created_at ? new Date(sheet.created_at).toLocaleDateString(i18n.language) : t('common.unknown')}
                       </TableCell>
                       <TableCell align="right">{sheet.downloadCount || 0}</TableCell>
                       <TableCell align="center">
                         <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                          <Tooltip title="預覽">
+                          <Tooltip title={t('exam.preview')}>
                             <IconButton 
                               size="small" 
                               onClick={() => handleCheatSheetPreview(sheet.id)}
@@ -2274,7 +2275,7 @@ const AdminPage = () => {
                               <ViewIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
-                          <Tooltip title="下載">
+                          <Tooltip title={t('exam.download')}>
                             <IconButton 
                               size="small" 
                               color="primary"
@@ -2283,7 +2284,7 @@ const AdminPage = () => {
                               <DownloadIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
-                          <Tooltip title="刪除">
+                          <Tooltip title={t('common.delete')}>
                             <IconButton 
                               size="small" 
                               color="error"
@@ -2305,10 +2306,10 @@ const AdminPage = () => {
           {!cheatSheetLoading && filteredCheatSheets.length === 0 && (
             <Box sx={{ textAlign: 'center', py: 8 }}>
               <Typography variant="h6" color="text.secondary" gutterBottom>
-                {cheatSheets.length === 0 ? '目前沒有大抄' : '沒有找到符合條件的大抄'}
+                {t(cheatSheets.length === 0 ? 'cheatSheet.empty' : 'cheatSheet.noMatch')}
               </Typography>
               <Typography variant="body2" color="text.disabled">
-                {cheatSheets.length === 0 ? '請先上傳大抄' : '請嘗試調整搜尋條件'}
+                {t(cheatSheets.length === 0 ? 'manage.uploadCheatSheetFirst' : 'manage.adjustSearch')}
               </Typography>
             </Box>
           )}
@@ -2654,14 +2655,14 @@ const AdminPage = () => {
           <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 3 }}>
             <Box>
               <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 1 }}>
-                身分組管理
+                {t('admin.roles.title')}
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                一個使用者可以擁有多個身分組，權限是所有身分組的聯集
+                {t('admin.roles.description')}
               </Typography>
             </Box>
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => openRoleDialog()}>
-              新增身分組
+              {t('admin.roles.create')}
             </Button>
           </Stack>
 
@@ -2684,8 +2685,8 @@ const AdminPage = () => {
                           sx={role.color ? { bgcolor: role.color, color: '#fff', fontWeight: 600 } : { fontWeight: 600 }}
                         />
                         <Typography variant="caption" color="text.secondary">{role.key}</Typography>
-                        {role.isSystem && <Chip label="內建" size="small" variant="outlined" />}
-                        {role.isAuto && <Chip label="自動授予" size="small" color="info" variant="outlined" />}
+                        {role.isSystem && <Chip label={t('admin.roles.builtin')} size="small" variant="outlined" />}
+                        {role.isAuto && <Chip label={t('admin.roles.auto')} size="small" color="info" variant="outlined" />}
                       </Stack>
                       <Stack direction="row" spacing={0.5}>
                         <IconButton
@@ -2696,14 +2697,14 @@ const AdminPage = () => {
                         >
                           <ViewIcon fontSize="small" />
                         </IconButton>
-                        <IconButton size="small" onClick={() => openRoleDialog(role)} title="編輯">
+                        <IconButton size="small" onClick={() => openRoleDialog(role)} title={t('common.edit')}>
                           <EditIcon fontSize="small" />
                         </IconButton>
                         <IconButton
                           size="small"
                           color="error"
                           disabled={role.isSystem}
-                          title={role.isSystem ? '內建身分組不可刪除' : '刪除'}
+                          title={t(role.isSystem ? 'admin.roles.builtinNotDeletable' : 'common.delete')}
                           onClick={() => { setRoleToDelete(role); setRoleDeleteDialog(true); }}
                         >
                           <DeleteIcon fontSize="small" />
@@ -2718,12 +2719,12 @@ const AdminPage = () => {
                     )}
 
                     <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
-                      成員 {role.memberCount} 人{role.isAuto ? '（依繳費狀態自動計算）' : ''}
+                      {t('admin.roles.memberCount', { count: role.memberCount })}{role.isAuto ? t('admin.roles.autoComputed') : ''}
                     </Typography>
 
                     <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
                       {role.permissions.includes('*')
-                        ? <Chip label="所有權限" size="small" color="error" />
+                        ? <Chip label={t('admin.roles.allPermissions')} size="small" color="error" />
                         : role.permissions.map((p) => (
                             <Chip
                               key={p}
@@ -2748,11 +2749,10 @@ const AdminPage = () => {
       {activeTab === 8 && (
         <Paper sx={{ p: 2 }}>
           <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
-            模塊管理
+            {t('admin.modules.title')}
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            控制每個功能開放給誰。設為「限定」後，只有白名單內的身分組或使用者可以使用，
-            管理員則一律可用（才能在正式環境先測試再公開）
+            {t('admin.modules.description')}
           </Typography>
 
           {moduleLoading && (
@@ -2775,7 +2775,7 @@ const AdminPage = () => {
                         <InputLabel>開放狀態</InputLabel>
                         <Select
                           value={module.visibility}
-                          label="開放狀態"
+                          label={t('admin.modules.visibilityLabel')}
                           onChange={(e) => handleUpdateModule(module.key, { visibility: e.target.value })}
                         >
                           <MenuItem value="public">公開（所有人）</MenuItem>
@@ -2789,7 +2789,7 @@ const AdminPage = () => {
                         <Select
                           multiple
                           value={(module.allowedRoles || []).map((r) => r.id)}
-                          label="可使用的身分組"
+                          label={t('admin.modules.allowedRoles')}
                           onChange={(e) => handleUpdateModule(module.key, { roleIds: e.target.value })}
                           renderValue={(selected) => (
                             <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
@@ -2814,7 +2814,7 @@ const AdminPage = () => {
                           onChange={(e) => handleUpdateModule(module.key, { showWhenRestricted: e.target.checked })}
                         />
                         <Typography variant="caption">
-                          {module.showWhenRestricted ? '顯示「即將推出」' : '完全隱藏'}
+                          {t(module.showWhenRestricted ? 'admin.modules.showComingSoon' : 'admin.modules.hideCompletely')}
                         </Typography>
                       </Stack>
                     </Grid>
@@ -2828,43 +2828,43 @@ const AdminPage = () => {
 
       {/* 身分組編輯對話框 */}
       <Dialog open={roleDialog} onClose={() => setRoleDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{roleForm.id ? '編輯身分組' : '新增身分組'}</DialogTitle>
+        <DialogTitle>{t(roleForm.id ? 'admin.roles.editTitle' : 'admin.roles.create')}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
-              label="代碼"
+              label={t('admin.roles.keyLabel')}
               value={roleForm.key}
               onChange={(e) => setRoleForm({ ...roleForm, key: e.target.value })}
               disabled={!!roleForm.id}
-              helperText={roleForm.id ? '代碼建立後不可修改' : '英文字母開頭，僅可用英數字與底線'}
+              helperText={t(roleForm.id ? 'admin.roles.keyLocked' : 'admin.roles.keyHelper')}
               fullWidth
             />
             <TextField
-              label="名稱"
+              label={t('admin.roles.nameLabel')}
               value={roleForm.name}
               onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
               fullWidth
             />
             <TextField
-              label="說明"
+              label={t('admin.roles.descLabel')}
               value={roleForm.description || ''}
               onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })}
               fullWidth
             />
             <Stack direction="row" spacing={2}>
               <TextField
-                label="顏色"
+                label={t('admin.roles.colorLabel')}
                 type="color"
                 value={roleForm.color || '#1976d2'}
                 onChange={(e) => setRoleForm({ ...roleForm, color: e.target.value })}
                 sx={{ width: 120 }}
               />
               <TextField
-                label="排序權重"
+                label={t('admin.roles.priorityLabel')}
                 type="number"
                 value={roleForm.priority}
                 onChange={(e) => setRoleForm({ ...roleForm, priority: parseInt(e.target.value, 10) || 0 })}
-                helperText="數字越大越前面"
+                helperText={t('admin.roles.priorityHelper')}
               />
             </Stack>
 
@@ -2917,7 +2917,7 @@ const AdminPage = () => {
         <DialogTitle>刪除身分組？</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            將刪除「{roleToDelete?.name}」，持有此身分組的 {roleToDelete?.memberCount} 位使用者會失去對應權限。此操作無法復原。
+            {t('admin.roles.deleteWarning', { name: roleToDelete?.name, count: roleToDelete?.memberCount })}
           </DialogContentText>
         </DialogContent>
         <DialogActions>
@@ -2944,7 +2944,7 @@ const AdminPage = () => {
           <TextField
             autoFocus
             margin="dense"
-            label="新密碼"
+            label={t('admin.users.newPassword')}
             type="password"
             fullWidth
             variant="outlined"
@@ -2957,10 +2957,10 @@ const AdminPage = () => {
             setNewPasswordDialog(false);
             setNewPassword('');
           }}>
-            取消
+            {t('common.cancel')}
           </Button>
           <Button onClick={handlePasswordChange} variant="contained">
-            確認更改
+            {t('admin.users.confirmChange')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -2970,10 +2970,10 @@ const AdminPage = () => {
         <DialogTitle>確認刪除用戶</DialogTitle>
         <DialogContent>
           <Typography>
-            確定要刪除用戶「{userToDelete?.username}」嗎？
+            {t('admin.users.confirmDelete', { name: userToDelete?.username })}
           </Typography>
           <Typography variant="body2" color="warning.main" sx={{ mt: 2 }}>
-            此操作無法復原，用戶的所有資料將被永久刪除。
+            {t('admin.users.deleteIrreversible')}
           </Typography>
         </DialogContent>
         <DialogActions>
@@ -2981,10 +2981,10 @@ const AdminPage = () => {
             setDeleteUserDialog(false);
             setUserToDelete(null);
           }}>
-            取消
+            {t('common.cancel')}
           </Button>
           <Button onClick={handleDeleteUser} color="error" variant="contained">
-            確認刪除
+            {t('courseReview.admin.confirmDelete')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -2997,17 +2997,17 @@ const AdminPage = () => {
         <DialogTitle>確認刪除考古題</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            確定要刪除「{examToDelete?.courseName} - {examToDelete?.examType}」嗎？
+            {t('manage.confirmDeleteExam', { name: `${examToDelete?.courseName} - ${examToDelete?.examType}` })}
             <br />
-            此操作無法復原，檔案將永久刪除。
+            {t('manage.deleteIrreversible')}
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setExamDeleteDialog(false)}>
-            取消
+            {t('common.cancel')}
           </Button>
           <Button onClick={handleExamDeleteConfirm} color="error" variant="contained">
-            確認刪除
+            {t('courseReview.admin.confirmDelete')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -3020,17 +3020,17 @@ const AdminPage = () => {
         <DialogTitle>確認刪除大抄</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            確定要刪除「{cheatSheetToDelete?.title}」嗎？
+            {t('manage.confirmDeleteCheatSheet', { name: cheatSheetToDelete?.title })}
             <br />
-            此操作無法復原，檔案將永久刪除。
+            {t('manage.deleteIrreversible')}
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCheatSheetDeleteDialog(false)}>
-            取消
+            {t('common.cancel')}
           </Button>
           <Button onClick={handleCheatSheetDeleteConfirm} color="error" variant="contained">
-            確認刪除
+            {t('courseReview.admin.confirmDelete')}
           </Button>
         </DialogActions>
       </Dialog>

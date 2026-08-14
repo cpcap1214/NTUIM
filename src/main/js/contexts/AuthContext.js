@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import i18n from '../i18n';
 import authService from '../services/authService';
 import userService from '../services/userService';
 import moduleService from '../services/moduleService';
@@ -256,10 +257,10 @@ export const AuthProvider = ({ children }) => {
 
     // 取得會費狀態訊息
     const getFeeStatusMessage = () => {
-        if (!user) return '請先登入';
-        if (isAdminUser) return '管理員身份';
-        if (user.hasPaidFee) return '已繳交系學會費';
-        return '尚未繳交系學會費';
+        if (!user) return i18n.t('feeStatus.pleaseLogin');
+        if (isAdminUser) return i18n.t('feeStatus.admin');
+        if (user.hasPaidFee) return i18n.t('feeStatus.paid');
+        return i18n.t('feeStatus.unpaid');
     };
 
     const value = {

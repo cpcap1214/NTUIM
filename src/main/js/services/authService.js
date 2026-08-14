@@ -1,4 +1,4 @@
-import api from './api';
+import api, { setPreviewTarget } from './api';
 
 const authService = {
     // 儲存目前使用者資料
@@ -12,6 +12,10 @@ const authService = {
 
     // 清除本地認證資料
     clearAuthData() {
+        // 預覽目標屬於「發起它的那個管理員 session」，換身分時必須一起清掉。
+        // 少了這行，殘留在 sessionStorage 的目標會讓下一個人的每個請求都帶
+        // X-Preview-As，非管理員登入後 /users/profile 會 403，看起來就是登入失敗。
+        setPreviewTarget(null);
         try {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
@@ -44,6 +48,8 @@ const authService = {
     async login(username, password) {
         try {
             const response = await api.post('/auth/login', { username, password });
+            // 換身分登入時同樣要清；使用者不一定會先登出
+            setPreviewTarget(null);
             if (response.data.token) {
                 try {
                     localStorage.setItem('token', response.data.token);

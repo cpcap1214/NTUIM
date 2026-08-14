@@ -1,3 +1,4 @@
+import i18n from '../../../main/js/i18n';
 import { 
   formatDate, 
   formatRelativeTime, 
@@ -5,7 +6,14 @@ import {
   getCurrentSemester 
 } from '../../../main/js/utils/dateUtils';
 
+// formatRelativeTime 與 formatSemester 現在會跟著介面語言變（走 i18n）。
+// jsdom 的 navigator.language 是英文，所以不固定語言的話這些斷言會拿到英文字串。
+// 這裡明確指定語言，順便讓「切語言後輸出真的會變」成為被測到的行為。
 describe('Date Utils', () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('zh-TW');
+  });
+
   describe('formatDate', () => {
     test('formats date string correctly', () => {
       const result = formatDate('2024-03-15');
@@ -37,6 +45,14 @@ describe('Date Utils', () => {
     test('formats recent time as "剛剛"', () => {
       const result = formatRelativeTime('2024-03-15T11:59:30Z');
       expect(result).toBe('剛剛');
+    });
+
+    // 同一個時間點切成英文要拿到英文字串——證明這些輸出真的跟著 i18n 走，
+    // 而不是碰巧因為預設語言是中文才通過
+    test('切成 en 之後同一個時間點回傳英文', async () => {
+      await i18n.changeLanguage('en');
+      expect(formatRelativeTime('2024-03-15T11:59:30Z')).toBe('Just now');
+      await i18n.changeLanguage('zh-TW');
     });
 
     test('formats minutes ago', () => {

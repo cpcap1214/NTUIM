@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import {
   Box,
@@ -18,7 +19,7 @@ import calendarData from '../../resources/data/ntuCalendar.json';
 const CALENDAR_URL =
   'https://mail.ntu.edu.tw/owa/calendar/231111d435d54d41908fa9c59d0812a3@ntu.edu.tw/4576890d12e040bab4ab864c413aa2be12994112486015644960/calendar.html';
 
-const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
+// 星期縮寫改由 i18n 提供（calendar.weekdays 是長度 7 的陣列）
 const HOLIDAY_RED = '#dc2626'; // 國定假日 / 寒暑假 / 週末：傳統紅
 
 const toISO = (d) => {
@@ -50,6 +51,7 @@ const dotColorFor = (kind) => {
 };
 
 const NTUCalendar = () => {
+  const { t } = useTranslation();
   const today = useMemo(() => startOfDay(new Date()), []);
   const [viewDate, setViewDate] = useState(today);
   const [selectedDate, setSelectedDate] = useState(null); // 點月曆後存 ISO 字串
@@ -140,7 +142,7 @@ const NTUCalendar = () => {
         <Stack direction="row" spacing={1.25} alignItems="center">
           <CalendarIcon sx={{ color: 'primary.main', fontSize: 22 }} />
           <Typography variant="h3" component="h2" sx={{ fontWeight: 700 }}>
-            台大行事曆
+            {t('calendar.title')}
           </Typography>
         </Stack>
         <Link
@@ -157,7 +159,7 @@ const NTUCalendar = () => {
             fontWeight: 500,
           }}
         >
-          完整行事曆
+          {t('calendar.fullCalendar')}
           <OpenInNewIcon sx={{ fontSize: 14 }} />
         </Link>
       </Stack>
@@ -186,13 +188,13 @@ const NTUCalendar = () => {
               justifyContent="space-between"
               sx={{ mb: 1.5 }}
             >
-              <IconButton size="small" onClick={goPrev} aria-label="上個月">
+              <IconButton size="small" onClick={goPrev} aria-label={t('calendar.prevMonth')}>
                 <ChevronLeftIcon fontSize="small" />
               </IconButton>
               <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                {year} 年 {month + 1} 月
+                {t('calendar.yearMonth', { year, month: month + 1 })}
               </Typography>
-              <IconButton size="small" onClick={goNext} aria-label="下個月">
+              <IconButton size="small" onClick={goNext} aria-label={t('calendar.nextMonth')}>
                 <ChevronRightIcon fontSize="small" />
               </IconButton>
             </Stack>
@@ -205,7 +207,7 @@ const NTUCalendar = () => {
                 mb: 0.5,
               }}
             >
-              {WEEKDAYS.map((w, i) => (
+              {t('calendar.weekdays', { returnObjects: true }).map((w, i) => (
                 <Typography
                   key={w}
                   variant="caption"
@@ -333,19 +335,19 @@ const NTUCalendar = () => {
                   }}
                 />
                 <Typography variant="caption" color="text.secondary">
-                  重要截止
+                  {t('calendar.legendDeadline')}
                 </Typography>
               </Stack>
               <Stack direction="row" spacing={0.5} alignItems="center">
                 <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: HOLIDAY_RED }} />
                 <Typography variant="caption" color="text.secondary">
-                  假期
+                  {t('calendar.legendHoliday')}
                 </Typography>
               </Stack>
               <Stack direction="row" spacing={0.5} alignItems="center">
                 <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#1976d2' }} />
                 <Typography variant="caption" color="text.secondary">
-                  學期事件
+                  {t('calendar.legendTermEvent')}
                 </Typography>
               </Stack>
             </Stack>
@@ -378,7 +380,7 @@ const NTUCalendar = () => {
                   letterSpacing: '0.1em',
                 }}
               >
-                近期行程
+                {t('calendar.upcoming')}
               </Typography>
             </Box>
             {upcoming.length === 0 ? (
@@ -387,7 +389,7 @@ const NTUCalendar = () => {
                 color="text.secondary"
                 sx={{ py: 4, textAlign: 'center' }}
               >
-                近期沒有重要事項
+                {t('calendar.noUpcoming')}
               </Typography>
             ) : (
               <Stack
@@ -413,7 +415,7 @@ const NTUCalendar = () => {
                 {upcoming.map((event, idx) => {
                   const d = new Date(event.date);
                   const md = `${d.getMonth() + 1}/${d.getDate()}`;
-                  const weekday = WEEKDAYS[d.getDay()];
+                  const weekday = t('calendar.weekdays', { returnObjects: true })[d.getDay()];
                   const isCritical = event.kind === 'critical';
                   const isHoliday = event.kind === 'holiday';
                   const isHighlight = event.kind === 'highlight';
@@ -468,7 +470,7 @@ const NTUCalendar = () => {
                           color="text.secondary"
                           sx={{ fontSize: '0.7rem' }}
                         >
-                          週{weekday}
+                          {t('calendar.weekdayShort', { day: weekday })}
                         </Typography>
                       </Box>
                       <Stack

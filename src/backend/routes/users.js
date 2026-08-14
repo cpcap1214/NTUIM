@@ -51,7 +51,7 @@ router.get('/', requirePermission('users.manage'), [
         });
     } catch (error) {
         console.error('取得使用者列表錯誤:', error);
-        res.status(500).json({ error: '取得使用者列表失敗' });
+        res.status(500).json({ error: '取得使用者列表失敗', errorCode: 'FETCH_USER_LIST_FAILED' });
     }
 });
 
@@ -84,7 +84,7 @@ router.get('/profile', async (req, res) => {
         });
 
         if (!user) {
-            return res.status(404).json({ error: '使用者不存在' });
+            return res.status(404).json({ error: '使用者不存在', errorCode: 'USER_NOT_FOUND' });
         }
 
         // 統計使用者貢獻
@@ -116,7 +116,7 @@ router.get('/profile', async (req, res) => {
         });
     } catch (error) {
         console.error('取得個人資料錯誤:', error);
-        res.status(500).json({ error: '取得個人資料失敗' });
+        res.status(500).json({ error: '取得個人資料失敗', errorCode: 'FETCH_PROFILE_FAILED' });
     }
 });
 
@@ -128,13 +128,13 @@ router.get('/:id', requireOwnerOrAdmin('id'), async (req, res) => {
         });
 
         if (!user) {
-            return res.status(404).json({ error: '使用者不存在' });
+            return res.status(404).json({ error: '使用者不存在', errorCode: 'USER_NOT_FOUND' });
         }
 
         res.json(user);
     } catch (error) {
         console.error('取得使用者資料錯誤:', error);
-        res.status(500).json({ error: '取得使用者資料失敗' });
+        res.status(500).json({ error: '取得使用者資料失敗', errorCode: 'FETCH_USER_FAILED' });
     }
 });
 
@@ -152,7 +152,7 @@ router.put('/profile', [
         const user = await User.findByPk(req.user.id);
 
         if (!user) {
-            return res.status(404).json({ error: '使用者不存在' });
+            return res.status(404).json({ error: '使用者不存在', errorCode: 'USER_NOT_FOUND' });
         }
 
         // 檢查 email 是否已被使用
@@ -162,7 +162,7 @@ router.put('/profile', [
             });
 
             if (existingUser) {
-                return res.status(400).json({ error: '此電子郵件已被使用' });
+                return res.status(400).json({ error: '此電子郵件已被使用', errorCode: 'EMAIL_TAKEN' });
             }
         }
 
@@ -187,13 +187,13 @@ router.put('/profile', [
         });
     } catch (error) {
         console.error('更新個人資料錯誤:', error);
-        res.status(500).json({ error: '更新個人資料失敗' });
+        res.status(500).json({ error: '更新個人資料失敗', errorCode: 'UPDATE_PROFILE_FAILED' });
     }
 });
 
 // 更新使用者會費狀態（管理員）
 router.patch('/:id/fee-status', requirePermission('users.manage'), [
-    body('hasPaidFee').isBoolean().withMessage('請提供有效的繳費狀態')
+    body('hasPaidFee').isBoolean().withMessage({ code: 'FEE_STATUS_INVALID', message: '請提供有效的繳費狀態' })
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -204,7 +204,7 @@ router.patch('/:id/fee-status', requirePermission('users.manage'), [
         const user = await User.findByPk(req.params.id);
 
         if (!user) {
-            return res.status(404).json({ error: '使用者不存在' });
+            return res.status(404).json({ error: '使用者不存在', errorCode: 'USER_NOT_FOUND' });
         }
 
         user.hasPaidFee = req.body.hasPaidFee;
@@ -220,13 +220,13 @@ router.patch('/:id/fee-status', requirePermission('users.manage'), [
         });
     } catch (error) {
         console.error('更新會費狀態錯誤:', error);
-        res.status(500).json({ error: '更新會費狀態失敗' });
+        res.status(500).json({ error: '更新會費狀態失敗', errorCode: 'UPDATE_FEE_STATUS_FAILED' });
     }
 });
 
 // 更新使用者角色（管理員）
 router.patch('/:id/role', requirePermission('users.manage'), [
-    body('role').isIn(['admin', 'member', 'user']).withMessage('請提供有效的角色')
+    body('role').isIn(['admin', 'member', 'user']).withMessage({ code: 'ROLE_VALUE_INVALID', message: '請提供有效的角色' })
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -237,14 +237,14 @@ router.patch('/:id/role', requirePermission('users.manage'), [
         const user = await User.findByPk(req.params.id);
 
         if (!user) {
-            return res.status(404).json({ error: '使用者不存在' });
+            return res.status(404).json({ error: '使用者不存在', errorCode: 'USER_NOT_FOUND' });
         }
 
         // 防止移除最後一個管理員
         if (user.role === 'admin' && req.body.role !== 'admin') {
             const adminCount = await User.count({ where: { role: 'admin' } });
             if (adminCount <= 1) {
-                return res.status(400).json({ error: '無法移除最後一個管理員' });
+                return res.status(400).json({ error: '無法移除最後一個管理員', errorCode: 'CANNOT_REMOVE_LAST_ADMIN' });
             }
         }
 
@@ -261,13 +261,13 @@ router.patch('/:id/role', requirePermission('users.manage'), [
         });
     } catch (error) {
         console.error('更新角色錯誤:', error);
-        res.status(500).json({ error: '更新角色失敗' });
+        res.status(500).json({ error: '更新角色失敗', errorCode: 'UPDATE_ROLE_FAILED' });
     }
 });
 
 // 設定使用者的身分組（管理員）。一次帶入完整清單，前端用多選框操作。
 router.put('/:id/roles', requirePermission('users.manage'), [
-    body('roleIds').isArray().withMessage('請提供身分組清單')
+    body('roleIds').isArray().withMessage({ code: 'ROLE_LIST_REQUIRED', message: '請提供身分組清單' })
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -276,7 +276,7 @@ router.put('/:id/roles', requirePermission('users.manage'), [
 
     try {
         const user = await User.findByPk(req.params.id);
-        if (!user) return res.status(404).json({ error: '使用者不存在' });
+        if (!user) return res.status(404).json({ error: '使用者不存在', errorCode: 'USER_NOT_FOUND' });
 
         const requested = await Role.findAll({ where: { id: req.body.roleIds } });
 
@@ -285,7 +285,9 @@ router.put('/:id/roles', requirePermission('users.manage'), [
         const autoRole = requested.find((r) => r.isAuto);
         if (autoRole) {
             return res.status(400).json({
-                error: `「${autoRole.name}」是自動身分組，依繳費狀態自動授予，不可手動指派`
+                error: `「${autoRole.name}」是自動身分組，依繳費狀態自動授予，不可手動指派`,
+                errorCode: 'AUTO_ROLE_NOT_ASSIGNABLE',
+                params: { name: autoRole.name }
             });
         }
 
@@ -297,7 +299,7 @@ router.put('/:id/roles', requirePermission('users.manage'), [
             if (hadAdmin && !willHaveAdmin) {
                 const adminCount = await UserRole.count({ where: { roleId: adminRole.id } });
                 if (adminCount <= 1) {
-                    return res.status(400).json({ error: '無法移除最後一個管理員' });
+                    return res.status(400).json({ error: '無法移除最後一個管理員', errorCode: 'CANNOT_REMOVE_LAST_ADMIN' });
                 }
             }
         }
@@ -310,7 +312,7 @@ router.put('/:id/roles', requirePermission('users.manage'), [
         res.json({ message: '身分組已更新' });
     } catch (error) {
         console.error('更新使用者身分組錯誤:', error);
-        res.status(500).json({ error: '更新身分組失敗' });
+        res.status(500).json({ error: '更新身分組失敗', errorCode: 'UPDATE_ROLE_FAILED' });
     }
 });
 
@@ -320,20 +322,20 @@ router.delete('/:id', requirePermission('users.manage'), async (req, res) => {
         const user = await User.findByPk(req.params.id);
 
         if (!user) {
-            return res.status(404).json({ error: '使用者不存在' });
+            return res.status(404).json({ error: '使用者不存在', errorCode: 'USER_NOT_FOUND' });
         }
 
         // 防止刪除最後一個管理員
         if (user.role === 'admin') {
             const adminCount = await User.count({ where: { role: 'admin' } });
             if (adminCount <= 1) {
-                return res.status(400).json({ error: '無法刪除最後一個管理員' });
+                return res.status(400).json({ error: '無法刪除最後一個管理員', errorCode: 'CANNOT_DELETE_LAST_ADMIN' });
             }
         }
 
         // 防止刪除自己
         if (user.id === req.user.id) {
-            return res.status(400).json({ error: '無法刪除自己的帳號' });
+            return res.status(400).json({ error: '無法刪除自己的帳號', errorCode: 'CANNOT_DELETE_SELF' });
         }
 
         await user.destroy();
@@ -341,7 +343,7 @@ router.delete('/:id', requirePermission('users.manage'), async (req, res) => {
         res.json({ message: '使用者已刪除' });
     } catch (error) {
         console.error('刪除使用者錯誤:', error);
-        res.status(500).json({ error: '刪除使用者失敗' });
+        res.status(500).json({ error: '刪除使用者失敗', errorCode: 'DELETE_USER_FAILED' });
     }
 });
 
@@ -386,7 +388,7 @@ router.get('/:id/contributions', async (req, res) => {
         });
     } catch (error) {
         console.error('取得使用者貢獻錯誤:', error);
-        res.status(500).json({ error: '取得貢獻統計失敗' });
+        res.status(500).json({ error: '取得貢獻統計失敗', errorCode: 'FETCH_CONTRIBUTIONS_FAILED' });
     }
 });
 

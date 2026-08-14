@@ -8,11 +8,11 @@ const { checkStudentPaidFee } = require('../services/feeStatusService');
 
 // 註冊
 router.post('/register', [
-    body('studentId').notEmpty().withMessage('學號為必填'),
-    body('username').isLength({ min: 3 }).withMessage('使用者名稱至少3個字元'),
-    body('email').isEmail().withMessage('請輸入有效的電子郵件'),
-    body('password').isLength({ min: 6 }).withMessage('密碼至少6個字元'),
-    body('fullName').notEmpty().withMessage('姓名為必填')
+    body('studentId').notEmpty().withMessage({ code: 'STUDENT_ID_REQUIRED', message: '學號為必填' }),
+    body('username').isLength({ min: 3 }).withMessage({ code: 'USERNAME_TOO_SHORT', message: '使用者名稱至少3個字元' }),
+    body('email').isEmail().withMessage({ code: 'EMAIL_INVALID', message: '請輸入有效的電子郵件' }),
+    body('password').isLength({ min: 6 }).withMessage({ code: 'PASSWORD_TOO_SHORT', message: '密碼至少6個字元' }),
+    body('fullName').notEmpty().withMessage({ code: 'FULL_NAME_REQUIRED', message: '姓名為必填' })
 ], async (req, res) => {
     // 驗證輸入
     const errors = validationResult(req);
@@ -40,7 +40,10 @@ router.post('/register', [
             else if (existingUser.email === email) field = '電子郵件';
             
             return res.status(400).json({ 
-                error: `此${field}已被註冊` 
+                error: `此${field}已被註冊`,
+                errorCode: 'FIELD_ALREADY_TAKEN',
+                // 帶插值的訊息除了 code，還要把變數送出去，前端才組得出譯文
+                params: { field } 
             });
         }
 
@@ -78,14 +81,14 @@ router.post('/register', [
         });
     } catch (error) {
         console.error('註冊錯誤:', error);
-        res.status(500).json({ error: '註冊失敗，請稍後再試' });
+        res.status(500).json({ error: '註冊失敗，請稍後再試', errorCode: 'REGISTER_FAILED' });
     }
 });
 
 // 登入
 router.post('/login', [
-    body('username').notEmpty().withMessage('請輸入學號或使用者名稱'),
-    body('password').notEmpty().withMessage('請輸入密碼')
+    body('username').notEmpty().withMessage({ code: 'IDENTIFIER_REQUIRED', message: '請輸入學號或使用者名稱' }),
+    body('password').notEmpty().withMessage({ code: 'PASSWORD_REQUIRED', message: '請輸入密碼' })
 ], async (req, res) => {
     // 驗證輸入
     const errors = validationResult(req);
@@ -107,13 +110,13 @@ router.post('/login', [
         });
 
         if (!user) {
-            return res.status(401).json({ error: '帳號或密碼錯誤' });
+            return res.status(401).json({ error: '帳號或密碼錯誤', errorCode: 'CREDENTIALS_INVALID' });
         }
 
         // 驗證密碼
         const isValidPassword = await bcrypt.compare(password, user.passwordHash);
         if (!isValidPassword) {
-            return res.status(401).json({ error: '帳號或密碼錯誤' });
+            return res.status(401).json({ error: '帳號或密碼錯誤', errorCode: 'CREDENTIALS_INVALID' });
         }
 
         // 產生 Token
@@ -134,7 +137,7 @@ router.post('/login', [
         });
     } catch (error) {
         console.error('登入錯誤:', error);
-        res.status(500).json({ error: '登入失敗，請稍後再試' });
+        res.status(500).json({ error: '登入失敗，請稍後再試', errorCode: 'LOGIN_FAILED' });
     }
 });
 
@@ -146,7 +149,7 @@ router.post('/login', [
 // 現在改為從 token 取得身分（不再信任 body 裡的 username），並套用 authLimiter。
 router.post('/change-password', authenticateToken, [
     body('oldPassword').notEmpty(),
-    body('newPassword').isLength({ min: 6 }).withMessage('新密碼至少6個字元')
+    body('newPassword').isLength({ min: 6 }).withMessage({ code: 'NEW_PASSWORD_TOO_SHORT', message: '新密碼至少6個字元' })
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -159,13 +162,13 @@ router.post('/change-password', authenticateToken, [
         const user = await User.findByPk(req.user.id);
 
         if (!user) {
-            return res.status(404).json({ error: '使用者不存在' });
+            return res.status(404).json({ error: '使用者不存在', errorCode: 'USER_NOT_FOUND' });
         }
 
         // 驗證舊密碼
         const isValidPassword = await bcrypt.compare(oldPassword, user.passwordHash);
         if (!isValidPassword) {
-            return res.status(401).json({ error: '舊密碼錯誤' });
+            return res.status(401).json({ error: '舊密碼錯誤', errorCode: 'OLD_PASSWORD_INVALID' });
         }
 
         // 更新密碼
@@ -175,7 +178,7 @@ router.post('/change-password', authenticateToken, [
         res.json({ message: '密碼修改成功' });
     } catch (error) {
         console.error('修改密碼錯誤:', error);
-        res.status(500).json({ error: '修改密碼失敗' });
+        res.status(500).json({ error: '修改密碼失敗', errorCode: 'CHANGE_PASSWORD_FAILED' });
     }
 });
 

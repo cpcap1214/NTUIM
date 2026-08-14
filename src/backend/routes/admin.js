@@ -64,7 +64,7 @@ router.get('/users', requirePermission('users.manage'), async (req, res) => {
     res.json(usersWithPasswordDisplay);
   } catch (error) {
     console.error('獲取用戶失敗:', error);
-    res.status(500).json({ error: '獲取用戶資料失敗' });
+    res.status(500).json({ error: '獲取用戶資料失敗', errorCode: 'FETCH_USER_FAILED' });
   }
 });
 
@@ -77,7 +77,7 @@ router.put('/users/:id', requirePermission('users.manage'), async (req, res) => 
     const user = await User.findByPk(id);
 
     if (!user) {
-      return res.status(404).json({ error: '找不到用戶' });
+      return res.status(404).json({ error: '找不到用戶', errorCode: 'USER_NOT_FOUND' });
     }
 
     // 防止移除最後一個管理員。
@@ -86,7 +86,7 @@ router.put('/users/:id', requirePermission('users.manage'), async (req, res) => 
     if (user.role === 'admin' && role && role !== 'admin') {
       const adminCount = await User.count({ where: { role: 'admin' } });
       if (adminCount <= 1) {
-        return res.status(400).json({ error: '無法移除最後一個管理員' });
+        return res.status(400).json({ error: '無法移除最後一個管理員', errorCode: 'CANNOT_REMOVE_LAST_ADMIN' });
       }
     }
 
@@ -113,7 +113,7 @@ router.put('/users/:id', requirePermission('users.manage'), async (req, res) => 
     res.json({ message: '用戶資料已更新', user: safeUser });
   } catch (error) {
     console.error('更新用戶失敗:', error);
-    res.status(500).json({ error: '更新失敗' });
+    res.status(500).json({ error: '更新失敗', errorCode: 'UPDATE_FAILED_GENERIC' });
   }
 });
 
@@ -124,13 +124,13 @@ router.put('/users/:id/password', requirePermission('users.manage'), async (req,
     const { password } = req.body;
 
     if (!password) {
-      return res.status(400).json({ error: '請提供新密碼' });
+      return res.status(400).json({ error: '請提供新密碼', errorCode: 'NEW_PASSWORD_REQUIRED' });
     }
 
     const user = await User.findByPk(id);
     
     if (!user) {
-      return res.status(404).json({ error: '找不到用戶' });
+      return res.status(404).json({ error: '找不到用戶', errorCode: 'USER_NOT_FOUND' });
     }
 
     // 加密新密碼
@@ -144,7 +144,7 @@ router.put('/users/:id/password', requirePermission('users.manage'), async (req,
     res.json({ message: '密碼已更新' });
   } catch (error) {
     console.error('更新密碼失敗:', error);
-    res.status(500).json({ error: '更新密碼失敗' });
+    res.status(500).json({ error: '更新密碼失敗', errorCode: 'UPDATE_PASSWORD_FAILED' });
   }
 });
 
@@ -155,20 +155,20 @@ router.delete('/users/:id', requirePermission('users.manage'), async (req, res) 
 
     // 防止把自己刪掉
     if (req.user.id === parseInt(id)) {
-      return res.status(400).json({ error: '不能刪除自己的帳號' });
+      return res.status(400).json({ error: '不能刪除自己的帳號', errorCode: 'CANNOT_DELETE_SELF' });
     }
 
     const user = await User.findByPk(id);
     
     if (!user) {
-      return res.status(404).json({ error: '找不到用戶' });
+      return res.status(404).json({ error: '找不到用戶', errorCode: 'USER_NOT_FOUND' });
     }
 
     await user.destroy();
     res.json({ message: '用戶已刪除' });
   } catch (error) {
     console.error('刪除用戶失敗:', error);
-    res.status(500).json({ error: '刪除失敗' });
+    res.status(500).json({ error: '刪除失敗', errorCode: 'DELETE_FAILED_GENERIC' });
   }
 });
 

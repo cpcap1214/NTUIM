@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getPreviewTarget, setPreviewTarget } from './previewStorage';
 
 // API 基礎設定 - 使用同源 /api（避免 CORS）
 export const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
@@ -15,17 +16,9 @@ const api = axios.create({
     }
 });
 
-// 身分預覽目標（管理台的「以身分組檢視」/「以成員檢視」）。
-// 用 sessionStorage 而非 localStorage：預覽是臨時的除錯狀態，關掉分頁就該結束，
-// 不該跨瀏覽器工作階段留存，也不該影響同時開著的其他分頁。
-const PREVIEW_KEY = 'previewAs';
-
-export const getPreviewTarget = () => sessionStorage.getItem(PREVIEW_KEY);
-
-export const setPreviewTarget = (target) => {
-    if (target) sessionStorage.setItem(PREVIEW_KEY, target);
-    else sessionStorage.removeItem(PREVIEW_KEY);
-};
+// 預覽目標的存取放在 previewStorage.js（那裡只碰 sessionStorage、不依賴 axios）。
+// 這裡再匯出一次，讓既有的 import 位置不用改。
+export { getPreviewTarget, setPreviewTarget } from './previewStorage';
 
 // 請求攔截器 - 自動加入認證 token
 api.interceptors.request.use(
@@ -51,6 +44,18 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response) {
+            // 預覽目標無效就地清掉，否則會卡成無法自行脫困的狀態。
+            //
+            // previewAs 存在 sessionStorage，只有關閉分頁才會消失。殘留的目標會讓
+            // 每個請求都帶上 X-Preview-As；換成非管理員登入後，/users/profile 會回
+            // 403 PREVIEW_FORBIDDEN，而 AuthContext 把 403 當成「登入失效」直接登出——
+            // 於是變成「登入就被踢出來，重新整理也救不回來」。
+            // 這裡自我修復：只要是預覽相關的錯誤，就把目標清掉。
+            const errorCode = error.response.data?.errorCode;
+            if (typeof errorCode === 'string' && errorCode.startsWith('PREVIEW_')) {
+                setPreviewTarget(null);
+            }
+
             // 處理 401 錯誤 - 未授權
             if (error.response.status === 401) {
                 localStorage.removeItem('token');

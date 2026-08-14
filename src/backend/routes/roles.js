@@ -35,14 +35,14 @@ router.get('/', requirePermission('roles.manage'), async (req, res) => {
         res.json({ data: result });
     } catch (error) {
         console.error('取得身分組錯誤:', error);
-        res.status(500).json({ error: '取得身分組失敗' });
+        res.status(500).json({ error: '取得身分組失敗', errorCode: 'FETCH_ROLES_FAILED' });
     }
 });
 
 // 新增身分組
 router.post('/', requirePermission('roles.manage'), [
-    body('key').trim().matches(/^[a-zA-Z][a-zA-Z0-9_]*$/).withMessage('代碼只能用英數字與底線，且須以英文字母開頭'),
-    body('name').trim().notEmpty().withMessage('名稱為必填'),
+    body('key').trim().matches(/^[a-zA-Z][a-zA-Z0-9_]*$/).withMessage({ code: 'ROLE_KEY_FORMAT', message: '代碼只能用英數字與底線，且須以英文字母開頭' }),
+    body('name').trim().notEmpty().withMessage({ code: 'NAME_REQUIRED', message: '名稱為必填' }),
     body('permissions').optional().isArray()
 ], async (req, res) => {
     const errors = validationResult(req);
@@ -55,7 +55,7 @@ router.post('/', requirePermission('roles.manage'), [
 
         const existing = await Role.findOne({ where: { key } });
         if (existing) {
-            return res.status(400).json({ error: '此身分組代碼已存在' });
+            return res.status(400).json({ error: '此身分組代碼已存在', errorCode: 'ROLE_KEY_TAKEN' });
         }
 
         const role = await Role.create({ key, name, description, color, priority });
@@ -64,7 +64,7 @@ router.post('/', requirePermission('roles.manage'), [
         res.status(201).json({ message: '身分組已建立', data: role });
     } catch (error) {
         console.error('建立身分組錯誤:', error);
-        res.status(500).json({ error: '建立身分組失敗' });
+        res.status(500).json({ error: '建立身分組失敗', errorCode: 'CREATE_ROLE_FAILED' });
     }
 });
 
@@ -72,7 +72,7 @@ router.post('/', requirePermission('roles.manage'), [
 router.put('/:id', requirePermission('roles.manage'), async (req, res) => {
     try {
         const role = await Role.findByPk(req.params.id);
-        if (!role) return res.status(404).json({ error: '身分組不存在' });
+        if (!role) return res.status(404).json({ error: '身分組不存在', errorCode: 'ROLE_NOT_FOUND' });
 
         const { name, description, color, priority, permissions } = req.body;
 
@@ -88,7 +88,7 @@ router.put('/:id', requirePermission('roles.manage'), async (req, res) => {
         if (Array.isArray(permissions)) {
             // 管理員身分組的萬用權限不可拿掉，否則會把自己鎖在門外
             if (role.key === 'admin' && !permissions.includes(WILDCARD)) {
-                return res.status(400).json({ error: '管理員身分組必須保留所有權限' });
+                return res.status(400).json({ error: '管理員身分組必須保留所有權限', errorCode: 'ADMIN_ROLE_KEEPS_ALL' });
             }
             await setPermissions(role.id, permissions);
         }
@@ -96,7 +96,7 @@ router.put('/:id', requirePermission('roles.manage'), async (req, res) => {
         res.json({ message: '身分組已更新', data: role });
     } catch (error) {
         console.error('更新身分組錯誤:', error);
-        res.status(500).json({ error: '更新身分組失敗' });
+        res.status(500).json({ error: '更新身分組失敗', errorCode: 'UPDATE_ROLE_FAILED' });
     }
 });
 
@@ -104,17 +104,17 @@ router.put('/:id', requirePermission('roles.manage'), async (req, res) => {
 router.delete('/:id', requirePermission('roles.manage'), async (req, res) => {
     try {
         const role = await Role.findByPk(req.params.id);
-        if (!role) return res.status(404).json({ error: '身分組不存在' });
+        if (!role) return res.status(404).json({ error: '身分組不存在', errorCode: 'ROLE_NOT_FOUND' });
 
         if (role.isSystem) {
-            return res.status(400).json({ error: '內建身分組不可刪除' });
+            return res.status(400).json({ error: '內建身分組不可刪除', errorCode: 'BUILTIN_ROLE_NOT_DELETABLE' });
         }
 
         await role.destroy(); // role_permissions / user_roles 會被 ON DELETE CASCADE 一併清掉
         res.json({ message: '身分組已刪除' });
     } catch (error) {
         console.error('刪除身分組錯誤:', error);
-        res.status(500).json({ error: '刪除身分組失敗' });
+        res.status(500).json({ error: '刪除身分組失敗', errorCode: 'DELETE_ROLE_FAILED' });
     }
 });
 
@@ -122,7 +122,7 @@ router.delete('/:id', requirePermission('roles.manage'), async (req, res) => {
 router.get('/:id/members', requirePermission('roles.manage'), async (req, res) => {
     try {
         const role = await Role.findByPk(req.params.id);
-        if (!role) return res.status(404).json({ error: '身分組不存在' });
+        if (!role) return res.status(404).json({ error: '身分組不存在', errorCode: 'ROLE_NOT_FOUND' });
 
         // 自動身分組的成員來自 has_paid_fee，不是 user_roles
         const users = role.isAuto
@@ -141,7 +141,7 @@ router.get('/:id/members', requirePermission('roles.manage'), async (req, res) =
         res.json({ data: users, isAuto: role.isAuto });
     } catch (error) {
         console.error('取得身分組成員錯誤:', error);
-        res.status(500).json({ error: '取得成員失敗' });
+        res.status(500).json({ error: '取得成員失敗', errorCode: 'FETCH_MEMBERS_FAILED' });
     }
 });
 

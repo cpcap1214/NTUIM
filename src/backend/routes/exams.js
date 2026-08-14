@@ -71,7 +71,7 @@ router.get('/', [
         });
     } catch (error) {
         console.error('取得考古題列表錯誤:', error);
-        res.status(500).json({ error: '取得考古題失敗' });
+        res.status(500).json({ error: '取得考古題失敗', errorCode: 'FETCH_EXAMS_FAILED' });
     }
 });
 
@@ -85,12 +85,12 @@ router.post('/upload',
     ]),
     handleUploadError,
     [
-        body('courseCode').notEmpty().withMessage('課號為必填'),
-        body('courseName').notEmpty().withMessage('課程名稱為必填'),
-        body('year').isInt({ min: 2000, max: 2100 }).withMessage('請輸入有效年份'),
-        body('semester').isIn(['1', '2', 'summer']).withMessage('請選擇學期'),
-        body('examType').isIn(['midterm', 'final', 'quiz']).withMessage('請選擇考試類型'),
-        body('examAttempt').optional().isInt({ min: 1, max: 3 }).withMessage('考試次數須為 1-3'),
+        body('courseCode').notEmpty().withMessage({ code: 'COURSE_CODE_REQUIRED', message: '課號為必填' }),
+        body('courseName').notEmpty().withMessage({ code: 'COURSE_NAME_REQUIRED', message: '課程名稱為必填' }),
+        body('year').isInt({ min: 2000, max: 2100 }).withMessage({ code: 'YEAR_INVALID', message: '請輸入有效年份' }),
+        body('semester').isIn(['1', '2', 'summer']).withMessage({ code: 'SEMESTER_REQUIRED', message: '請選擇學期' }),
+        body('examType').isIn(['midterm', 'final', 'quiz']).withMessage({ code: 'EXAM_TYPE_REQUIRED', message: '請選擇考試類型' }),
+        body('examAttempt').optional().isInt({ min: 1, max: 3 }).withMessage({ code: 'EXAM_ATTEMPT_RANGE', message: '考試次數須為 1-3' }),
         body('professor').optional().isString()
     ],
     async (req, res) => {
@@ -109,7 +109,7 @@ router.post('/upload',
         }
 
         if (!req.files || !req.files.questionFile) {
-            return res.status(400).json({ error: '請選擇要上傳的題目檔案' });
+            return res.status(400).json({ error: '請選擇要上傳的題目檔案', errorCode: 'QUESTION_FILE_REQUIRED' });
         }
 
         try {
@@ -164,7 +164,7 @@ router.post('/upload',
                 }
             }
             console.error('上傳考古題錯誤:', error);
-            res.status(500).json({ error: '上傳失敗' });
+            res.status(500).json({ error: '上傳失敗', errorCode: 'UPLOAD_FAILED' });
         }
     }
 );
@@ -176,7 +176,7 @@ router.get('/:id/preview/question', authenticateToken, requirePermission('exams.
         const exam = await Exam.findByPk(req.params.id);
         
         if (!exam) {
-            return res.status(404).json({ error: '考古題不存在' });
+            return res.status(404).json({ error: '考古題不存在', errorCode: 'EXAM_NOT_FOUND' });
         }
 
         const filePath = path.resolve(exam.questionFilePath);
@@ -184,7 +184,7 @@ router.get('/:id/preview/question', authenticateToken, requirePermission('exams.
         // 檢查檔案是否存在
         if (!fs.existsSync(filePath)) {
             console.error('考古題檔案不存在:', filePath);
-            return res.status(404).json({ error: '考古題檔案不存在' });
+            return res.status(404).json({ error: '考古題檔案不存在', errorCode: 'EXAM_FILE_NOT_FOUND' });
         }
 
         // 設定為在線預覽（而非下載）
@@ -199,7 +199,7 @@ router.get('/:id/preview/question', authenticateToken, requirePermission('exams.
         
     } catch (error) {
         console.error('預覽考古題錯誤:', error);
-        res.status(500).json({ error: '預覽失敗，請稍後再試' });
+        res.status(500).json({ error: '預覽失敗，請稍後再試', errorCode: 'PREVIEW_FAILED' });
     }
 });
 
@@ -209,11 +209,11 @@ router.get('/:id/preview/answer', authenticateToken, requirePermission('exams.do
         const exam = await Exam.findByPk(req.params.id);
         
         if (!exam) {
-            return res.status(404).json({ error: '考古題不存在' });
+            return res.status(404).json({ error: '考古題不存在', errorCode: 'EXAM_NOT_FOUND' });
         }
 
         if (!exam.answerFilePath) {
-            return res.status(404).json({ error: '此考古題沒有答案檔案' });
+            return res.status(404).json({ error: '此考古題沒有答案檔案', errorCode: 'EXAM_HAS_NO_ANSWER' });
         }
 
         const filePath = path.resolve(exam.answerFilePath);
@@ -221,7 +221,7 @@ router.get('/:id/preview/answer', authenticateToken, requirePermission('exams.do
         // 檢查檔案是否存在
         if (!fs.existsSync(filePath)) {
             console.error('答案檔案不存在:', filePath);
-            return res.status(404).json({ error: '答案檔案不存在' });
+            return res.status(404).json({ error: '答案檔案不存在', errorCode: 'ANSWER_FILE_NOT_FOUND' });
         }
 
         // 設定為在線預覽（而非下載）
@@ -236,7 +236,7 @@ router.get('/:id/preview/answer', authenticateToken, requirePermission('exams.do
         
     } catch (error) {
         console.error('預覽答案錯誤:', error);
-        res.status(500).json({ error: '預覽失敗，請稍後再試' });
+        res.status(500).json({ error: '預覽失敗，請稍後再試', errorCode: 'PREVIEW_FAILED' });
     }
 });
 
@@ -246,12 +246,12 @@ router.get('/:id/download/question', authenticateToken, requirePermission('exams
         const exam = await Exam.findByPk(req.params.id);
 
         if (!exam) {
-            return res.status(404).json({ error: '考古題不存在' });
+            return res.status(404).json({ error: '考古題不存在', errorCode: 'EXAM_NOT_FOUND' });
         }
 
         // 檢查檔案是否存在
         if (!fs.existsSync(exam.questionFilePath)) {
-            return res.status(404).json({ error: '題目檔案不存在' });
+            return res.status(404).json({ error: '題目檔案不存在', errorCode: 'QUESTION_FILE_NOT_FOUND' });
         }
 
         // 更新下載次數
@@ -268,7 +268,7 @@ router.get('/:id/download/question', authenticateToken, requirePermission('exams
         res.sendFile(path.resolve(exam.questionFilePath));
     } catch (error) {
         console.error('下載考古題題目錯誤:', error);
-        res.status(500).json({ error: '下載失敗' });
+        res.status(500).json({ error: '下載失敗', errorCode: 'DOWNLOAD_FAILED' });
     }
 });
 
@@ -278,16 +278,16 @@ router.get('/:id/download/answer', authenticateToken, requirePermission('exams.d
         const exam = await Exam.findByPk(req.params.id);
 
         if (!exam) {
-            return res.status(404).json({ error: '考古題不存在' });
+            return res.status(404).json({ error: '考古題不存在', errorCode: 'EXAM_NOT_FOUND' });
         }
 
         if (!exam.answerFilePath) {
-            return res.status(404).json({ error: '此考古題沒有答案檔案' });
+            return res.status(404).json({ error: '此考古題沒有答案檔案', errorCode: 'EXAM_HAS_NO_ANSWER' });
         }
 
         // 檢查檔案是否存在
         if (!fs.existsSync(exam.answerFilePath)) {
-            return res.status(404).json({ error: '答案檔案不存在' });
+            return res.status(404).json({ error: '答案檔案不存在', errorCode: 'ANSWER_FILE_NOT_FOUND' });
         }
 
         // 更新下載次數
@@ -304,7 +304,7 @@ router.get('/:id/download/answer', authenticateToken, requirePermission('exams.d
         res.sendFile(path.resolve(exam.answerFilePath));
     } catch (error) {
         console.error('下載考古題答案錯誤:', error);
-        res.status(500).json({ error: '下載失敗' });
+        res.status(500).json({ error: '下載失敗', errorCode: 'DOWNLOAD_FAILED' });
     }
 });
 
@@ -312,13 +312,13 @@ router.get('/:id/download/answer', authenticateToken, requirePermission('exams.d
 router.put('/:id',
     authenticateToken,
     [
-        body('courseCode').optional().notEmpty().withMessage('課號不能為空'),
-        body('courseName').optional().notEmpty().withMessage('課程名稱不能為空'),
+        body('courseCode').optional().notEmpty().withMessage({ code: 'COURSE_CODE_EMPTY', message: '課號不能為空' }),
+        body('courseName').optional().notEmpty().withMessage({ code: 'COURSE_NAME_EMPTY', message: '課程名稱不能為空' }),
         body('professor').optional().isString(),
-        body('year').optional().isInt({ min: 2000, max: 2100 }).withMessage('請輸入有效年份'),
-        body('semester').optional().isIn(['1', '2', 'summer']).withMessage('請選擇學期'),
-        body('examType').optional().isIn(['midterm', 'final', 'quiz']).withMessage('請選擇考試類型'),
-        body('examAttempt').optional().isInt({ min: 1, max: 3 }).withMessage('考試次數須為 1-3')
+        body('year').optional().isInt({ min: 2000, max: 2100 }).withMessage({ code: 'YEAR_INVALID', message: '請輸入有效年份' }),
+        body('semester').optional().isIn(['1', '2', 'summer']).withMessage({ code: 'SEMESTER_REQUIRED', message: '請選擇學期' }),
+        body('examType').optional().isIn(['midterm', 'final', 'quiz']).withMessage({ code: 'EXAM_TYPE_REQUIRED', message: '請選擇考試類型' }),
+        body('examAttempt').optional().isInt({ min: 1, max: 3 }).withMessage({ code: 'EXAM_ATTEMPT_RANGE', message: '考試次數須為 1-3' })
     ],
     async (req, res) => {
         const errors = validationResult(req);
@@ -330,12 +330,12 @@ router.put('/:id',
             const exam = await Exam.findByPk(req.params.id);
 
             if (!exam) {
-                return res.status(404).json({ error: '考古題不存在' });
+                return res.status(404).json({ error: '考古題不存在', errorCode: 'EXAM_NOT_FOUND' });
             }
 
             // 檢查權限
             if (!isOwnerOrHasPermission(req, exam.uploadedBy, 'exams.manage')) {
-                return res.status(403).json({ error: '無權修改此考古題' });
+                return res.status(403).json({ error: '無權修改此考古題', errorCode: 'NO_PERMISSION_EDIT_EXAM' });
             }
 
             // 更新資訊
@@ -365,7 +365,7 @@ router.put('/:id',
             });
         } catch (error) {
             console.error('更新考古題錯誤:', error);
-            res.status(500).json({ error: '更新失敗' });
+            res.status(500).json({ error: '更新失敗', errorCode: 'UPDATE_FAILED_GENERIC' });
         }
     }
 );
@@ -389,7 +389,7 @@ router.put('/:id/files',
                         if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
                     });
                 }
-                return res.status(404).json({ error: '考古題不存在' });
+                return res.status(404).json({ error: '考古題不存在', errorCode: 'EXAM_NOT_FOUND' });
             }
 
             // 檢查權限
@@ -400,7 +400,7 @@ router.put('/:id/files',
                         if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
                     });
                 }
-                return res.status(403).json({ error: '無權修改此考古題' });
+                return res.status(403).json({ error: '無權修改此考古題', errorCode: 'NO_PERMISSION_EDIT_EXAM' });
             }
 
             const questionFile = req.files?.questionFile?.[0];
@@ -458,7 +458,7 @@ router.put('/:id/files',
                 });
             }
             console.error('更新考古題檔案錯誤:', error);
-            res.status(500).json({ error: '檔案更新失敗' });
+            res.status(500).json({ error: '檔案更新失敗', errorCode: 'FILE_UPDATE_FAILED' });
         }
     }
 );
@@ -469,12 +469,12 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         const exam = await Exam.findByPk(req.params.id);
 
         if (!exam) {
-            return res.status(404).json({ error: '考古題不存在' });
+            return res.status(404).json({ error: '考古題不存在', errorCode: 'EXAM_NOT_FOUND' });
         }
 
         // 檢查權限
         if (!isOwnerOrHasPermission(req, exam.uploadedBy, 'exams.manage')) {
-            return res.status(403).json({ error: '無權刪除此考古題' });
+            return res.status(403).json({ error: '無權刪除此考古題', errorCode: 'NO_PERMISSION_DELETE_EXAM' });
         }
 
         // 刪除檔案
@@ -491,7 +491,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         res.json({ message: '考古題已刪除' });
     } catch (error) {
         console.error('刪除考古題錯誤:', error);
-        res.status(500).json({ error: '刪除失敗' });
+        res.status(500).json({ error: '刪除失敗', errorCode: 'DELETE_FAILED_GENERIC' });
     }
 });
 

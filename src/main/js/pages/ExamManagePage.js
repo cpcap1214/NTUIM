@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -38,6 +39,7 @@ import examService from '../services/examService';
 import EditExamDialog from '../components/EditExamDialog';
 
 const ExamManagePage = () => {
+  const { t, i18n } = useTranslation();
   const { user, isAdmin } = useAuth();
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -52,6 +54,9 @@ const ExamManagePage = () => {
   // 從 API 獲取考古題資料
   useEffect(() => {
     fetchExams();
+    // fetchExams 現在引用 t（i18n 訊息），linter 不再視它為穩定值；
+    // 加進依賴會無限重抓，照專案既有做法關掉這條規則
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchExams = async () => {
@@ -61,7 +66,7 @@ const ExamManagePage = () => {
       const response = await fetch(`${API_BASE_URL}/exams?limit=1000`);
       
       if (!response.ok) {
-        throw new Error('獲取考古題失敗');
+        throw new Error(t('exam.fetchFailed'));
       }
       
       const result = await response.json();
@@ -91,7 +96,7 @@ const ExamManagePage = () => {
       });
 
       if (!response.ok) {
-        throw new Error('刪除失敗');
+        throw new Error(t('manage.deleteFailed'));
       }
 
       // 重新獲取資料
@@ -99,14 +104,14 @@ const ExamManagePage = () => {
       
       setSnackbar({
         open: true,
-        message: '考古題已成功刪除',
+        message: t('manage.examDeleted'),
         severity: 'success'
       });
     } catch (error) {
       console.error('刪除考古題錯誤:', error);
       setSnackbar({
         open: true,
-        message: error.message || '刪除失敗',
+        message: error.message || t('manage.deleteFailed'),
         severity: 'error'
       });
     } finally {
@@ -131,12 +136,12 @@ const ExamManagePage = () => {
       await fetchExams(); // 重新載入資料
       setSnackbar({
         open: true,
-        message: '考古題資訊已更新',
+        message: t('manage.examInfoUpdated'),
         severity: 'success'
       });
     } catch (error) {
       console.error('更新考古題錯誤:', error);
-      throw new Error(error.error || '更新失敗');
+      throw new Error(error.error || t('exam.form.updateFailed'));
     }
   };
 
@@ -146,12 +151,12 @@ const ExamManagePage = () => {
       await fetchExams(); // 重新載入資料
       setSnackbar({
         open: true,
-        message: '考古題檔案已更新',
+        message: t('manage.examFileUpdated'),
         severity: 'success'
       });
     } catch (error) {
       console.error('更新考古題檔案錯誤:', error);
-      throw new Error(error.error || '檔案更新失敗');
+      throw new Error(error.error || t('exam.form.fileUpdateFailed'));
     }
   };
 
@@ -177,7 +182,7 @@ const ExamManagePage = () => {
       });
       
       if (!response.ok) {
-        throw new Error('下載失敗');
+        throw new Error(t('cheatSheet.downloadFailed'));
       }
       
       const blob = await response.blob();
@@ -193,7 +198,7 @@ const ExamManagePage = () => {
       console.error('下載錯誤:', error);
       setSnackbar({
         open: true,
-        message: '下載失敗，請稍後再試',
+        message: t('cheatSheet.downloadFailedRetry'),
         severity: 'error'
       });
     }
@@ -211,10 +216,10 @@ const ExamManagePage = () => {
       <Container maxWidth="lg">
         <Box sx={{ py: 4, textAlign: 'center' }}>
           <Typography variant="h5" color="error">
-            權限不足
+            {t('guard.noPermissionTitle')}
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            只有管理員可以存取此頁面
+            {t('guard.adminRequiredBody')}
           </Typography>
         </Box>
       </Container>
@@ -227,10 +232,10 @@ const ExamManagePage = () => {
         {/* Header */}
         <Box sx={{ mb: 4 }}>
           <Typography variant="h3" component="h1" gutterBottom sx={{ fontWeight: 700 }}>
-            考古題管理
+            {t('nav.adminExamManage')}
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            管理系統中的所有考古題，可檢視、下載和刪除
+            {t('manage.examDescription')}
           </Typography>
         </Box>
 
@@ -238,7 +243,7 @@ const ExamManagePage = () => {
         <Paper sx={{ p: 2, mb: 3 }}>
           <TextField
             fullWidth
-            placeholder="搜尋課程名稱、代碼或教授..."
+            placeholder={t('courseReview.admin.searchPlaceholder')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             InputProps={{
@@ -262,7 +267,7 @@ const ExamManagePage = () => {
         {loading && (
           <Box sx={{ textAlign: 'center', py: 8 }}>
             <Typography variant="h6" color="text.secondary">
-              載入考古題中...
+              {t('exam.loadingList')}
             </Typography>
           </Box>
         )}
@@ -324,14 +329,14 @@ const ExamManagePage = () => {
                         </Box>
                       </Box>
                     </TableCell>
-                    <TableCell>{exam.uploader?.fullName || '未知'}</TableCell>
+                    <TableCell>{exam.uploader?.fullName || t('common.unknown')}</TableCell>
                     <TableCell>
-                      {exam.created_at ? new Date(exam.created_at).toLocaleDateString('zh-TW') : '未知'}
+                      {exam.created_at ? new Date(exam.created_at).toLocaleDateString(i18n.language) : t('common.unknown')}
                     </TableCell>
                     <TableCell align="right">{exam.downloadCount || 0}</TableCell>
                     <TableCell align="center">
                       <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                        <Tooltip title="預覽">
+                        <Tooltip title={t('exam.preview')}>
                           <IconButton 
                             size="small" 
                             onClick={() => handlePreview(exam.id)}
@@ -339,7 +344,7 @@ const ExamManagePage = () => {
                             <ViewIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="下載">
+                        <Tooltip title={t('exam.download')}>
                           <IconButton 
                             size="small" 
                             color="primary"
@@ -348,7 +353,7 @@ const ExamManagePage = () => {
                             <DownloadIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="編輯">
+                        <Tooltip title={t('common.edit')}>
                           <IconButton 
                             size="small" 
                             color="info"
@@ -357,7 +362,7 @@ const ExamManagePage = () => {
                             <EditIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="刪除">
+                        <Tooltip title={t('common.delete')}>
                           <IconButton 
                             size="small" 
                             color="error"
@@ -379,10 +384,10 @@ const ExamManagePage = () => {
         {!loading && filteredExams.length === 0 && (
           <Box sx={{ textAlign: 'center', py: 8 }}>
             <Typography variant="h6" color="text.secondary" gutterBottom>
-              {exams.length === 0 ? '目前沒有考古題' : '沒有找到符合條件的考古題'}
+              {t(exams.length === 0 ? 'exam.empty' : 'exam.noMatch')}
             </Typography>
             <Typography variant="body2" color="text.disabled">
-              {exams.length === 0 ? '請先上傳考古題' : '請嘗試調整搜尋條件'}
+              {t(exams.length === 0 ? 'manage.uploadExamFirst' : 'manage.adjustSearch')}
             </Typography>
           </Box>
         )}
@@ -395,17 +400,17 @@ const ExamManagePage = () => {
           <DialogTitle>確認刪除考古題</DialogTitle>
           <DialogContent>
             <DialogContentText>
-              確定要刪除「{examToDelete?.courseName} - {examToDelete?.examType}」嗎？
+              {t('manage.confirmDeleteExam', { name: `${examToDelete?.courseName} - ${examToDelete?.examType}` })}
               <br />
-              此操作無法復原，檔案將永久刪除。
+              {t('manage.deleteIrreversible')}
             </DialogContentText>
           </DialogContent>
           <DialogActions>
             <Button onClick={handleDeleteCancel}>
-              取消
+              {t('common.cancel')}
             </Button>
             <Button onClick={handleDeleteConfirm} color="error" variant="contained">
-              確認刪除
+              {t('courseReview.admin.confirmDelete')}
             </Button>
           </DialogActions>
         </Dialog>
