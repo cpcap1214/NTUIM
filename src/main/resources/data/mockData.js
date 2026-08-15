@@ -277,9 +277,11 @@ export const staffByYear = {
     },
     {
       id: 5,
-      name: '未知',
+      name: '神秘人',
       position: '庶務部長',
-      avatar: '/images/members/115/未知.jpg',
+      // 這位還沒有照片。刻意不填 avatar，而不是指向一個不存在的檔案——
+      // 畫面上兩者都會顯示姓氏字的圓形框（AboutUsPage 的 Avatar fallback），
+      // 但留著壞路徑會讓每次載入都多打一個 404，伺服器日誌也會被塞滿。
     },
     {
       id: 6,
