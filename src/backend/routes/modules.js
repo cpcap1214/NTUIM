@@ -5,20 +5,20 @@ const { Module, ModuleAccess, Role, User } = require('../models');
 const { optionalAuth, authenticateToken, requirePermission } = require('../middleware/auth');
 const permissionService = require('../services/permissionService');
 
-// 取得目前使用者可用的模塊清單（公開端點，未登入也能呼叫）。
+// 取得目前使用者可用的模組清單（公開端點，未登入也能呼叫）。
 //
 // 為什麼必須公開：/api/users/profile 需要認證，登出的訪客沒有任何管道知道
-// 哪些模塊該顯示在導覽列。少了這支，匿名訪客的導覽列不是全空就是先閃出完整選單再縮回去。
+// 哪些模組該顯示在導覽列。少了這支，匿名訪客的導覽列不是全空就是先閃出完整選單再縮回去。
 //
-// 回傳每個模塊的 accessible / comingSoon / visible，前端據此決定
+// 回傳每個模組的 accessible / comingSoon / visible，前端據此決定
 // 顯示、標示「即將推出」、或整個隱藏。
 router.get('/', optionalAuth, async (req, res) => {
     try {
         const modules = await permissionService.listModulesFor(req.user, req.permissions);
         res.json({ data: modules });
     } catch (error) {
-        console.error('取得模塊清單錯誤:', error);
-        res.status(500).json({ error: '取得模塊清單失敗', errorCode: 'FETCH_MODULES_FAILED' });
+        console.error('取得模組清單錯誤:', error);
+        res.status(500).json({ error: '取得模組清單失敗', errorCode: 'FETCH_MODULES_FAILED' });
     }
 });
 
@@ -26,7 +26,7 @@ router.get('/', optionalAuth, async (req, res) => {
 // 以下為管理端點（需 modules.manage 權限）
 // ---------------------------------------------------------------------------
 
-// 模塊完整設定（含白名單），給模塊管理介面用
+// 模組完整設定（含白名單），給模組管理介面用
 router.get('/admin', authenticateToken, requirePermission('modules.manage'), async (req, res) => {
     try {
         const modules = await Module.findAll({ order: [['id', 'ASC']] });
@@ -50,12 +50,12 @@ router.get('/admin', authenticateToken, requirePermission('modules.manage'), asy
 
         res.json({ data: result });
     } catch (error) {
-        console.error('取得模塊設定錯誤:', error);
-        res.status(500).json({ error: '取得模塊設定失敗', errorCode: 'FETCH_MODULE_SETTINGS_FAILED' });
+        console.error('取得模組設定錯誤:', error);
+        res.status(500).json({ error: '取得模組設定失敗', errorCode: 'FETCH_MODULE_SETTINGS_FAILED' });
     }
 });
 
-// 更新模塊開放設定
+// 更新模組開放設定
 router.put('/:key', authenticateToken, requirePermission('modules.manage'), [
     body('visibility').optional().isIn(['public', 'restricted']),
     body('showWhenRestricted').optional().isBoolean(),
@@ -69,7 +69,7 @@ router.put('/:key', authenticateToken, requirePermission('modules.manage'), [
 
     try {
         const module = await Module.findOne({ where: { key: req.params.key } });
-        if (!module) return res.status(404).json({ error: '模塊不存在', errorCode: 'MODULE_NOT_FOUND' });
+        if (!module) return res.status(404).json({ error: '模組不存在', errorCode: 'MODULE_NOT_FOUND' });
 
         const { visibility, showWhenRestricted, roleIds, userIds } = req.body;
 
@@ -90,10 +90,10 @@ router.put('/:key', authenticateToken, requirePermission('modules.manage'), [
             }
         }
 
-        res.json({ message: '模塊設定已更新', data: module });
+        res.json({ message: '模組設定已更新', data: module });
     } catch (error) {
-        console.error('更新模塊設定錯誤:', error);
-        res.status(500).json({ error: '更新模塊設定失敗', errorCode: 'UPDATE_MODULE_SETTINGS_FAILED' });
+        console.error('更新模組設定錯誤:', error);
+        res.status(500).json({ error: '更新模組設定失敗', errorCode: 'UPDATE_MODULE_SETTINGS_FAILED' });
     }
 });
 

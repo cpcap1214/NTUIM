@@ -18,7 +18,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
-    // 模塊開放狀態。獨立於 user 之外載入，因為未登入的訪客同樣需要它來決定導覽列內容
+    // 模組開放狀態。獨立於 user 之外載入，因為未登入的訪客同樣需要它來決定導覽列內容
     const [modules, setModules] = useState({});
 
     // 身分預覽狀態。頁面重新整理後要能接續（目標存在 sessionStorage），
@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }) => {
         return profile;
     };
 
-    // 模塊清單走公開端點，登入與否都要載入。
+    // 模組清單走公開端點，登入與否都要載入。
     // 登入者的 /users/profile 也會帶回同一份資料，兩邊都更新即可，
     // 差別在於登入後的結果會反映該使用者的身分組。
     const loadModules = async () => {
@@ -47,9 +47,9 @@ export const AuthProvider = ({ children }) => {
             const data = await moduleService.getModules();
             setModules(data || {});
         } catch (error) {
-            // 取不到就維持空物件；isModuleVisible 對未知模塊預設回 true，
+            // 取不到就維持空物件；isModuleVisible 對未知模組預設回 true，
             // 寧可先顯示也不要讓導覽列整個消失
-            console.warn('取得模塊清單失敗:', error);
+            console.warn('取得模組清單失敗:', error);
         }
     };
 
@@ -77,7 +77,7 @@ export const AuthProvider = ({ children }) => {
 
                 if (isMounted) {
                     setUser(profile);
-                    // profile 帶回的模塊狀態已反映此使用者的身分組，覆蓋掉先前的匿名版本
+                    // profile 帶回的模組狀態已反映此使用者的身分組，覆蓋掉先前的匿名版本
                     if (profile?.modules) setModules(profile.modules);
                 }
             } catch (error) {
@@ -113,7 +113,7 @@ export const AuthProvider = ({ children }) => {
             setLoading(true);
             const response = await authService.login(username, password);
             setUser(response.user);
-            // 登入 API 只回基本欄位，權限與模塊要另外抓；模塊開放狀態會因身分組而不同
+            // 登入 API 只回基本欄位，權限與模組要另外抓；模組開放狀態會因身分組而不同
             await Promise.all([syncUserProfile().catch(() => {}), loadModules()]);
             return response;
         } catch (error) {
@@ -141,7 +141,7 @@ export const AuthProvider = ({ children }) => {
     const logout = () => {
         authService.logout();
         setUser(null);
-        // 模塊開放狀態要回到匿名版本（authService.logout 會轉頁，這裡是保險）
+        // 模組開放狀態要回到匿名版本（authService.logout 會轉頁，這裡是保險）
         loadModules();
     };
 
@@ -235,11 +235,11 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // 模塊開放狀態。未登入時也要能取得，否則登出訪客的導覽列會全空或先閃出完整選單。
+    // 模組開放狀態。未登入時也要能取得，否則登出訪客的導覽列會全空或先閃出完整選單。
     const isModuleVisible = (moduleKey) => {
-        if (!moduleKey) return true; // 沒綁模塊的項目（首頁、關於我們）一律顯示
+        if (!moduleKey) return true; // 沒綁模組的項目（首頁、關於我們）一律顯示
         const info = modules[moduleKey];
-        if (!info) return true; // 還沒載入或後端沒有該模塊 → 先顯示，避免畫面閃爍
+        if (!info) return true; // 還沒載入或後端沒有該模組 → 先顯示，避免畫面閃爍
         return info.visible;
     };
 
@@ -273,7 +273,7 @@ export const AuthProvider = ({ children }) => {
         updateUser,
         hasPermission,
         getFeeStatusMessage,
-        // 權限與模塊
+        // 權限與模組
         permissions,
         roles: user?.roles || [],
         modules,

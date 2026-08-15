@@ -27,7 +27,7 @@ const ProtectedRoute = ({
         );
     }
 
-    // 模塊是否開放。這一關要放在登入檢查「之前」——未開放的功能，
+    // 模組是否開放。這一關要放在登入檢查「之前」——未開放的功能，
     // 對未登入者也該直接說「尚未開放」，而不是先叫他去登入、登入完才發現不能用。
     if (requireModule && !isModuleAccessible(requireModule)) {
         return fallback || (

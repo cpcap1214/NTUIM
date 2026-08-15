@@ -17,19 +17,23 @@ import CheatSheetManagePage from './pages/CheatSheetManagePage';
 import ChangelogPage from './pages/ChangelogPage';
 import ExamUploadPage from './pages/ExamUploadPage';
 import ProtectedRoute from './components/ProtectedRoute';
+import AnnouncementDialog from './components/AnnouncementDialog';
 
 function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
+        {/* 公告視窗放在 Layout 之外、AuthProvider 之內：它需要認證狀態來決定
+            要不要把「不再提醒」寫回後端，但不屬於任何一個頁面，也不該被導覽列包住 */}
+        <AnnouncementDialog />
         <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
           <Layout>
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
-              {/* 模塊守衛：未開放時直接顯示「即將推出」，不必等頁面自己去打 API 才發現。
-                  requireAuth={false} 是因為這三個模塊本身允許未登入瀏覽，
+              {/* 模組守衛：未開放時直接顯示「即將推出」，不必等頁面自己去打 API 才發現。
+                  requireAuth={false} 是因為這三個模組本身允許未登入瀏覽，
                   真正的登入/繳費限制仍由各頁面與後端各自把關。 */}
               <Route
                 path="/course-reviews"

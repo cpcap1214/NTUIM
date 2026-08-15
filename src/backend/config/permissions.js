@@ -4,7 +4,7 @@
 // 管理員應該能自由組合權限成身分組，但不該能憑空發明一個沒有任何程式碼在檢查的權限。
 // 這份 manifest 同時供後台的身分組編輯器渲染（透過 GET /api/permissions）。
 //
-// 命名規則：<模塊或領域>.<動作>，例如 courseReviews.payout。
+// 命名規則：<模組或領域>.<動作>，例如 courseReviews.payout。
 // 萬用字元支援兩種：
 //   '*'           所有權限（管理員身分組持有）
 //   'exams.*'     該命名空間下的所有權限
@@ -13,7 +13,8 @@ const PERMISSIONS = [
     // 系統管理
     { key: 'users.manage', group: '系統管理', label: '用戶管理', description: '查詢、編輯、刪除使用者與重設密碼' },
     { key: 'roles.manage', group: '系統管理', label: '身分組管理', description: '建立身分組、調整權限、指派成員' },
-    { key: 'modules.manage', group: '系統管理', label: '模塊管理', description: '設定各功能模塊開放給哪些身分組或使用者' },
+    { key: 'modules.manage', group: '系統管理', label: '模組管理', description: '設定各功能模組開放給哪些身分組或使用者' },
+    { key: 'announcements.manage', group: '系統管理', label: '公告管理', description: '發佈、編輯與下架站上公告' },
 
     // 考古題
     { key: 'exams.upload', group: '考古題', label: '上傳考古題', description: '新增考古題與答案檔案' },

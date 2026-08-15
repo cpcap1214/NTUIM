@@ -11,7 +11,7 @@ const hasAdminAccess = (user) => user?.role === 'admin';
 // ---------------------------------------------------------------------------
 // 身分預覽（管理台的「以身分組檢視」/「以成員檢視」）
 //
-// 目的：驗證權限與模塊設定是否真的正確。純前端的預覽只能驗證「選單有沒有藏對」，
+// 目的：驗證權限與模組設定是否真的正確。純前端的預覽只能驗證「選單有沒有藏對」，
 // 驗證不到「API 有沒有擋對」——而後者才是最可能出錯的地方。
 //
 // 這等於是受控的身分冒用，所以有三道防線，缺一不可：
@@ -165,7 +165,7 @@ const authenticateToken = async (req, res, next) => {
 // 把 ?token= 轉成 Authorization 標頭。
 // PDF 預覽是用 window.open 開新分頁，沒辦法帶自訂標頭，只能把 token 放在網址上。
 // 這段原本寫在各個預覽路由裡（inline），但掛載層級的中介層會跑在它「之前」，
-// 導致後面的模塊檢查看不到身分。提升到最前面統一處理。
+// 導致後面的模組檢查看不到身分。提升到最前面統一處理。
 const tokenFromQuery = (req, res, next) => {
     if (req.query.token && !req.headers.authorization) {
         req.headers.authorization = `Bearer ${req.query.token}`;
@@ -174,7 +174,7 @@ const tokenFromQuery = (req, res, next) => {
 };
 
 // 選擇性認證：有帶有效 token 就解析身分，沒帶或無效就當成匿名繼續往下走，不擋。
-// 公開端點也需要知道「你是誰」——例如某個模塊被限定給管理員測試時，
+// 公開端點也需要知道「你是誰」——例如某個模組被限定給管理員測試時，
 // 管理員打公開的 GET /api/exams 也必須被認出來，否則會被當成匿名擋掉。
 const optionalAuth = async (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -210,7 +210,7 @@ const optionalAuth = async (req, res, next) => {
     next();
 };
 
-// 要求該模塊對此使用者開放。未開放時一律 403（不可 401，會把使用者登出）。
+// 要求該模組對此使用者開放。未開放時一律 403（不可 401，會把使用者登出）。
 const requireModuleAccess = (moduleKey) => async (req, res, next) => {
     try {
         const allowed = await permissionService.canAccessModule(req.user, req.permissions, moduleKey);
@@ -223,7 +223,7 @@ const requireModuleAccess = (moduleKey) => async (req, res, next) => {
         }
         next();
     } catch (error) {
-        console.error('模塊權限檢查錯誤:', error);
+        console.error('模組權限檢查錯誤:', error);
         next(error);
     }
 };

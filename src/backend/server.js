@@ -25,6 +25,7 @@ const courseCatalogRoutes = require('./routes/courseCatalog');
 const moduleRoutes = require('./routes/modules');
 const roleRoutes = require('./routes/roles');
 const adminRoutes = require('./routes/admin');
+const announcementRoutes = require('./routes/announcements');
 
 // 引入中間件
 const { authenticateToken, optionalAuth, tokenFromQuery, requireModuleAccess } = require('./middleware/auth');
@@ -96,20 +97,23 @@ uploadDirs.forEach(dir => {
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
 
-// 模塊 ↔ 路由的對應集中在這裡一處，不散落到各 route 檔。
+// 模組 ↔ 路由的對應集中在這裡一處，不散落到各 route 檔。
 // 中介層順序很重要：
 //   tokenFromQuery → 先把 ?token= 搬進標頭（PDF 預覽用 window.open，帶不了標頭）
-//   optionalAuth   → 認出身分但不強制登入（公開端點也要知道你是誰，管理員才能在模塊未公開時測試）
-//   requireModuleAccess → 模塊未開放就 403
+//   optionalAuth   → 認出身分但不強制登入（公開端點也要知道你是誰，管理員才能在模組未公開時測試）
+//   requireModuleAccess → 模組未開放就 403
 app.use('/api/exams', tokenFromQuery, optionalAuth, requireModuleAccess('exams'), examRoutes);
 app.use('/api/cheat-sheets', tokenFromQuery, optionalAuth, requireModuleAccess('cheatSheets'), cheatSheetRoutes);
 app.use('/api/course-reviews', optionalAuth, requireModuleAccess('courseReviews'), courseReviewRoutes);
-// 課程目錄只服務「寫課程評價」表單的課程搜尋，歸屬於 courseReviews 模塊
+// 課程目錄只服務「寫課程評價」表單的課程搜尋，歸屬於 courseReviews 模組
 app.use('/api/course-catalog', optionalAuth, requireModuleAccess('courseReviews'), courseCatalogRoutes);
-// 模塊清單本身是公開端點（內部用 optionalAuth）：登出的訪客也需要知道
+// 模組清單本身是公開端點（內部用 optionalAuth）：登出的訪客也需要知道
 // 導覽列該顯示哪些項目，不能要求認證
 app.use('/api/modules', moduleRoutes);
 app.use('/api/roles', authenticateToken, roleRoutes);
+// 公告同樣不能在這裡要求認證：訪客也看得到公告。
+// 路由檔內部前台端點用 optionalAuth、管理端點各自掛 authenticateToken + requirePermission。
+app.use('/api/announcements', announcementRoutes);
 
 // admin 路由原本完全沒掛 authenticateToken（它自己有一套平行的認證實作），
 // 現在統一走共用中介層，路由檔內各自再用 requirePermission 檢查權限

@@ -63,6 +63,7 @@ import { useNavigate } from 'react-router-dom';
 import courseReviewService from '../services/courseReviewService';
 import roleService from '../services/roleService';
 import moduleService from '../services/moduleService';
+import announcementService from '../services/announcementService';
 import ReviewCard from '../components/courseReview/ReviewCard';
 import { translateApiError } from '../utils';
 
@@ -134,7 +135,7 @@ const AdminPage = () => {
   const [courseReviewDeleteDialog, setCourseReviewDeleteDialog] = useState(false);
   const [reviewToDelete, setReviewToDelete] = useState(null);
 
-  // 身分組與模塊管理相關狀態
+  // 身分組與模組管理相關狀態
   const [allRoles, setAllRoles] = useState([]);
   const [permissionCatalog, setPermissionCatalog] = useState([]);
   const [roleLoading, setRoleLoading] = useState(false);
@@ -144,6 +145,18 @@ const AdminPage = () => {
   const [roleToDelete, setRoleToDelete] = useState(null);
   const [moduleSettings, setModuleSettings] = useState([]);
   const [moduleLoading, setModuleLoading] = useState(false);
+
+  // 公告管理相關狀態。
+  // publishAt / expireAt 在表單裡是 datetime-local 需要的「本地牆上時間」格式，
+  // 送出前才轉成 UTC ISO；載入既有公告時反向轉回來（見 toLocalInput / toUtcIso）。
+  const [announcements, setAnnouncements] = useState([]);
+  const [announcementLoading, setAnnouncementLoading] = useState(false);
+  const [announcementDialog, setAnnouncementDialog] = useState(false);
+  const [announcementForm, setAnnouncementForm] = useState({
+    id: null, title: '', body: '', level: 'info', enabled: true, publishAt: '', expireAt: '',
+  });
+  const [announcementDeleteDialog, setAnnouncementDeleteDialog] = useState(false);
+  const [announcementToDelete, setAnnouncementToDelete] = useState(null);
 
   // 回饋金發放管理相關狀態
   const [payouts, setPayouts] = useState([]);
@@ -221,8 +234,10 @@ const AdminPage = () => {
       fetchRoles();
     } else if (activeTab === 8) {
       fetchModuleSettings();
-      // 模塊白名單的下拉選單需要身分組清單
+      // 模組白名單的下拉選單需要身分組清單
       if (allRoles.length === 0) fetchRoles();
+    } else if (activeTab === 9) {
+      fetchAnnouncements();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, navigate, authLoading, activeTab]);
@@ -337,6 +352,98 @@ const AdminPage = () => {
     } catch (err) {
       setError(translateApiError(err, t('admin.modules.saveFailed')));
     }
+  };
+
+  // --- 公告管理 -------------------------------------------------------------
+  //
+  // 時區：資料庫存的是 UTC ISO 字串，但 <input type="datetime-local"> 只認
+  // 「YYYY-MM-DDTHH:mm」形式的本地牆上時間，而且不帶時區資訊。
+  // 兩邊各轉一次，少了任何一次台灣就會整整差 8 小時——而症狀只會是
+  // 「公告設好了卻沒跳出來」，完全看不出跟時區有關。
+
+  // UTC ISO → datetime-local 的本地字串
+  const toLocalInput = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    // 減掉時區偏移後取 ISO 的前 16 字元，就是本地牆上時間
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 16);
+  };
+
+  // datetime-local 的本地字串 → UTC ISO（空字串代表不限制，要送 null）
+  const toUtcIso = (localValue) => (localValue ? new Date(localValue).toISOString() : null);
+
+  const fetchAnnouncements = async () => {
+    try {
+      setAnnouncementLoading(true);
+      setAnnouncements(await announcementService.getAll());
+    } catch (err) {
+      setError(translateApiError(err, t('announcement.admin.fetchFailed')));
+    } finally {
+      setAnnouncementLoading(false);
+    }
+  };
+
+  const openAnnouncementDialog = (announcement = null) => {
+    setAnnouncementForm(announcement
+      ? {
+        id: announcement.id,
+        title: announcement.title,
+        body: announcement.body,
+        level: announcement.level,
+        enabled: Boolean(announcement.enabled),
+        publishAt: toLocalInput(announcement.publishAt),
+        expireAt: toLocalInput(announcement.expireAt),
+      }
+      : { id: null, title: '', body: '', level: 'info', enabled: true, publishAt: '', expireAt: '' });
+    setAnnouncementDialog(true);
+  };
+
+  const handleSaveAnnouncement = async () => {
+    const payload = {
+      title: announcementForm.title,
+      body: announcementForm.body,
+      level: announcementForm.level,
+      enabled: announcementForm.enabled,
+      publishAt: toUtcIso(announcementForm.publishAt),
+      expireAt: toUtcIso(announcementForm.expireAt),
+    };
+
+    try {
+      if (announcementForm.id) {
+        await announcementService.update(announcementForm.id, payload);
+      } else {
+        await announcementService.create(payload);
+      }
+      setAnnouncementDialog(false);
+      await fetchAnnouncements();
+      setSuccess(t('announcement.admin.saved'));
+    } catch (err) {
+      setError(translateApiError(err, t('announcement.admin.saveFailed')));
+    }
+  };
+
+  const handleDeleteAnnouncement = async () => {
+    try {
+      await announcementService.remove(announcementToDelete.id);
+      setAnnouncementDeleteDialog(false);
+      setAnnouncementToDelete(null);
+      await fetchAnnouncements();
+      setSuccess(t('announcement.admin.deleted'));
+    } catch (err) {
+      setError(translateApiError(err, t('announcement.admin.deleteFailed')));
+    }
+  };
+
+  // 這則公告「現在」會不會出現在前台。後端有同一套判斷，這裡是給管理員看的即時狀態——
+  // 「已啟用但因為排程還沒到所以沒出現」是最容易誤判成故障的情況。
+  const announcementState = (a) => {
+    if (!a.enabled) return 'disabled';
+    const now = new Date();
+    if (a.publishAt && new Date(a.publishAt) > now) return 'scheduled';
+    if (a.expireAt && new Date(a.expireAt) <= now) return 'expired';
+    return 'active';
   };
 
   const fetchPayouts = async () => {
@@ -503,7 +610,7 @@ const AdminPage = () => {
 
   // 以某個身分組或某位成員的身分檢視全站。
   // 切換後管理台通常會直接消失（那正是預期結果），所以要先導回首頁——
-  // 停在一個自己已經沒有權限的頁面上只會看到錯誤訊息，看不出模塊與選單的實際樣貌。
+  // 停在一個自己已經沒有權限的頁面上只會看到錯誤訊息，看不出模組與選單的實際樣貌。
   // 退出的入口在 Layout 最上層的固定橫幅，不在這個頁面裡。
   const handleStartPreview = async (kind, id, label) => {
     try {
@@ -1041,23 +1148,37 @@ const AdminPage = () => {
   });
 
   // 每個功能標示它所需的權限，顯示與否一律以此為準（不再用 adminOnly 布林）。
-  // 排列順序即畫面上的 3×3：
-  //   用戶管理     身分組管理   模塊管理
+  //
+  // 用二維陣列而不是一維：公告管理要獨佔一列、右邊刻意留白。
+  // 一維陣列靠流式排版湊格子的話，任何一個人少一項權限就會整個重排，
+  // 留白會被下一張卡填掉。分成列之後，權限不足時只是該列少幾張卡。
+  //
+  //   用戶管理     身分組管理   模組管理
+  //   公告管理      —            —
   //   考古題管理   大抄管理     課程評價管理
   //   上傳考古題   上傳大抄     發放回饋金
-  const adminSections = [
-    { labelKey: 'nav.adminPanel', descKey: 'admin.sections.users', value: 0, permission: 'users.manage' },
-    { labelKey: 'admin.roles.title', descKey: 'admin.sections.roles', value: 7, permission: 'roles.manage' },
-    { labelKey: 'admin.modules.title', descKey: 'admin.sections.modules', value: 8, permission: 'modules.manage' },
-
-    { labelKey: 'nav.adminExamManage', descKey: 'admin.sections.examManage', value: 3, permission: 'exams.manage' },
-    { labelKey: 'nav.adminCheatSheetManage', descKey: 'admin.sections.cheatSheetManage', value: 4, permission: 'cheatSheets.manage' },
-    { label: t('courseReview.admin.title'), description: t('courseReview.admin.description'), value: 5, permission: 'courseReviews.moderate' },
-
-    { labelKey: 'nav.uploadExam', descKey: 'admin.sections.examUpload', value: 1, permission: 'exams.upload' },
-    { labelKey: 'admin.uploadCheatSheet', descKey: 'admin.sections.cheatSheetUpload', value: 2, permission: 'cheatSheets.upload' },
-    { label: t('courseReview.payout.title'), description: t('courseReview.payout.description'), value: 6, permission: 'courseReviews.payout' },
-  ].filter((section) => hasPermission(section.permission));
+  const adminSectionRows = [
+    [
+      { labelKey: 'nav.adminPanel', descKey: 'admin.sections.users', value: 0, permission: 'users.manage' },
+      { labelKey: 'admin.roles.title', descKey: 'admin.sections.roles', value: 7, permission: 'roles.manage' },
+      { labelKey: 'admin.modules.title', descKey: 'admin.sections.modules', value: 8, permission: 'modules.manage' },
+    ],
+    [
+      { labelKey: 'announcement.admin.title', descKey: 'announcement.admin.description', value: 9, permission: 'announcements.manage' },
+    ],
+    [
+      { labelKey: 'nav.adminExamManage', descKey: 'admin.sections.examManage', value: 3, permission: 'exams.manage' },
+      { labelKey: 'nav.adminCheatSheetManage', descKey: 'admin.sections.cheatSheetManage', value: 4, permission: 'cheatSheets.manage' },
+      { labelKey: 'courseReview.admin.title', descKey: 'courseReview.admin.description', value: 5, permission: 'courseReviews.moderate' },
+    ],
+    [
+      { labelKey: 'nav.uploadExam', descKey: 'admin.sections.examUpload', value: 1, permission: 'exams.upload' },
+      { labelKey: 'admin.uploadCheatSheet', descKey: 'admin.sections.cheatSheetUpload', value: 2, permission: 'cheatSheets.upload' },
+      { labelKey: 'courseReview.payout.title', descKey: 'courseReview.payout.description', value: 6, permission: 'courseReviews.payout' },
+    ],
+  ]
+    .map((row) => row.filter((section) => hasPermission(section.permission)))
+    .filter((row) => row.length > 0);
 
   if (authLoading || loading) return (
     <Container sx={{ mt: 4 }}>
@@ -1090,36 +1211,42 @@ const AdminPage = () => {
           <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
             {t('admin.consoleSubtitle')}
           </Typography>
-          <Grid container spacing={2}>
-            {adminSections.map((section) => (
-              <Grid item xs={12} sm={6} md={4} key={section.value}>
-                <Paper
-                  onClick={() => (section.path ? navigate(section.path) : setActiveTab(section.value))}
-                  sx={{
-                    p: 2,
-                    height: '100%',
-                    cursor: 'pointer',
-                    borderRadius: 3,
-                    border: '1px solid',
-                    borderColor: !section.path && activeTab === section.value ? 'primary.main' : 'divider',
-                    bgcolor: !section.path && activeTab === section.value ? 'primary.50' : 'background.paper',
-                    transition: 'all 0.2s ease',
-                    '&:hover': {
-                      borderColor: 'primary.main',
-                      boxShadow: 2,
-                    },
-                  }}
-                >
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
-                    {t(section.labelKey)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {t(section.descKey)}
-                  </Typography>
-                </Paper>
+          {/* 一列一個 Grid container，外層再疊起來。用單一 container 加隱形佔位格
+              也能排出留白，但那些佔位格在手機（xs 全寬堆疊）會變成空白區塊。 */}
+          <Stack spacing={2}>
+            {adminSectionRows.map((row, rowIndex) => (
+              <Grid container spacing={2} key={rowIndex}>
+                {row.map((section) => (
+                  <Grid item xs={12} sm={6} md={4} key={section.value}>
+                    <Paper
+                      onClick={() => (section.path ? navigate(section.path) : setActiveTab(section.value))}
+                      sx={{
+                        p: 2,
+                        height: '100%',
+                        cursor: 'pointer',
+                        borderRadius: 3,
+                        border: '1px solid',
+                        borderColor: !section.path && activeTab === section.value ? 'primary.main' : 'divider',
+                        bgcolor: !section.path && activeTab === section.value ? 'primary.50' : 'background.paper',
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          borderColor: 'primary.main',
+                          boxShadow: 2,
+                        },
+                      }}
+                    >
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
+                        {t(section.labelKey)}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {t(section.descKey)}
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                ))}
               </Grid>
             ))}
-          </Grid>
+          </Stack>
         </Paper>
 
       {/* 用戶管理分頁 */}
@@ -2745,7 +2872,7 @@ const AdminPage = () => {
         </Paper>
       )}
 
-      {/* 模塊管理分頁 */}
+      {/* 模組管理分頁 */}
       {activeTab === 8 && (
         <Paper sx={{ p: 2 }}>
           <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
@@ -2825,6 +2952,187 @@ const AdminPage = () => {
           )}
         </Paper>
       )}
+
+      {/* 公告管理分頁 */}
+      {activeTab === 9 && (
+        <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 3 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                {t('announcement.admin.title')}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {t('announcement.admin.description')}
+              </Typography>
+            </Box>
+            <Button variant="contained" onClick={() => openAnnouncementDialog()}>
+              {t('announcement.admin.create')}
+            </Button>
+          </Stack>
+
+          {announcementLoading && <LinearProgress sx={{ mb: 2 }} />}
+
+          {announcements.length === 0 && !announcementLoading ? (
+            <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
+              {t('announcement.admin.empty')}
+            </Typography>
+          ) : (
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>{t('announcement.admin.colTitle')}</TableCell>
+                    <TableCell>{t('announcement.admin.colState')}</TableCell>
+                    <TableCell>{t('announcement.admin.colWindow')}</TableCell>
+                    <TableCell align="right">{t('announcement.admin.colActions')}</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {announcements.map((a) => {
+                    const state = announcementState(a);
+                    return (
+                      <TableRow key={a.id} hover>
+                        <TableCell>
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                              {a.title}
+                            </Typography>
+                            {a.level === 'important' && (
+                              <Chip label={t('announcement.important')} color="error" size="small" />
+                            )}
+                          </Stack>
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            size="small"
+                            label={t(`announcement.admin.state.${state}`)}
+                            color={state === 'active' ? 'success' : 'default'}
+                            variant={state === 'active' ? 'filled' : 'outlined'}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="caption" color="text.secondary">
+                            {a.publishAt ? new Date(a.publishAt).toLocaleString(i18n.language) : t('announcement.admin.noLimit')}
+                            {' → '}
+                            {a.expireAt ? new Date(a.expireAt).toLocaleString(i18n.language) : t('announcement.admin.noLimit')}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          <IconButton size="small" onClick={() => openAnnouncementDialog(a)}>
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => { setAnnouncementToDelete(a); setAnnouncementDeleteDialog(true); }}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Paper>
+      )}
+
+      {/* 公告編輯對話框 */}
+      <Dialog open={announcementDialog} onClose={() => setAnnouncementDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          {t(announcementForm.id ? 'announcement.admin.editTitle' : 'announcement.admin.create')}
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label={t('announcement.admin.fieldTitle')}
+              value={announcementForm.title}
+              onChange={(e) => setAnnouncementForm({ ...announcementForm, title: e.target.value })}
+              fullWidth
+              required
+            />
+            <TextField
+              label={t('announcement.admin.fieldBody')}
+              value={announcementForm.body}
+              onChange={(e) => setAnnouncementForm({ ...announcementForm, body: e.target.value })}
+              fullWidth
+              required
+              multiline
+              minRows={4}
+              helperText={t('announcement.admin.bodyHelper')}
+            />
+            <FormControl fullWidth>
+              <InputLabel>{t('announcement.admin.fieldLevel')}</InputLabel>
+              <Select
+                value={announcementForm.level}
+                label={t('announcement.admin.fieldLevel')}
+                onChange={(e) => setAnnouncementForm({ ...announcementForm, level: e.target.value })}
+              >
+                <MenuItem value="info">{t('announcement.levelInfo')}</MenuItem>
+                <MenuItem value="important">{t('announcement.important')}</MenuItem>
+              </Select>
+            </FormControl>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <TextField
+                label={t('announcement.admin.fieldPublishAt')}
+                type="datetime-local"
+                value={announcementForm.publishAt}
+                onChange={(e) => setAnnouncementForm({ ...announcementForm, publishAt: e.target.value })}
+                InputLabelProps={{ shrink: true }}
+                fullWidth
+              />
+              <TextField
+                label={t('announcement.admin.fieldExpireAt')}
+                type="datetime-local"
+                value={announcementForm.expireAt}
+                onChange={(e) => setAnnouncementForm({ ...announcementForm, expireAt: e.target.value })}
+                InputLabelProps={{ shrink: true }}
+                fullWidth
+              />
+            </Stack>
+            <Typography variant="caption" color="text.secondary">
+              {t('announcement.admin.windowHelper')}
+            </Typography>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={announcementForm.enabled}
+                  onChange={(e) => setAnnouncementForm({ ...announcementForm, enabled: e.target.checked })}
+                />
+              }
+              label={t('announcement.admin.fieldEnabled')}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAnnouncementDialog(false)}>{t('common.cancel')}</Button>
+          <Button
+            variant="contained"
+            onClick={handleSaveAnnouncement}
+            disabled={!announcementForm.title.trim() || !announcementForm.body.trim()}
+          >
+            {t('common.save')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 公告刪除確認 */}
+      <Dialog open={announcementDeleteDialog} onClose={() => setAnnouncementDeleteDialog(false)}>
+        <DialogTitle>{t('announcement.admin.deleteTitle')}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {t('announcement.admin.confirmDelete', { title: announcementToDelete?.title })}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAnnouncementDeleteDialog(false)}>{t('common.cancel')}</Button>
+          <Button color="error" variant="contained" onClick={handleDeleteAnnouncement}>
+            {t('common.delete')}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* 身分組編輯對話框 */}
       <Dialog open={roleDialog} onClose={() => setRoleDialog(false)} maxWidth="sm" fullWidth>

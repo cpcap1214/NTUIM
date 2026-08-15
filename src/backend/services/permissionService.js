@@ -1,4 +1,4 @@
-// 權限解析：把「使用者」換算成「他實際持有的權限與可用模塊」。
+// 權限解析：把「使用者」換算成「他實際持有的權限與可用模組」。
 //
 // 解析來源有三個：
 //   1. user_roles 明確指派的身分組
@@ -114,7 +114,7 @@ const intersectResolved = (target, caller) => {
 };
 
 // ---------------------------------------------------------------------------
-// 模塊存取
+// 模組存取
 //
 // 真值表（visibility × 白名單）：
 //   public     → 所有人可用，module_access 一律忽略
@@ -122,13 +122,13 @@ const intersectResolved = (target, caller) => {
 //                身分組在白名單內可用
 //                使用者本人在白名單內可用
 //                白名單為空 → 只有持有 '*' 的人可用
-// 未登入者：rawPermissions 為空集合，因此只能存取 public 模塊。
+// 未登入者：rawPermissions 為空集合，因此只能存取 public 模組。
 // 也就是說 modules.visibility = 'public' 就是這個系統的 @everyone。
 // ---------------------------------------------------------------------------
 const canAccessModule = async (user, resolved, moduleKey) => {
     const module = await Module.findOne({ where: { key: moduleKey } });
 
-    // 資料庫裡沒有這個模塊 → 不做限制（避免忘了 seed 就把整個功能鎖死）
+    // 資料庫裡沒有這個模組 → 不做限制（避免忘了 seed 就把整個功能鎖死）
     if (!module) return true;
     if (module.visibility === 'public') return true;
     if (resolved?.rawPermissions?.has(WILDCARD)) return true;
@@ -154,7 +154,7 @@ const canAccessModule = async (user, resolved, moduleKey) => {
     return rows.length > 0;
 };
 
-// 給前端用的模塊清單：可否使用、受限時是否仍要顯示入口（標「即將推出」）
+// 給前端用的模組清單：可否使用、受限時是否仍要顯示入口（標「即將推出」）
 const listModulesFor = async (user, resolved) => {
     const modules = await Module.findAll({ order: [['id', 'ASC']] });
     const result = {};

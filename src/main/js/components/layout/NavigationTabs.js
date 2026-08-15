@@ -6,7 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { NAVIGATION_ITEMS } from '../../../resources/config/constants';
 
 // Tab 的 value 一律用 path，不用陣列索引。
-// 原本是用 findIndex 取索引當 value，但導覽項目一旦依模塊開放狀態被過濾，
+// 原本是用 findIndex 取索引當 value，但導覽項目一旦依模組開放狀態被過濾，
 // 索引就會跟 Header 裡另一份迴圈錯位、選到錯的分頁。
 const NavigationTabs = () => {
   const location = useLocation();

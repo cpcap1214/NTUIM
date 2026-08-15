@@ -1,7 +1,7 @@
 import api from './api';
 
 const moduleService = {
-    // 取得目前身分可用的模塊清單。這是公開端點，未登入也能呼叫——
+    // 取得目前身分可用的模組清單。這是公開端點，未登入也能呼叫——
     // 登出的訪客同樣需要知道導覽列該顯示哪些項目。
     async getModules() {
         try {
@@ -12,7 +12,7 @@ const moduleService = {
         }
     },
 
-    // 模塊完整設定（含白名單），供模塊管理介面用；需 modules.manage 權限
+    // 模組完整設定（含白名單），供模組管理介面用；需 modules.manage 權限
     async getModuleSettings() {
         try {
             const response = await api.get('/modules/admin');

@@ -4,7 +4,7 @@ export const APP_CONFIG = {
   version: '1.6.7',
 };
 
-// moduleKey 對應後端 modules 表的 key。有 moduleKey 的項目會受模塊開放狀態影響
+// moduleKey 對應後端 modules 表的 key。有 moduleKey 的項目會受模組開放狀態影響
 // （未開放時標示「即將推出」或整個隱藏），沒有 moduleKey 的項目一律顯示。
 //
 // 這裡放的是 labelKey 而不是 label：這個模組在載入時就求值了，

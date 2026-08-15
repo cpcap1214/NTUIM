@@ -459,7 +459,7 @@ const CourseCatalog = sequelize.define('CourseCatalog', {
 });
 
 // ---------------------------------------------------------------------------
-// 身分組與模塊存取控制
+// 身分組與模組存取控制
 // 權限「種類」定義在 config/permissions.js，這裡只存「哪個身分組持有哪些權限字串」
 // ---------------------------------------------------------------------------
 const Role = sequelize.define('Role', {
@@ -503,6 +503,26 @@ const ModuleAccess = sequelize.define('ModuleAccess', {
     userId: { type: DataTypes.INTEGER, field: 'user_id' }
 }, { tableName: 'module_access', createdAt: 'created_at', updatedAt: false });
 
+// 站上公告
+const Announcement = sequelize.define('Announcement', {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    title: { type: DataTypes.STRING(200), allowNull: false },
+    body: { type: DataTypes.TEXT, allowNull: false },
+    level: { type: DataTypes.ENUM('info', 'important'), allowNull: false, defaultValue: 'info' },
+    enabled: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+    // 一律存 UTC。NULL 代表該側不限制。
+    publishAt: { type: DataTypes.DATE, field: 'publish_at' },
+    expireAt: { type: DataTypes.DATE, field: 'expire_at' },
+    createdBy: { type: DataTypes.INTEGER, field: 'created_by' }
+}, { tableName: 'announcements', createdAt: 'created_at', updatedAt: 'updated_at' });
+
+// 「不要再提醒」：沒有記錄就代表沒關過，所以不需要為新公告預先建列
+const AnnouncementDismissal = sequelize.define('AnnouncementDismissal', {
+    announcementId: { type: DataTypes.INTEGER, primaryKey: true, field: 'announcement_id' },
+    userId: { type: DataTypes.INTEGER, primaryKey: true, field: 'user_id' },
+    dismissedAt: { type: DataTypes.DATE, field: 'dismissed_at', defaultValue: DataTypes.NOW }
+}, { tableName: 'announcement_dismissals', timestamps: false });
+
 // 定義關聯
 User.belongsToMany(Role, { through: UserRole, foreignKey: 'user_id', otherKey: 'role_id', as: 'roles' });
 Role.belongsToMany(User, { through: UserRole, foreignKey: 'role_id', otherKey: 'user_id', as: 'users' });
@@ -510,6 +530,10 @@ Role.hasMany(RolePermission, { foreignKey: 'role_id', as: 'permissions' });
 RolePermission.belongsTo(Role, { foreignKey: 'role_id', as: 'role' });
 Module.hasMany(ModuleAccess, { foreignKey: 'module_id', as: 'accessRules' });
 ModuleAccess.belongsTo(Module, { foreignKey: 'module_id', as: 'module' });
+
+Announcement.belongsTo(User, { foreignKey: 'created_by', as: 'author' });
+Announcement.hasMany(AnnouncementDismissal, { foreignKey: 'announcement_id', as: 'dismissals' });
+AnnouncementDismissal.belongsTo(Announcement, { foreignKey: 'announcement_id', as: 'announcement' });
 ModuleAccess.belongsTo(Role, { foreignKey: 'role_id', as: 'role' });
 ModuleAccess.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
@@ -547,5 +571,7 @@ module.exports = {
     UserRole,
     Module,
     ModuleAccess,
+    Announcement,
+    AnnouncementDismissal,
     testConnection
 };
