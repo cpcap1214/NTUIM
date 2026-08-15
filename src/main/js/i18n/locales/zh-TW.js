@@ -111,6 +111,10 @@ const zhTW = {
         contactTab: '聯絡我們',
         coreStaff: '核心幹部',
         directors: '各部部長',
+        // 學年一律用民國年，與站上其他地方（考古題、課程評價）一致
+        academicYearLabel: '學年度',
+        yearOption: '{{year}} 學年度',
+        noStaffForYear: '{{year}} 學年度的幹部名單尚未公佈。',
         officeLabel: '系辦地點',
         officeAddress: '管理學院一號館 7 樓 資訊管理學系辦公室',
     },

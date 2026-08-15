@@ -114,6 +114,10 @@ const en = {
         contactTab: 'Contact Us',
         coreStaff: 'Core officers',
         directors: 'Division directors',
+        // 學年沿用民國年（AY 114），不換算成西元——校內公告與系上文件都用民國年
+        academicYearLabel: 'Academic year',
+        yearOption: 'AY {{year}}',
+        noStaffForYear: 'The AY {{year}} officer roster has not been published yet.',
         officeLabel: 'Office',
         officeAddress: 'Department of Information Management Office, 7F, College of Management Building I',
     },

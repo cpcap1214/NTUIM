@@ -85,5 +85,12 @@ src/backend/database/backups/
 # 使用者上傳/seed 假資料
 uploads/
 
+# 幹部照片的原圖備份（縮圖前的手機原檔，20MB+）。
+# 站上實際用的是 public/images/members/<學年>/ 裡縮到 400px 的版本。
+#
+# 一定要放在 public/ 外面：CRA 會把整個 public/ 原樣複製進 build/，
+# 完全不看 gitignore——放在裡面等於把高解析個人照公開部署出去。
+photo-originals/
+
 # 除錯與測試文件
 docs/

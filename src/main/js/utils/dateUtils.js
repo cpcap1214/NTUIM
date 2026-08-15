@@ -82,3 +82,10 @@ export const getCurrentSemester = () => {
     display: formatSemester(academicYear, semester)
   };
 };
+
+// 目前的民國學年度。
+//
+// 「8 月起算新學年」這條規則已經寫在 getCurrentSemester 裡（後端另有一份在
+// utils/semesterEligibility.js:17-23），所以這裡只做西元→民國的換算，
+// 不要再複製一次月份判斷——同一條規則有三份的話遲早會有一份漏改。
+export const getCurrentAcademicYear = () => getCurrentSemester().year - 1911;

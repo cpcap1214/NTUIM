@@ -191,53 +191,119 @@ export const cheatSheets = [
   },
 ];
 
-export const staffMembers = [
-  {
-    id: 1,
-    name: '游輝毅',
-    position: '會長',
-    avatar: '/images/members/joe.jpg',
-  },
-  {
-    id: 2,
-    name: '汪芷瑩',
-    position: '副會長',
-    avatar: '/images/members/angelica.jpg',
-  },
-  {
-    id: 3,
-    name: '周建凱',
-    position: '學術部長',
-    avatar: '/images/members/chou.jpg',
-  },
-  {
-    id: 4,
-    name: '鍾心哲',
-    position: '資訊部長',
-    avatar: '/images/members/justin.jpg',
-  },
-  {
-    id: 5,
-    name: '楊珮榆',
-    position: '活動部長',  
-    avatar: '/images/members/annie.jpg',
-  },
-  {
-    id: 6,
-    name: '林采穎',
-    position: '庶務部長',
-    avatar: '/images/members/lin.jpg',
-  },
-  {
-    id: 7,
-    name: '蔡承佑',
-    position: '總務部長',
-    avatar: '/images/members/patrick.jpg',
-  },
-  {
-    id: 8,
-    name: '陳允直',
-    position: '文宣部長',
-    avatar: '/images/members/notStraight.jpg',
-  },
-];
+// 幹部名單以「民國學年度」為 key。新增一屆的做法：
+//   1. 照片放進 public/images/members/<學年>/
+//   2. 在這裡加一個 key，avatar 路徑帶上同一個學年
+// AboutUsPage 的學年切換按鈕是從這裡的 key 推導出來的，不需要另外註冊；
+// 名單補上去按鈕就會出現，而且只要那一屆是當前學年就會自動成為預設。
+//
+// position 用中文（AboutUsPage 靠 '會長'/'部長' 分組），那是資料值不是介面文案，
+// 詳見 AboutUsPage.js 裡的說明。
+export const staffByYear = {
+  114: [
+    {
+      id: 1,
+      name: '游輝毅',
+      position: '會長',
+      avatar: '/images/members/114/joe.jpg',
+    },
+    {
+      id: 2,
+      name: '汪芷瑩',
+      position: '副會長',
+      avatar: '/images/members/114/angelica.jpg',
+    },
+    {
+      id: 3,
+      name: '周建凱',
+      position: '學術部長',
+      avatar: '/images/members/114/chou.jpg',
+    },
+    {
+      id: 4,
+      name: '鍾心哲',
+      position: '資訊部長',
+      avatar: '/images/members/114/justin.jpg',
+    },
+    {
+      id: 5,
+      name: '楊珮榆',
+      position: '活動部長',
+      avatar: '/images/members/114/annie.jpg',
+    },
+    {
+      id: 6,
+      name: '林采穎',
+      position: '庶務部長',
+      avatar: '/images/members/114/lin.jpg',
+    },
+    {
+      id: 7,
+      name: '蔡承佑',
+      position: '總務部長',
+      avatar: '/images/members/114/patrick.jpg',
+    },
+    {
+      id: 8,
+      name: '陳允直',
+      position: '文宣部長',
+      avatar: '/images/members/114/notStraight.jpg',
+    },
+  ],
+  115: [
+    {
+      id: 1,
+      name: '鍾心哲',
+      position: '會長',
+      avatar: '/images/members/115/鍾心哲.jpg',
+    },
+    {
+      id: 2,
+      name: '劉威廷',
+      position: '副會長',
+      avatar: '/images/members/115/劉威廷.jpg',
+    },
+    {
+      id: 3,
+      name: '張宇昌',
+      position: '資訊部長',
+      avatar: '/images/members/115/張宇昌.jpg',
+    },
+    {
+      id: 4,
+      name: '莊貴淳',
+      position: '活動部長',
+      avatar: '/images/members/115/莊貴淳.jpg',
+    },
+    {
+      id: 5,
+      name: '未知',
+      position: '庶務部長',
+      avatar: '/images/members/115/未知.jpg',
+    },
+    {
+      id: 6,
+      name: '田宏寬',
+      position: '財務部長',
+      avatar: '/images/members/115/田宏寬.jpg',
+    },
+    {
+      id: 7,
+      name: '吳丞妤',
+      position: '文宣部長',
+      avatar: '/images/members/115/吳丞妤.jpg',
+    },
+    {
+      id: 8,
+      name: '鄭安哲',
+      position: '學術部長',
+      avatar: '/images/members/115/鄭安哲.jpg',
+    },
+    {
+      id: 9,
+      name: '李昱辰',
+      position: '學術部長',
+      avatar: '/images/members/115/李昱辰.jpg',
+    },
+  ],
+};
