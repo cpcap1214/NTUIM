@@ -703,13 +703,35 @@ const zhTW = {
             resubmit: '重新送出',
         },
 
+        // 回饋金名額。每門課（同課號、同教授、同學年期）只有前 N 篇評價能領回饋金，
+        // 目的是把誘因導向還沒人寫的課。額滿「不會」擋下投稿，只是沒有錢。
+        quota: {
+            label: '回饋金名額',
+            chip: '{{tier}} {{used}}/{{limit}}',
+            full: '已額滿',
+            remaining: '尚餘 {{count}} 名',
+            helper: '每門課的回饋金有名額上限（系上必修 3、系上選修 2、其他 1）。額滿後仍然可以投稿，只是不會發放回饋金。',
+            fullWarning: '這門課的回饋金名額（{{limit}} 名）已經額滿。你仍然可以送出評價，而且一樣會公開顯示，只是不會發放回饋金。',
+            overQuota: '超出名額',
+            overQuotaHint: '這門課的名額已被更早投稿的評價佔滿，本篇不發放回饋金',
+            eligible: '名額內',
+            tier: {
+                imRequired: '系上必修',
+                imElective: '系上選修',
+                other: '其他',
+            },
+        },
+
         // 回饋金發放管理（總務部）
         payout: {
             title: '回饋金發放',
             description: '管理課程評價回饋金是否已發放；只有通過審核的評價才會出現在這裡',
             searchPlaceholder: '搜尋姓名、學號、課程名稱或教授...',
-            unpaid: '未發放',
+            // 發放狀態三態。「未處理」而不是「未發放」：後者跟「不發放」只差一個字，
+            // 但意思完全相反（還沒決定 vs 已經決定不發），總務會看錯
+            pending: '未處理',
             paid: '已發放',
+            declined: '不發放',
             empty: '沒有符合條件的紀錄',
             recipient: '領取人',
             studentId: '學號',
@@ -719,7 +741,8 @@ const zhTW = {
             paidBy: '發放人',
             action: '操作',
             markPaid: '標記已發放',
-            markUnpaid: '改回未發放',
+            markDeclined: '標記不發放',
+            markPending: '改回未處理',
             exportCsv: '匯出 CSV',
             anonymousTag: '匿名',
             anonymousHint: '此評價對外匿名顯示，但回饋金仍須發放給本人',
@@ -727,7 +750,8 @@ const zhTW = {
             roleOn: '可管理回饋金發放',
             roleOff: '無回饋金發放權限',
             markPaidSuccess: '已標記為已發放',
-            markUnpaidSuccess: '已改回未發放',
+            markDeclinedSuccess: '已標記為不發放',
+            markPendingSuccess: '已改回未處理',
             updateFailed: '更新發放狀態失敗',
             fetchFailed: '取得發放清單失敗',
             exportFailed: '匯出失敗',
@@ -799,8 +823,9 @@ const zhTW = {
         STATUS_INVALID: '狀態須為 approved 或 rejected',
         REJECT_REASON_REQUIRED: '拒絕時請填寫拒絕原因',
         REVIEW_STATUS_UPDATE_FAILED: '審核評價失敗',
-        PAID_STATUS_INVALID: '發放狀態須為 true 或 false',
+        PAYOUT_STATUS_INVALID: '發放狀態須為未處理、已發放或不發放',
         PAYOUT_REQUIRES_APPROVED: '只有已核准的評價才能標記發放',
+        PAYOUT_OVER_QUOTA: '這門課的回饋金名額已滿，或有更早投稿的評價尚未審核完畢',
         PAYOUT_UPDATE_FAILED: '更新發放狀態失敗',
         FETCH_PAYOUTS_FAILED: '取得發放清單失敗',
         EXPORT_PAYOUTS_FAILED: '匯出發放清單失敗',

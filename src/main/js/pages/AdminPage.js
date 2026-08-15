@@ -82,6 +82,28 @@ const PERMISSION_TO_TAB = {
 };
 const CONSOLE_PERMISSIONS = Object.keys(PERMISSION_TO_TAB);
 
+// 發放狀態列的標籤樣式。filled 與 outlined 兩種變體並排時，outlined 多出的 1px 邊框
+// 會讓它看起來比較矮、字也比較細，所以高度與字級都明確指定，兩顆共用同一組值。
+const PAYOUT_CHIP_SX = {
+  height: 24,
+  fontSize: '0.75rem',
+  fontWeight: 500,
+  '& .MuiChip-label': { px: 1 },
+};
+
+// 發放狀態 → 標籤顏色。declined 用中性灰而不是紅色：
+// 「不發放」是正常的結案結果（多半只是超出名額），不是錯誤，不該看起來像警報
+const PAYOUT_STATUS_COLOR = {
+  pending: 'warning',
+  paid: 'success',
+  declined: 'default',
+};
+
+// 投稿/發放時間一律顯示台北時間、24 時制。
+// 不指定 timeZone 的話跟著瀏覽器跑，總務在國外對帳就會看到差 8 小時的時間。
+const TAIPEI_DATE = { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' };
+const TAIPEI_TIME = { timeZone: 'Asia/Taipei', hour12: false, hour: '2-digit', minute: '2-digit' };
+
 const AdminPage = () => {
   const { t, i18n } = useTranslation();
   // isAdmin 一律取自 AuthContext（全前端唯一來源），這個檔案原本自己重複推導了 4 次
@@ -161,7 +183,7 @@ const AdminPage = () => {
   // 回饋金發放管理相關狀態
   const [payouts, setPayouts] = useState([]);
   const [payoutLoading, setPayoutLoading] = useState(false);
-  const [payoutFilter, setPayoutFilter] = useState('unpaid');
+  const [payoutFilter, setPayoutFilter] = useState('pending');
   const [payoutSearchTerm, setPayoutSearchTerm] = useState('');
 
   // 考古題表單狀態
@@ -449,8 +471,8 @@ const AdminPage = () => {
   const fetchPayouts = async () => {
     try {
       setPayoutLoading(true);
-      const paidParam = payoutFilter === 'all' ? undefined : String(payoutFilter === 'paid');
-      const result = await courseReviewService.getPayouts(paidParam);
+      const statusParam = payoutFilter === 'all' ? undefined : payoutFilter;
+      const result = await courseReviewService.getPayouts(statusParam);
       setPayouts(result);
     } catch (err) {
       console.error('取得發放清單錯誤:', err);
@@ -460,11 +482,12 @@ const AdminPage = () => {
     }
   };
 
-  const handleTogglePayout = async (review, isPaid) => {
+  // status: 'pending'（未處理）| 'paid'（已發放）| 'declined'（不發放）
+  const handleTogglePayout = async (review, status) => {
     try {
-      await courseReviewService.setPayoutStatus(review.id, isPaid);
+      await courseReviewService.setPayoutStatus(review.id, status);
       await fetchPayouts();
-      setSuccess(isPaid ? t('courseReview.payout.markPaidSuccess') : t('courseReview.payout.markUnpaidSuccess'));
+      setSuccess(t(`courseReview.payout.mark${status.charAt(0).toUpperCase()}${status.slice(1)}Success`));
     } catch (err) {
       setError(translateApiError(err, t('courseReview.payout.updateFailed')));
     }
@@ -1133,7 +1156,8 @@ const AdminPage = () => {
     paid: users.filter((managedUser) => managedUser.hasPaidFee).length,
   };
 
-  const unpaidPayoutCount = payouts.filter((review) => !review.isPaid).length;
+  // 待辦數只算「未處理」。標記為不發放的已經結案了，不該繼續佔著徽章上的數字
+  const unpaidPayoutCount = payouts.filter((review) => (review.payoutStatus || 'pending') === 'pending').length;
 
   const filteredPayouts = payouts.filter((review) => {
     const keyword = payoutSearchTerm.trim().toLowerCase();
@@ -2665,13 +2689,14 @@ const AdminPage = () => {
             onChange={(_, v) => v && setPayoutFilter(v)}
             sx={{ mb: 3 }}
           >
-            <ToggleButton value="unpaid">
-              {t('courseReview.payout.unpaid')}
+            <ToggleButton value="pending">
+              {t('courseReview.payout.pending')}
               {unpaidPayoutCount > 0 && (
                 <Chip label={unpaidPayoutCount} size="small" color="warning" sx={{ ml: 1 }} />
               )}
             </ToggleButton>
             <ToggleButton value="paid">{t('courseReview.payout.paid')}</ToggleButton>
+            <ToggleButton value="declined">{t('courseReview.payout.declined')}</ToggleButton>
             <ToggleButton value="all">{t('common.all')}</ToggleButton>
           </ToggleButtonGroup>
 
@@ -2731,17 +2756,45 @@ const AdminPage = () => {
                         {courseReviewService.getAcademicTermLabel(review.year, review.semester)}
                       </TableCell>
                       <TableCell>
-                        {review.created_at ? new Date(review.created_at).toLocaleDateString('zh-TW') : '-'}
+                        {review.created_at ? (
+                          <>
+                            {new Date(review.created_at).toLocaleDateString('zh-TW', TAIPEI_DATE)}
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              {new Date(review.created_at).toLocaleTimeString('zh-TW', TAIPEI_TIME)}
+                            </Typography>
+                          </>
+                        ) : '-'}
                       </TableCell>
                       <TableCell>
-                        <Chip
-                          label={review.isPaid ? t('courseReview.payout.paid') : t('courseReview.payout.unpaid')}
-                          size="small"
-                          color={review.isPaid ? 'success' : 'warning'}
-                        />
+                        {/* 兩個標籤並排。共用同一組 sx 讓高度與字級一致——outlined 變體多了
+                            1px 邊框，不明確指定的話跟 filled 排在一起會看起來一高一低 */}
+                        <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
+                          <Chip
+                            label={t(`courseReview.payout.${review.payoutStatus || 'pending'}`)}
+                            size="small"
+                            color={PAYOUT_STATUS_COLOR[review.payoutStatus] || 'warning'}
+                            sx={PAYOUT_CHIP_SX}
+                          />
+                          {/* 超出回饋金名額的評價按下去會被後端擋，先標出來省得白按。
+                              比對 === false 而不是 !review.payoutEligible：後端若還沒
+                              部署到帶名額的版本，這個欄位會是 undefined，那時什麼都不該顯示 */}
+                          {review.payoutEligible === false && (
+                            <Tooltip title={t('courseReview.quota.overQuotaHint')}>
+                              <Chip
+                                label={t('courseReview.quota.overQuota')}
+                                size="small"
+                                color="error"
+                                variant="outlined"
+                                sx={PAYOUT_CHIP_SX}
+                              />
+                            </Tooltip>
+                          )}
+                        </Stack>
                         {review.isPaid && review.paidAt && (
-                          <Typography variant="caption" color="text.secondary" display="block">
-                            {new Date(review.paidAt).toLocaleDateString('zh-TW')}
+                          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                            {new Date(review.paidAt).toLocaleDateString('zh-TW', TAIPEI_DATE)}
+                            {' '}
+                            {new Date(review.paidAt).toLocaleTimeString('zh-TW', TAIPEI_TIME)}
                           </Typography>
                         )}
                       </TableCell>
@@ -2751,9 +2804,23 @@ const AdminPage = () => {
                           : '-'}
                       </TableCell>
                       <TableCell align="center">
-                        {review.isPaid ? (
-                          <Button size="small" color="inherit" onClick={() => handleTogglePayout(review, false)}>
-                            {t('courseReview.payout.markUnpaid')}
+                        {/* 取消發放永遠可以按：已發放的評價一定在名額內（is_paid 會把它固定住），
+                            而且不能讓任何一列卡在「無法操作」的狀態。
+                            只有「標記已發放」需要看名額——超出名額時後端會回 PAYOUT_OVER_QUOTA，
+                            按了必定失敗，所以整個不顯示，不是 disabled：
+                            一顆按不動的按鈕只會讓人反覆嘗試。理由已經寫在左邊的「超出名額」標籤上。 */}
+                        {review.payoutStatus === 'paid' || review.payoutStatus === 'declined' ? (
+                          <Button size="small" color="inherit" onClick={() => handleTogglePayout(review, 'pending')}>
+                            {t('courseReview.payout.markPending')}
+                          </Button>
+                        ) : review.payoutEligible === false ? (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="inherit"
+                            onClick={() => handleTogglePayout(review, 'declined')}
+                          >
+                            {t('courseReview.payout.markDeclined')}
                           </Button>
                         ) : (
                           <Button
@@ -2761,7 +2828,7 @@ const AdminPage = () => {
                             variant="contained"
                             color="success"
                             startIcon={<PaidIcon />}
-                            onClick={() => handleTogglePayout(review, true)}
+                            onClick={() => handleTogglePayout(review, 'paid')}
                           >
                             {t('courseReview.payout.markPaid')}
                           </Button>

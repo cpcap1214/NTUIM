@@ -7,6 +7,7 @@
 // 執行方式（在 src/backend 目錄下）：
 //   npm run fetch-courses
 //   npm run fetch-courses -- --semesters=115-1,114-2
+//   npm run fetch-courses -- --allow-partial   （逃生門，見下方完整性檢查）
 //
 // 手動執行、每學期重跑一次即可（不掛在 build/start 流程）。
 //
@@ -31,6 +32,7 @@
 const https = require('https');
 const cheerio = require('cheerio');
 const { CourseCatalog, sequelize } = require('../models');
+const { normalizeRequirement, isImTargetAudience, catalogRowRank } = require('../config/reviewQuota');
 
 const BASE_URL = 'https://nol.ntu.edu.tw/nol/coursesearch/search_for_02_dpt.php';
 const REQUEST_TIMEOUT_MS = 15000;
@@ -39,6 +41,9 @@ const REQUEST_DELAY_MS = 350;
 // 這個值同時是 startrec 的遞增步長，兩者必須一致。
 const ROWS_PER_PAGE = 150;
 const MAX_PAGES_PER_SEMESTER = 400; // 安全上限，避免頁面行為改變時無限迴圈
+// 失敗分頁的重試輪數與退避間隔。一趟一百多個請求，零星的暫時性錯誤是常態而非例外
+const RETRY_ROUNDS = 3;
+const RETRY_DELAY_MS = 2000;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -112,6 +117,9 @@ const parseCourseRows = (html) => {
         const courseCode = $(cells[2]).text().trim();
         const courseNameCell = $(cells[4]);
         const courseName = (courseNameCell.find('a').text() || courseNameCell.text()).trim();
+        // 第 9 欄「必/選修」。實測值是「必修 / 必帶 / 選修」，不是二值，
+        // 而且資管系的核心必修全部標「必帶」——正規化的細節見 config/reviewQuota.js
+        const requirementRaw = $(cells[9]).text().trim();
         const professorRaw = $(cells[10]).text().trim();
 
         if (!courseCode || !courseName) return;
@@ -122,7 +130,11 @@ const parseCourseRows = (html) => {
             // 空字串而非 null：唯一約束是 (course_code, professor, year, semester)，
             // 而 SQLite 的 NULL 互不相等，用 null 會讓 upsert 永遠比不中而不斷新增重複列
             professor: professorRaw || '',
-            targetAudience
+            targetAudience,
+            // 必選修在 NOL 上是相對於「授課對象」的（同一門課對資管是必修、對外系可能是選修），
+            // 所以這兩個值必須成對保留，交給下面的合併邏輯挑出資管的那一列
+            requirement: normalizeRequirement(requirementRaw),
+            isImTarget: isImTargetAudience(targetAudience)
         });
     });
 
@@ -142,6 +154,9 @@ const parseCliSemesters = () => {
     return arg.replace('--semesters=', '').split(',').map((s) => s.trim()).filter(Boolean);
 };
 
+// 逃生門：明知資料不完整仍要寫入。正常情況不該用到，修正後重跑才是對的做法
+const allowPartial = process.argv.includes('--allow-partial');
+
 // 抓完一個學期的所有分頁，回傳 { total, parsed, courses, failedPages }
 //
 // 刻意先把整個學期收集到記憶體，最後才開交易寫入：邊抓邊寫會讓寫入鎖橫跨
@@ -160,7 +175,16 @@ const fetchSemester = async (semester) => {
     const byKey = new Map();
     const addAll = (rows) => {
         rows.forEach((c) => {
-            byKey.set(JSON.stringify([c.courseCode, c.professor]), c);
+            const key = JSON.stringify([c.courseCode, c.professor]);
+            const prev = byKey.get(key);
+            // 原本是無條件覆蓋（後來者贏）。那在只存課名/教授時無所謂，但加上必選修之後
+            // 就會出事：同一門課被多個系所列為授課對象時，留到哪一列變成看分頁順序的運氣，
+            // 而必選修是相對於授課對象的——留到電機系那一列，資管系必修就變成「其他」。
+            //
+            // 改成留下資訊量最高的一列（資管必修 > 資管選修 > 資管未知 > 非資管）。
+            // 用「嚴格大於」而不是「大於等於」：同名次時保留先看到的，
+            // 讓合併結果與抓取順序無關，重跑才會得到一模一樣的資料。
+            if (!prev || catalogRowRank(c) > catalogRowRank(prev)) byKey.set(key, c);
         });
     };
 
@@ -185,6 +209,29 @@ const fetchSemester = async (semester) => {
         } catch (error) {
             failedPages.push({ startrec, message: error.message });
             console.warn(`    [${semester} startrec=${startrec}] 失敗：${error.message}`);
+        }
+    }
+
+    // 重試失敗的分頁。
+    //
+    // 一趟要打一百多個請求，實測必定會零星遇到 ECONNRESET / ENOTFOUND 這類暫時性錯誤。
+    // 由於「資料不完整就整個學期不寫」（漏掉資管系那一列會讓必修靜默降級成 1 名），
+    // 沒有重試的話一頁失敗就整趟白跑，實務上幾乎跑不完。
+    // 退避等待久一點：這種錯誤通常是對方短暫拒絕或本地 DNS 抖動，馬上重打只會再失敗一次。
+    for (let attempt = 1; attempt <= RETRY_ROUNDS && failedPages.length > 0; attempt += 1) {
+        const retrying = failedPages.splice(0, failedPages.length);
+        console.log(`    重試第 ${attempt} 輪：${retrying.length} 個分頁`);
+        for (const { startrec } of retrying) {
+            await sleep(RETRY_DELAY_MS);
+            try {
+                const rows = parseCourseRows(await fetchHtml(pageUrl(semester, startrec)));
+                parsed += rows.length;
+                addAll(rows);
+                console.log(`      startrec=${startrec} 補抓成功`);
+            } catch (error) {
+                failedPages.push({ startrec, message: error.message });
+                console.warn(`      startrec=${startrec} 仍然失敗：${error.message}`);
+            }
         }
     }
 
@@ -232,6 +279,22 @@ async function main() {
             continue;
         }
 
+        // 資料不完整就不寫。
+        //
+        // 在加上修別之前，漏掉幾頁只是課少幾門，無害。加上之後就不一樣了：
+        // 漏掉的那一頁若剛好含 IM2008 的「資管系」那一列，這門課會靜默地從
+        // 3 個名額掉到 1 個，而且畫面上完全看不出異常——沒有錯誤、沒有缺漏，
+        // 只是分類錯了。這種失敗比缺資料危險得多，寧可整個學期不寫。
+        if (!allowPartial && (result.failedPages.length > 0 || result.parsed !== result.total)) {
+            console.error(
+                `  ${semester} 資料不完整（解析 ${result.parsed}/${result.total}，`
+                + `失敗分頁 ${result.failedPages.length} 頁），跳過寫入。`
+            );
+            console.error('    修正後重跑即可；確定要寫入不完整的資料請加 --allow-partial');
+            hadFailure = true;
+            continue;
+        }
+
         // 一個學期一個交易，且只在資料都到手之後才開始
         let written = 0;
         try {
@@ -244,7 +307,11 @@ async function main() {
                         year: semRecord.year,
                         semester: semRecord.semester,
                         departmentCode: null,
-                        departmentName: course.targetAudience || null
+                        departmentName: course.targetAudience || null,
+                        // 一律明確傳入，包含 null。省略欄位會讓 upsert 保留舊值，
+                        // 那樣重跑就沒辦法把過期的分類「降級」回未知
+                        requirement: course.requirement,
+                        isImTarget: course.isImTarget
                     }, { transaction: t });
                     written += 1;
                 }

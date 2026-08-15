@@ -21,6 +21,7 @@ jest.mock('../../../main/js/services/courseReviewService', () => ({
     default: {
         getReviewableTerms: jest.fn(),
         searchCourseCatalog: jest.fn(),
+        getCourseQuota: jest.fn(),
         getAcademicTermLabel: jest.fn(),
         createReview: jest.fn(),
         updateReview: jest.fn(),
@@ -50,12 +51,24 @@ const REVIEWABLE_TERMS = [
     { year: 2024, semester: '2' },
 ];
 
+// 課程目錄的每一列都帶回饋金名額（後端 /course-catalog/search 算好回傳）。
+// Phl1511 刻意設成額滿，用來驗證「額滿只是警告、不擋投稿」。
 const CATALOG = {
     '2025-1': [
-        { courseCode: 'LibEdu1021', courseName: '邏輯', professor: '傅皓政', year: 2025, semester: '1' },
+        {
+            courseCode: 'LibEdu1021', courseName: '邏輯', professor: '傅皓政', year: 2025, semester: '1',
+            quotaTier: 'other', quotaLimit: 1, quotaUsed: 0, quotaRemaining: 1,
+        },
     ],
     '2025-2': [
-        { courseCode: 'Phl1511', courseName: '邏輯', professor: '曾漢塘', year: 2025, semester: '2' },
+        {
+            courseCode: 'Phl1511', courseName: '邏輯', professor: '曾漢塘', year: 2025, semester: '2',
+            quotaTier: 'imRequired', quotaLimit: 3, quotaUsed: 3, quotaRemaining: 0,
+        },
+        {
+            courseCode: 'IM2008', courseName: '邏輯', professor: '孫嘉明', year: 2025, semester: '2',
+            quotaTier: 'imRequired', quotaLimit: 3, quotaUsed: 1, quotaRemaining: 2,
+        },
     ],
 };
 
@@ -63,6 +76,9 @@ beforeEach(() => {
     jest.clearAllMocks();
     localStorage.clear();
     courseReviewService.getReviewableTerms.mockResolvedValue(REVIEWABLE_TERMS);
+    // 手動輸入課程時的補查。預設回 null＝查不到名額，不顯示任何名額提示，
+    // 讓既有測試（都走下拉選單）的行為完全不受影響。
+    courseReviewService.getCourseQuota.mockResolvedValue(null);
     courseReviewService.getAcademicTermLabel.mockImplementation(
         (year, semester) => `${year - 1911}-${semester}`
     );
@@ -219,5 +235,87 @@ describe('WriteReviewDialog 學期與課程搜尋', () => {
 
         expect(await screen.findByText('courseReview.form.termRequiredForManualEntry')).toBeInTheDocument();
         expect(courseReviewService.createReview).not.toHaveBeenCalled();
+    });
+});
+
+// 回饋金名額。i18n 在測試裡直接回 key，插值會被丟掉，所以這裡一律斷言「key 有沒有出現」，
+// 不斷言數字——數字是後端算的，由 src/test/unit/backend/reviewQuota.test.js 負責。
+describe('WriteReviewDialog 回饋金名額', () => {
+    const selectCourse = async (label) => {
+        renderDialog();
+        await waitFor(() => expect(termField()).toHaveTextContent('114-2'));
+        fireEvent.change(nameInput(), { target: { value: '邏輯' } });
+        const option = await screen.findByText(label, undefined, { timeout: 3000 });
+        fireEvent.click(option);
+    };
+
+    test('每個課程選項都顯示名額標籤', async () => {
+        renderDialog();
+        await waitFor(() => expect(termField()).toHaveTextContent('114-2'));
+        fireEvent.change(nameInput(), { target: { value: '邏輯' } });
+
+        await waitFor(
+            () => expect(screen.getAllByText('courseReview.quota.chip')).toHaveLength(2),
+            { timeout: 3000 }
+        );
+    });
+
+    test('後端沒回名額欄位時安靜地不顯示標籤，不會渲染 undefined', async () => {
+        // 前端先部署、後端還是舊版的情況。這時什麼都不顯示才對。
+        courseReviewService.searchCourseCatalog.mockResolvedValueOnce([
+            { courseCode: 'Phl1511', courseName: '邏輯', professor: '曾漢塘', year: 2025, semester: '2' },
+        ]);
+
+        renderDialog();
+        await waitFor(() => expect(termField()).toHaveTextContent('114-2'));
+        fireEvent.change(nameInput(), { target: { value: '邏輯' } });
+
+        await screen.findByText('曾漢塘 · Phl1511', undefined, { timeout: 3000 });
+        expect(screen.queryByText('courseReview.quota.chip')).not.toBeInTheDocument();
+    });
+
+    test('選到額滿的課會顯示警告', async () => {
+        await selectCourse('曾漢塘 · Phl1511');
+        expect(await screen.findByText('courseReview.quota.fullWarning')).toBeInTheDocument();
+    });
+
+    test('選到還有名額的課不顯示警告', async () => {
+        await selectCourse('孫嘉明 · IM2008');
+        await waitFor(() => expect(professorInput()).toHaveValue('孫嘉明'));
+        expect(screen.queryByText('courseReview.quota.fullWarning')).not.toBeInTheDocument();
+    });
+
+    test('換學期後名額警告消失——名額是綁在課號＋教授＋學年期上的', async () => {
+        await selectCourse('曾漢塘 · Phl1511');
+        await screen.findByText('courseReview.quota.fullWarning');
+
+        fireEvent.mouseDown(termField());
+        fireEvent.click(await screen.findByRole('option', { name: '114-1' }));
+
+        await waitFor(() =>
+            expect(screen.queryByText('courseReview.quota.fullWarning')).not.toBeInTheDocument()
+        );
+    });
+
+    test('額滿時仍然可以送出——名額只影響回饋金，不擋投稿', async () => {
+        // 這是整個功能的核心約定。硬性擋下會讓使用者寫完 50 字才被拒絕，
+        // 而且熱門必修的第 10 篇評價對讀者仍然有價值。
+        await selectCourse('曾漢塘 · Phl1511');
+        await screen.findByText('courseReview.quota.fullWarning');
+
+        // 四個評分都給 5 顆星（每個 Rating 各有一個「5 Stars」的 radio）
+        screen.getAllByLabelText('5 Stars').forEach((input) => fireEvent.click(input));
+
+        fireEvent.change(screen.getByLabelText(/courseReview\.form\.courseContent/), {
+            target: { value: '介紹命題邏輯與述詞邏輯' },
+        });
+        // 心得的下限是 50 字，這裡刻意寫足，否則會被 COMMENT_LENGTH 擋下而測不到名額的行為
+        fireEvent.change(screen.getByLabelText(/courseReview\.form\.comment/), {
+            target: { value: '這門課的內容相當扎實，作業量適中，老師講解清楚，考試範圍明確，整體來說很推薦想要打好邏輯基礎的同學修習。' },
+        });
+
+        fireEvent.click(screen.getByText('courseReview.form.submitReview'));
+
+        await waitFor(() => expect(courseReviewService.createReview).toHaveBeenCalled());
     });
 });

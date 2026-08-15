@@ -370,6 +370,33 @@ const CourseReview = sequelize.define('CourseReview', {
     paidBy: {
         type: DataTypes.INTEGER,
         field: 'paid_by'
+    },
+    // 發放狀態的唯一真相來源：pending（未處理）/ paid（已發放）/ declined（不發放）。
+    // isPaid 是它的鏡像，只為了讓舊版程式碼在回滾後仍能運作；兩者一律由
+    // routes/courseReviews.js 的 applyPayoutStatus() 一起寫入，不要單獨改其中一個。
+    payoutStatus: {
+        type: DataTypes.STRING(10),
+        allowNull: false,
+        defaultValue: 'pending',
+        field: 'payout_status'
+    },
+    // 回饋金名額（見 config/reviewQuota.js）。以下兩欄都是「寫一次就不再改的輸入」，
+    // 不是推導狀態——名額資格本身是每次查詢即時算出來的，沒有存在資料庫裡。
+    //
+    // 名額規則生效前就存在的評價一律豁免，避免溯及既往。只由 migration 010 寫入，
+    // 應用程式碼永遠不碰它。
+    quotaExempt: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+        field: 'quota_exempt'
+    },
+    // 被拒絕後修改重送的時間。排名用 COALESCE(requeued_at, created_at)，
+    // 讓重送的評價排到隊伍後面，不會用原本的 created_at 插隊擠掉已核准的人。
+    // 只有 rejected → pending 這條路徑會寫；保持 NULL 時等同於用 created_at。
+    requeuedAt: {
+        type: DataTypes.DATE,
+        field: 'requeued_at'
     }
 }, {
     tableName: 'course_reviews',
@@ -446,6 +473,19 @@ const CourseCatalog = sequelize.define('CourseCatalog', {
     departmentName: {
         type: DataTypes.STRING(50),
         field: 'department_name'
+    },
+    // 修別，由爬蟲從 NOL 結果表第 9 欄（必/選修）正規化而來。
+    // NULL = 還沒被新版爬蟲抓過，一律當「其他」處理（見 config/reviewQuota.js）。
+    // 刻意不用 ENUM：SQLite 上 Sequelize 的 ENUM 只是加 CHECK，
+    // 而這個欄位的值域可能隨 NOL 頁面改變，用字串比較不會卡住遷移。
+    requirement: {
+        type: DataTypes.STRING(10)
+    },
+    // 授課對象是否為資管系／資管所。必選修在 NOL 上是相對於授課對象的屬性，
+    // 所以「是不是資管的課」必須跟修別一起存，只有其中一個沒有意義。
+    isImTarget: {
+        type: DataTypes.BOOLEAN,
+        field: 'is_im_target'
     }
 }, {
     tableName: 'course_catalog',

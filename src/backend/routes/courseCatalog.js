@@ -3,7 +3,8 @@ const router = express.Router();
 const { query, validationResult } = require('express-validator');
 const { CourseCatalog, sequelize } = require('../models');
 const { Op } = require('sequelize');
-const { listReviewableTerms } = require('../utils/semesterEligibility');
+const { listReviewableTerms, isTermReviewable } = require('../utils/semesterEligibility');
+const { getQuotaForCourses, quotaKey } = require('../services/reviewQuotaService');
 
 // 可填寫評價的學年期（公開）：期末考已結束的學期才可填，給前端「學年期」下拉選單用
 router.get('/reviewable-terms', (req, res) => {
@@ -101,13 +102,71 @@ router.get('/search', [
                 ['semester', 'DESC']
             ],
             limit: parseInt(limit),
-            attributes: ['courseCode', 'courseName', 'professor', 'year', 'semester']
+            attributes: [
+                'courseCode', 'courseName', 'professor', 'year', 'semester',
+                // 名額級距要用的分類。不直接回傳給前端——前端拿到的是算好的 quotaTier
+                'requirement', 'isImTarget'
+            ],
+            raw: true
         });
 
-        res.json({ data: rows });
+        // 回饋金名額。搜尋結果本身就是 catalog 列，所以級距不必再查一次資料庫，
+        // 只需要一條 grouped query 去數評價數——整個端點固定兩條 SQL，與筆數無關。
+        const quotas = await getQuotaForCourses(rows, rows);
+
+        res.json({
+            data: rows.map((row) => ({
+                courseCode: row.courseCode,
+                courseName: row.courseName,
+                professor: row.professor,
+                year: row.year,
+                semester: row.semester,
+                // quotaTier 是穩定的 enum（imRequired / imElective / other），
+                // 中文由前端的 i18n 決定；後端不回傳給使用者看的文案
+                ...quotas.get(quotaKey(row))
+            }))
+        });
     } catch (error) {
         console.error('搜尋課程目錄錯誤:', error);
         res.status(500).json({ error: '搜尋課程目錄失敗', errorCode: 'FETCH_FAILED' });
+    }
+});
+
+// 單一課程的回饋金名額（公開）。
+//
+// /search 的每一列都已經帶名額了，這支是補「手動輸入課程」的洞：課程目錄裡沒有的課
+// （或使用者不從下拉選單選、自己打課名的情況）在 /search 走不到，沒有這支端點的話
+// 那些人完全看不到名額資訊，等於回到「投稿後才發現沒錢」。
+router.get('/quota', [
+    query('courseCode').isString().notEmpty(),
+    query('professor').isString().notEmpty(),
+    query('year').isInt({ min: 1911 }),
+    query('semester').isIn(['1', '2', 'summer'])
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+        const { courseCode, professor, semester } = req.query;
+        const year = parseInt(req.query.year, 10);
+
+        // 與 /search 同樣的把關：不可填寫的學期不給查，否則等於開一個側門
+        if (!isTermReviewable(year, semester)) {
+            return res.status(400).json({
+                error: '該學年期尚不可填寫評價',
+                errorCode: 'TERM_NOT_REVIEWABLE'
+            });
+        }
+
+        const key = { courseCode, professor, year, semester };
+        const quotas = await getQuotaForCourses([key]);
+
+        res.json({ data: { ...key, ...quotas.get(quotaKey(key)) } });
+    } catch (error) {
+        console.error('取得課程名額錯誤:', error);
+        res.status(500).json({ error: '取得課程名額失敗', errorCode: 'FETCH_FAILED' });
     }
 });
 
