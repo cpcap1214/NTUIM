@@ -523,6 +523,19 @@ const AnnouncementDismissal = sequelize.define('AnnouncementDismissal', {
     dismissedAt: { type: DataTypes.DATE, field: 'dismissed_at', defaultValue: DataTypes.NOW }
 }, { tableName: 'announcement_dismissals', timestamps: false });
 
+// 匿名意見回饋。
+//
+// ⚠️ 這個模型刻意沒有 userId，也沒有任何指向 User 的關聯——不要加。
+// 匿名若只是介面上的承諾，遲早會有人為了追查而去讀那個欄位。
+// 唯一可靠的保證是資料庫裡根本沒有它。詳見 migrations/010_create_feedback.sql。
+const Feedback = sequelize.define('Feedback', {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    category: { type: DataTypes.ENUM('bug', 'suggestion', 'other'), allowNull: false, defaultValue: 'other' },
+    body: { type: DataTypes.TEXT, allowNull: false },
+    status: { type: DataTypes.ENUM('new', 'read', 'resolved'), allowNull: false, defaultValue: 'new' },
+    adminNote: { type: DataTypes.TEXT, field: 'admin_note' }
+}, { tableName: 'feedback', createdAt: 'created_at', updatedAt: 'updated_at' });
+
 // 定義關聯
 User.belongsToMany(Role, { through: UserRole, foreignKey: 'user_id', otherKey: 'role_id', as: 'roles' });
 Role.belongsToMany(User, { through: UserRole, foreignKey: 'role_id', otherKey: 'user_id', as: 'users' });
@@ -573,5 +586,6 @@ module.exports = {
     ModuleAccess,
     Announcement,
     AnnouncementDismissal,
+    Feedback,
     testConnection
 };

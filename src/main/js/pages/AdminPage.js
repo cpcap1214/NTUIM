@@ -64,6 +64,7 @@ import courseReviewService from '../services/courseReviewService';
 import roleService from '../services/roleService';
 import moduleService from '../services/moduleService';
 import announcementService from '../services/announcementService';
+import feedbackService from '../services/feedbackService';
 import ReviewCard from '../components/courseReview/ReviewCard';
 import { translateApiError } from '../utils';
 
@@ -158,6 +159,17 @@ const AdminPage = () => {
   const [announcementDeleteDialog, setAnnouncementDeleteDialog] = useState(false);
   const [announcementToDelete, setAnnouncementToDelete] = useState(null);
 
+  // 回饋管理相關狀態。
+  // 這些資料裡沒有任何送出者的資訊——feedback 資料表刻意沒有 user_id 欄位。
+  const [feedbackList, setFeedbackList] = useState([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackStatusFilter, setFeedbackStatusFilter] = useState('new');
+  const [feedbackNoteDialog, setFeedbackNoteDialog] = useState(false);
+  const [feedbackNoteTarget, setFeedbackNoteTarget] = useState(null);
+  const [feedbackNoteDraft, setFeedbackNoteDraft] = useState('');
+  const [feedbackDeleteDialog, setFeedbackDeleteDialog] = useState(false);
+  const [feedbackToDelete, setFeedbackToDelete] = useState(null);
+
   // 回饋金發放管理相關狀態
   const [payouts, setPayouts] = useState([]);
   const [payoutLoading, setPayoutLoading] = useState(false);
@@ -238,6 +250,8 @@ const AdminPage = () => {
       if (allRoles.length === 0) fetchRoles();
     } else if (activeTab === 9) {
       fetchAnnouncements();
+    } else if (activeTab === 10) {
+      fetchFeedback();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, navigate, authLoading, activeTab]);
@@ -444,6 +458,59 @@ const AdminPage = () => {
     if (a.publishAt && new Date(a.publishAt) > now) return 'scheduled';
     if (a.expireAt && new Date(a.expireAt) <= now) return 'expired';
     return 'active';
+  };
+
+  // --- 回饋管理 -------------------------------------------------------------
+
+  const fetchFeedback = async (status = feedbackStatusFilter) => {
+    try {
+      setFeedbackLoading(true);
+      // status 傳空字串代表「全部」
+      setFeedbackList(await feedbackService.getAll(status ? { status } : {}));
+    } catch (err) {
+      setError(translateApiError(err, t('feedback.admin.fetchFailed')));
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
+
+  const handleFeedbackStatusFilter = (status) => {
+    setFeedbackStatusFilter(status);
+    fetchFeedback(status);
+  };
+
+  const handleUpdateFeedbackStatus = async (item, status) => {
+    try {
+      await feedbackService.update(item.id, { status });
+      await fetchFeedback();
+      setSuccess(t('feedback.admin.updated'));
+    } catch (err) {
+      setError(translateApiError(err, t('feedback.admin.updateFailed')));
+    }
+  };
+
+  const handleSaveFeedbackNote = async () => {
+    try {
+      await feedbackService.update(feedbackNoteTarget.id, { adminNote: feedbackNoteDraft });
+      setFeedbackNoteDialog(false);
+      setFeedbackNoteTarget(null);
+      await fetchFeedback();
+      setSuccess(t('feedback.admin.updated'));
+    } catch (err) {
+      setError(translateApiError(err, t('feedback.admin.updateFailed')));
+    }
+  };
+
+  const handleDeleteFeedback = async () => {
+    try {
+      await feedbackService.remove(feedbackToDelete.id);
+      setFeedbackDeleteDialog(false);
+      setFeedbackToDelete(null);
+      await fetchFeedback();
+      setSuccess(t('feedback.admin.deleted'));
+    } catch (err) {
+      setError(translateApiError(err, t('feedback.admin.deleteFailed')));
+    }
   };
 
   const fetchPayouts = async () => {
@@ -1165,6 +1232,7 @@ const AdminPage = () => {
     ],
     [
       { labelKey: 'announcement.admin.title', descKey: 'announcement.admin.description', value: 9, permission: 'announcements.manage' },
+      { labelKey: 'feedback.admin.title', descKey: 'feedback.admin.description', value: 10, permission: 'feedback.manage' },
     ],
     [
       { labelKey: 'nav.adminExamManage', descKey: 'admin.sections.examManage', value: 3, permission: 'exams.manage' },
@@ -3038,6 +3106,140 @@ const AdminPage = () => {
           )}
         </Paper>
       )}
+
+      {/* 回饋管理分頁 */}
+      {activeTab === 10 && (
+        <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 3 }}>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              {t('feedback.admin.title')}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {t('feedback.admin.description')}
+            </Typography>
+          </Box>
+
+          {/* 這段提示是刻意放的：資料表沒有送出者欄位，但 nginx access log 有 IP 與時間，
+              技術上仍可能用時間戳去對。把界線寫清楚，比假裝風險不存在誠實。 */}
+          <Alert severity="info" sx={{ mb: 2 }}>
+            {t('feedback.admin.anonymityNotice')}
+          </Alert>
+
+          <ToggleButtonGroup
+            value={feedbackStatusFilter}
+            exclusive
+            size="small"
+            onChange={(_, v) => v !== null && handleFeedbackStatusFilter(v)}
+            sx={{ mb: 2 }}
+          >
+            <ToggleButton value="new">{t('feedback.admin.status.new')}</ToggleButton>
+            <ToggleButton value="read">{t('feedback.admin.status.read')}</ToggleButton>
+            <ToggleButton value="resolved">{t('feedback.admin.status.resolved')}</ToggleButton>
+            <ToggleButton value="">{t('feedback.admin.allStatuses')}</ToggleButton>
+          </ToggleButtonGroup>
+
+          {feedbackLoading && <LinearProgress sx={{ mb: 2 }} />}
+
+          {feedbackList.length === 0 && !feedbackLoading ? (
+            <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
+              {t('feedback.admin.empty')}
+            </Typography>
+          ) : (
+            <Stack spacing={2}>
+              {feedbackList.map((item) => (
+                <Paper key={item.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }} flexWrap="wrap">
+                    <Chip size="small" label={t(`feedback.categories.${item.category}`)} color="primary" variant="outlined" />
+                    <Chip
+                      size="small"
+                      label={t(`feedback.admin.status.${item.status}`)}
+                      color={item.status === 'new' ? 'warning' : item.status === 'resolved' ? 'success' : 'default'}
+                    />
+                    <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+                      {new Date(item.created_at || item.createdAt).toLocaleString(i18n.language)}
+                    </Typography>
+                  </Stack>
+
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-line', lineHeight: 1.8, mb: 1.5 }}>
+                    {item.body}
+                  </Typography>
+
+                  {item.adminNote && (
+                    <Alert severity="info" icon={false} sx={{ mb: 1.5, py: 0.5 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 700, display: 'block' }}>
+                        {t('feedback.admin.note')}
+                      </Typography>
+                      <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>{item.adminNote}</Typography>
+                    </Alert>
+                  )}
+
+                  <Stack direction="row" spacing={1} flexWrap="wrap">
+                    {item.status !== 'read' && (
+                      <Button size="small" onClick={() => handleUpdateFeedbackStatus(item, 'read')}>
+                        {t('feedback.admin.markRead')}
+                      </Button>
+                    )}
+                    {item.status !== 'resolved' && (
+                      <Button size="small" color="success" onClick={() => handleUpdateFeedbackStatus(item, 'resolved')}>
+                        {t('feedback.admin.markResolved')}
+                      </Button>
+                    )}
+                    <Button
+                      size="small"
+                      onClick={() => {
+                        setFeedbackNoteTarget(item);
+                        setFeedbackNoteDraft(item.adminNote || '');
+                        setFeedbackNoteDialog(true);
+                      }}
+                    >
+                      {t('feedback.admin.editNote')}
+                    </Button>
+                    <Button
+                      size="small"
+                      color="error"
+                      onClick={() => { setFeedbackToDelete(item); setFeedbackDeleteDialog(true); }}
+                    >
+                      {t('common.delete')}
+                    </Button>
+                  </Stack>
+                </Paper>
+              ))}
+            </Stack>
+          )}
+        </Paper>
+      )}
+
+      {/* 管理員備註對話框 */}
+      <Dialog open={feedbackNoteDialog} onClose={() => setFeedbackNoteDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{t('feedback.admin.editNote')}</DialogTitle>
+        <DialogContent>
+          <TextField
+            value={feedbackNoteDraft}
+            onChange={(e) => setFeedbackNoteDraft(e.target.value)}
+            multiline
+            minRows={4}
+            fullWidth
+            sx={{ mt: 1 }}
+            helperText={t('feedback.admin.noteHelper')}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setFeedbackNoteDialog(false)}>{t('common.cancel')}</Button>
+          <Button variant="contained" onClick={handleSaveFeedbackNote}>{t('common.save')}</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 回饋刪除確認 */}
+      <Dialog open={feedbackDeleteDialog} onClose={() => setFeedbackDeleteDialog(false)}>
+        <DialogTitle>{t('feedback.admin.deleteTitle')}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>{t('feedback.admin.confirmDelete')}</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setFeedbackDeleteDialog(false)}>{t('common.cancel')}</Button>
+          <Button color="error" variant="contained" onClick={handleDeleteFeedback}>{t('common.delete')}</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* 公告編輯對話框 */}
       <Dialog open={announcementDialog} onClose={() => setAnnouncementDialog(false)} maxWidth="sm" fullWidth>

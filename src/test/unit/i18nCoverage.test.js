@@ -20,8 +20,16 @@ const collectCodes = () => {
             .filter((f) => f.endsWith('.js'))
             .forEach((f) => {
                 const src = fs.readFileSync(path.join(abs, f), 'utf8');
-                // errorCode: 'X'  以及 validator 的 withMessage({ code: 'X', ... })
-                [/errorCode:\s*'([A-Z0-9_]+)'/g, /code:\s*'([A-Z0-9_]+)'/g].forEach((re) => {
+                // 三種寫法都要掃到：
+                //   errorCode: 'X'                     一般回應
+                //   withMessage({ code: 'X', ... })    express-validator
+                //   errorResponse('X', '中文')          courseReviews.js / feedback.js 的輔助函式
+                // 少了第三種的話，用輔助函式的路由檔整個不會被檢查——這個漏洞真的存在過。
+                [
+                    /errorCode:\s*'([A-Z0-9_]+)'/g,
+                    /code:\s*'([A-Z0-9_]+)'/g,
+                    /errorResponse\(\s*'([A-Z0-9_]+)'/g,
+                ].forEach((re) => {
                     let m;
                     while ((m = re.exec(src)) !== null) codes.add(m[1]);
                 });

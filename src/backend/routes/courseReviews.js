@@ -1,11 +1,39 @@
 const express = require('express');
 const router = express.Router();
 const { body, validationResult, query } = require('express-validator');
-const { CourseReview, User, Course } = require('../models');
+const { CourseReview, User, Course, CourseCatalog } = require('../models');
 const { authenticateToken, requirePermission, isOwnerOrHasPermission } = require('../middleware/auth');
+const { reviewWriteLimiter } = require('../middleware/rateLimits');
 const { Op } = require('sequelize');
 const sequelize = require('../models').sequelize;
 const { isTermReviewable } = require('../utils/semesterEligibility');
+
+// 一個帳號的評價總量上限。
+//
+// 限流只管「速率」，擋不住「每小時 10 筆、連續跑一個月」這種慢速洗版。
+// 100 筆遠高於任何真人四年修課的數量（一學期 6~8 門，四年約 50~60 門）。
+const MAX_REVIEWS_PER_USER = 100;
+
+// 送出的課程必須真的存在於課程目錄。
+//
+// 這是擋洗版最關鍵的一層：course_reviews 的 UNIQUE 約束是
+// (course_code, professor, year, semester, user_id)，但 courseCode 與 professor
+// 原本只驗證「非空字串」——攻擊者控制了複合鍵裡的兩個欄位，把 courseCode 遞增
+// 就能無限新增，UNIQUE 完全形同虛設。
+//
+// 前端的 WriteReviewDialog 本來就只能從課程目錄搜尋選課，所以這一層不會擋到正常流程。
+const courseExistsInCatalog = async (courseCode, professor, year, semester) => {
+    // 目錄整個是空的就不擋——正式環境若還沒跑過 scripts/fetchNtuCourses.js，
+    // 硬性要求存在會讓「所有」評價都送不出去。這是刻意的降級：
+    // 目錄一旦填好，這層防護就自動生效，不需要改任何程式碼。
+    const total = await CourseCatalog.count();
+    if (total === 0) return true;
+
+    const found = await CourseCatalog.count({
+        where: { courseCode, professor, year, semester }
+    });
+    return found > 0;
+};
 
 // 錯誤訊息一律回傳 errorCode，實際中文文字由前端 i18n 語言檔（src/main/js/i18n/locales/zh-TW.js
 // 的 errors 區塊）負責翻譯；error 欄位保留中文純文字作為未支援 i18n 的舊客戶端 fallback。
@@ -133,6 +161,8 @@ router.get('/filters', async (req, res) => {
 // 新增課程評價（需登入）
 router.post('/',
     authenticateToken,
+    // 必須在 authenticateToken 之後：限流以 req.user.id 計數，掛在前面會退化成 IP 模式
+    reviewWriteLimiter,
     [
         body('courseCode').trim().notEmpty().withMessage({ code: 'COURSE_CODE_REQUIRED', message: '課號為必填' }),
         body('courseName').trim().notEmpty().withMessage({ code: 'COURSE_NAME_REQUIRED', message: '課程名稱為必填' }),
@@ -178,6 +208,17 @@ router.post('/',
             // 該學期的期末考還沒結束就不能評價（前端已經濾掉這些學期，這裡是後端把關）
             if (!isTermReviewable(year, semester)) {
                 return res.status(400).json(errorResponse('TERM_NOT_REVIEWABLE', '該學期的期末考尚未結束，還不能填寫評價'));
+            }
+
+            // 課程必須存在於課程目錄——沒有這層，UNIQUE 約束擋不住任何洗版（見檔案上方說明）
+            if (!(await courseExistsInCatalog(courseCode, professor, year, semester))) {
+                return res.status(400).json(errorResponse('COURSE_NOT_IN_CATALOG', '找不到這門課程，請從搜尋結果中選擇'));
+            }
+
+            // 單一帳號的總量上限。限流管速率，這一層管累積總量。
+            const reviewCount = await CourseReview.count({ where: { userId: req.user.id } });
+            if (reviewCount >= MAX_REVIEWS_PER_USER) {
+                return res.status(400).json(errorResponse('REVIEW_LIMIT_EXCEEDED', '您的評價數量已達上限'));
             }
 
             // 檢查是否已評價過此課程（同一學期、同一教授）

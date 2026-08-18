@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Box, Typography, Link, Divider, Grid, Stack } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import { APP_CONFIG } from '../../../resources/config/constants';
+import FeedbackDialog from '../FeedbackDialog';
 
 const Footer = () => {
   const { t } = useTranslation();
   const currentYear = new Date().getFullYear();
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   const linkSx = {
     fontSize: '0.875rem',
@@ -71,6 +73,16 @@ const Footer = () => {
               {t('footer.links')}
             </Typography>
             <Stack spacing={1}>
+              {/* 意見回饋放這裡而不是導覽列：每一頁都到得了，又不佔主要導覽的位置 */}
+              <Link
+                component="button"
+                type="button"
+                onClick={() => setFeedbackOpen(true)}
+                underline="hover"
+                sx={{ ...linkSx, textAlign: 'left', p: 0, border: 0, background: 'none', cursor: 'pointer' }}
+              >
+                {t('feedback.title')}
+              </Link>
               <Link
                 href="https://management.ntu.edu.tw/IM"
                 underline="hover"
@@ -131,6 +143,8 @@ const Footer = () => {
           </Link>
         </Box>
       </Box>
+
+      <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </Box>
   );
 };

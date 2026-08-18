@@ -15,6 +15,7 @@ const PERMISSIONS = [
     { key: 'roles.manage', group: '系統管理', label: '身分組管理', description: '建立身分組、調整權限、指派成員' },
     { key: 'modules.manage', group: '系統管理', label: '模組管理', description: '設定各功能模組開放給哪些身分組或使用者' },
     { key: 'announcements.manage', group: '系統管理', label: '公告管理', description: '發佈、編輯與下架站上公告' },
+    { key: 'feedback.manage', group: '系統管理', label: '回饋管理', description: '檢視與處理使用者送出的匿名意見回饋' },
 
     // 考古題
     { key: 'exams.upload', group: '考古題', label: '上傳考古題', description: '新增考古題與答案檔案' },

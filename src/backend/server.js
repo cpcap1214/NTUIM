@@ -26,6 +26,7 @@ const moduleRoutes = require('./routes/modules');
 const roleRoutes = require('./routes/roles');
 const adminRoutes = require('./routes/admin');
 const announcementRoutes = require('./routes/announcements');
+const feedbackRoutes = require('./routes/feedback');
 
 // 引入中間件
 const { authenticateToken, optionalAuth, tokenFromQuery, requireModuleAccess } = require('./middleware/auth');
@@ -34,6 +35,17 @@ const { errorHandler } = require('./middleware/errorHandler');
 // 初始化 Express
 const app = express();
 const PORT = process.env.PORT || 5001;
+
+// 後端跑在 nginx 後面。不設這個的話 req.ip 一律是反向代理的位址，
+// 所有以 IP 為單位的限流都會退化成「全站共用一個配額」——尖峰時段正常使用者
+// 會互相把額度吃掉並收到 429，而對攻擊者又完全沒有針對性。
+//
+// 值設 1（只信任最靠近的那一層代理）而不是 true：true 會信任整條
+// X-Forwarded-For，攻擊者只要自己偽造前段就能換一個「來源 IP」繞過限流。
+//
+// ⚠️ 生效前提是 nginx 有送 X-Forwarded-For。確認方式：
+//      grep -r "X-Forwarded-For" /etc/nginx/sites-enabled/
+app.set('trust proxy', 1);
 
 // 安全標頭。helmet 與 express-rate-limit 一直都在 package.json 裡卻從未被套用。
 // 關閉 CSP 與 CORP：前端是由 nginx 另外服務的獨立來源，而 /uploads 的 PDF 需要被
@@ -114,6 +126,9 @@ app.use('/api/roles', authenticateToken, roleRoutes);
 // 公告同樣不能在這裡要求認證：訪客也看得到公告。
 // 路由檔內部前台端點用 optionalAuth、管理端點各自掛 authenticateToken + requirePermission。
 app.use('/api/announcements', announcementRoutes);
+// 回饋的送出端點自己掛 authenticateToken（路由檔內），不在這裡統一套用——
+// 管理端點另外要求 feedback.manage 權限
+app.use('/api/feedback', feedbackRoutes);
 
 // admin 路由原本完全沒掛 authenticateToken（它自己有一套平行的認證實作），
 // 現在統一走共用中介層，路由檔內各自再用 requirePermission 檢查權限
