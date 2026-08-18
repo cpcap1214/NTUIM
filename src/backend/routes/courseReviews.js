@@ -7,6 +7,12 @@ const { reviewWriteLimiter } = require('../middleware/rateLimits');
 const { Op } = require('sequelize');
 const sequelize = require('../models').sequelize;
 const { isTermReviewable } = require('../utils/semesterEligibility');
+const {
+    getQuotaForCourses,
+    getEligibleReviewIds,
+    isPayoutEligible,
+    quotaKey
+} = require('../services/reviewQuotaService');
 
 // 一個帳號的評價總量上限。
 //
@@ -38,6 +44,36 @@ const courseExistsInCatalog = async (courseCode, professor, year, semester) => {
 // 錯誤訊息一律回傳 errorCode，實際中文文字由前端 i18n 語言檔（src/main/js/i18n/locales/zh-TW.js
 // 的 errors 區塊）負責翻譯；error 欄位保留中文純文字作為未支援 i18n 的舊客戶端 fallback。
 const errorResponse = (errorCode, message) => ({ error: message, errorCode });
+
+// 幫一批評價補上回饋金名額狀態（payoutEligible / quotaTier / quotaLimit / quotaUsed）。
+//
+// 名額資格是每次即時算的，沒有存在資料庫裡——存旗標就得在五條寫入路徑上同步維護，
+// 而這個 codebase 已經證明會漏掉其中一條（拒絕已發放的評價時不清 is_paid）。
+// 詳細理由見 config/reviewQuota.js 的說明。
+//
+// 兩條查詢（名額用量、資格排名）攤在整批上，與筆數無關。
+const withQuota = async (reviews) => {
+    const rows = reviews.map((r) => (typeof r.toJSON === 'function' ? r.toJSON() : r));
+    if (rows.length === 0) return rows;
+
+    const keys = rows.map((r) => ({
+        courseCode: r.courseCode,
+        professor: r.professor,
+        year: r.year,
+        semester: r.semester
+    }));
+
+    const [quotas, eligibleIds] = await Promise.all([
+        getQuotaForCourses(keys),
+        getEligibleReviewIds(keys)
+    ]);
+
+    return rows.map((row) => ({
+        ...row,
+        payoutEligible: eligibleIds.has(row.id),
+        ...quotas.get(quotaKey(row))
+    }));
+};
 
 // 取得課程評價列表（公開，支援分頁、關鍵字搜尋、篩選、排序）
 router.get('/', [
@@ -326,6 +362,20 @@ router.put('/:id',
             updates.status = 'pending';
             updates.rejectReason = null;
 
+            // 被拒絕後重新送出 = 重新排隊。
+            //
+            // 這一行承載了整個回饋金名額的排隊語意。上面那行把 status 打回 pending
+            // 但不會動 created_at，沒有 requeued_at 的話會發生：
+            //   1/1 A 投稿 → 1/3 A 被拒（名額釋出）→ 1/6 B 投稿並於 1/7 核准
+            //   → 1/10 A 改好重送，A 用 1/1 的時間插到最前面，把 B 擠出名額
+            // 已經被通知「已核准」的人因為第三者的編輯而失去回饋金，是最糟的失效模式。
+            //
+            // 只有 rejected → pending 算重新排隊；單純編輯已核准的評價不算，
+            // 那種情況下位置本來就是他的。
+            if (review.status === 'rejected') {
+                updates.requeuedAt = new Date();
+            }
+
             await review.update(updates);
 
             res.json({
@@ -370,7 +420,9 @@ router.get('/my-reviews', authenticateToken, async (req, res) => {
             order: [['created_at', 'DESC']]
         });
 
-        res.json(reviews);
+        // 附上回饋金名額狀態。少了這段，超出名額的作者只能靠「錢一直沒進來」
+        // 才發現自己沒資格——那正是這個功能要避免的事。
+        res.json(await withQuota(reviews));
     } catch (error) {
         console.error('取得我的評價錯誤:', error);
         res.status(500).json(errorResponse('FETCH_FAILED', '取得評價失敗'));
@@ -426,9 +478,28 @@ router.get('/admin/reviews', authenticateToken, requirePermission('courseReviews
 // 匿名只是「不對外公開作者」，錢還是要發給本人，總務必須知道發放對象是誰。
 // ---------------------------------------------------------------------------
 
+// 發放狀態的三個值。pending 是「還沒處理」，declined 是「看過了，決定不發」——
+// 兩者都不是「已發放」，但對總務的意義完全不同，不能混為一談。
+const PAYOUT_STATUSES = ['pending', 'paid', 'declined'];
+
+// payout_status 與 is_paid 一律在這裡一起寫入。
+//
+// is_paid 是 payout_status 的鏡像，只為了回滾相容而保留（見 migration 011）。
+// 讓它們只有這一個寫入點，是為了讓「兩者不同步」在結構上不可能發生——
+// 目前 is_paid 之所以會有殘留的錯誤資料，正是因為它散落在多個路徑各自寫入。
+const applyPayoutStatus = (review, status, userId) => {
+    const paid = status === 'paid';
+    review.payoutStatus = status;
+    review.isPaid = paid;
+    // paid_at / paid_by 只對「已發放」有意義。改成未處理或不發放時一併清掉，
+    // 不留下「沒發放卻有發放人」這種自相矛盾的列
+    review.paidAt = paid ? new Date() : null;
+    review.paidBy = paid ? userId : null;
+};
+
 // 取得回饋金發放清單：只列已核准的評價（未核准的沒有發放的意義）
 router.get('/payouts', authenticateToken, requirePermission('courseReviews.payout'), [
-    query('paid').optional().isIn(['true', 'false'])
+    query('payoutStatus').optional().isIn(PAYOUT_STATUSES)
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -436,10 +507,9 @@ router.get('/payouts', authenticateToken, requirePermission('courseReviews.payou
     }
 
     try {
-        const { paid } = req.query;
+        const { payoutStatus } = req.query;
         const where = { status: 'approved' };
-        if (paid === 'true') where.isPaid = true;
-        if (paid === 'false') where.isPaid = false;
+        if (payoutStatus) where.payoutStatus = payoutStatus;
 
         const reviews = await CourseReview.findAll({
             where,
@@ -455,18 +525,22 @@ router.get('/payouts', authenticateToken, requirePermission('courseReviews.payou
                     attributes: ['username', 'fullName']
                 }
             ],
-            // 未發放的排前面（待辦優先），同狀態內舊的排前面（先投稿的先發）
+            // 未處理的排最前面（待辦優先），再來是已發放、不發放；
+            // 同狀態內舊的排前面（先投稿的先發）
             order: [
-                ['is_paid', 'ASC'],
+                [sequelize.literal(
+                    "CASE payout_status WHEN 'pending' THEN 0 WHEN 'paid' THEN 1 ELSE 2 END"
+                ), 'ASC'],
                 ['created_at', 'ASC']
             ],
             attributes: [
                 'id', 'courseCode', 'courseName', 'professor', 'year', 'semester',
-                'isAnonymous', 'isPaid', 'paidAt', 'created_at'
+                'isAnonymous', 'isPaid', 'payoutStatus', 'paidAt', 'created_at'
             ]
         });
 
-        res.json({ data: reviews });
+        // 附上名額狀態，讓總務在按「發放」之前就看得出哪幾筆超額
+        res.json({ data: await withQuota(reviews) });
     } catch (error) {
         console.error('取得發放清單錯誤:', error);
         res.status(500).json(errorResponse('FETCH_PAYOUTS_FAILED', '取得發放清單失敗'));
@@ -482,7 +556,12 @@ router.get('/payouts/export', authenticateToken, requirePermission('courseReview
                 { model: User, as: 'reviewer', attributes: ['fullName', 'studentId', 'email'] },
                 { model: User, as: 'paidByUser', attributes: ['fullName'] }
             ],
-            order: [['is_paid', 'ASC'], ['created_at', 'ASC']]
+            order: [
+                [sequelize.literal(
+                    "CASE payout_status WHEN 'pending' THEN 0 WHEN 'paid' THEN 1 ELSE 2 END"
+                ), 'ASC'],
+                ['created_at', 'ASC']
+            ]
         });
 
         const escapeCsv = (value) => {
@@ -490,7 +569,25 @@ router.get('/payouts/export', authenticateToken, requirePermission('courseReview
             return `"${text.replace(/"/g, '""')}"`;
         };
 
-        const header = ['評價ID', '姓名', '學號', 'Email', '課程名稱', '課號', '教授', '學年期', '投稿時間', '發放狀態', '發放時間', '發放人'];
+        // 總務多半是在試算表上作業的，名額狀態沒進 CSV 等於沒有
+        const eligibleIds = await getEligibleReviewIds(reviews.map((r) => ({
+            courseCode: r.courseCode, professor: r.professor, year: r.year, semester: r.semester
+        })));
+
+        // 時間一律以台北時間、24 時制輸出。
+        // 不指定 timeZone 的話印的是伺服器的當地時間——正式機通常跑 UTC，
+        // 匯出的檔案會整批差 8 小時，而總務是拿這份去對帳的。
+        const formatTaipei = (value) => (value
+            ? new Date(value).toLocaleString('zh-TW', {
+                timeZone: 'Asia/Taipei', hour12: false,
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit'
+            })
+            : '');
+
+        const PAYOUT_STATUS_LABELS = { pending: '未處理', paid: '已發放', declined: '不發放' };
+
+        const header = ['評價ID', '姓名', '學號', 'Email', '課程名稱', '課號', '教授', '學年期', '投稿時間', '名額狀態', '發放狀態', '發放時間', '發放人'];
         const rows = reviews.map((review) => [
             review.id,
             review.reviewer?.fullName,
@@ -500,9 +597,10 @@ router.get('/payouts/export', authenticateToken, requirePermission('courseReview
             review.courseCode,
             review.professor,
             `${review.year - 1911}-${review.semester}`,
-            review.created_at ? new Date(review.created_at).toLocaleString('zh-TW') : '',
-            review.isPaid ? '已發放' : '未發放',
-            review.paidAt ? new Date(review.paidAt).toLocaleString('zh-TW') : '',
+            formatTaipei(review.created_at),
+            eligibleIds.has(review.id) ? '名額內' : '超出名額',
+            PAYOUT_STATUS_LABELS[review.payoutStatus] || '未處理',
+            formatTaipei(review.paidAt),
             review.isPaid ? (review.paidByUser?.fullName || '') : ''
         ]);
 
@@ -522,7 +620,8 @@ router.get('/payouts/export', authenticateToken, requirePermission('courseReview
 router.patch('/:id/payout',
     authenticateToken,
     requirePermission('courseReviews.payout'),
-    [body('isPaid').isBoolean().withMessage({ code: 'PAID_STATUS_INVALID', message: '發放狀態須為 true 或 false' })],
+    [body('payoutStatus').isIn(PAYOUT_STATUSES)
+        .withMessage({ code: 'PAYOUT_STATUS_INVALID', message: '發放狀態須為未處理、已發放或不發放' })],
     async (req, res) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
@@ -541,14 +640,36 @@ router.patch('/:id/payout',
                 return res.status(400).json(errorResponse('PAYOUT_REQUIRES_APPROVED', '只有已核准的評價才能標記發放'));
             }
 
-            const isPaid = req.body.isPaid === true;
-            review.isPaid = isPaid;
-            review.paidAt = isPaid ? new Date() : null;
-            review.paidBy = isPaid ? req.user.id : null;
+            const { payoutStatus } = req.body;
+
+            // 超出回饋金名額的評價不能標記「已發放」。
+            //
+            // 只擋 paid 這一個方向。改成 pending 或 declined 永遠允許——
+            // 「不發放」正是給超額評價用的結案動作，擋掉它會讓超額的評價
+            // 永遠停在未處理，總務每次打開清單都得重新判斷同一批資料。
+            //
+            // 三個理由讓這個閘門是閘門而不是陷阱：
+            //   1. 離開 paid 永遠允許，不會有評價被卡在無法操作的狀態
+            //   2. quota_exempt 讓整批既有評價自動通過，上線當天不會突然有一堆發不出去
+            //   3. 被擋只可能代表「有更早的非拒絕評價佔著名額」，那則一被審核
+            //      （核准或拒絕都算）就自動解開，不會死鎖，所以不需要 override 機制
+            if (payoutStatus === 'paid' && !review.isPaid && !(await isPayoutEligible(review))) {
+                return res.status(400).json(errorResponse(
+                    'PAYOUT_OVER_QUOTA',
+                    '這門課的回饋金名額已滿，或有更早投稿的評價尚未審核完畢'
+                ));
+            }
+
+            applyPayoutStatus(review, payoutStatus, req.user.id);
             await review.save();
 
+            const messages = {
+                paid: '已標記為已發放',
+                declined: '已標記為不發放',
+                pending: '已改回未處理'
+            };
             res.json({
-                message: isPaid ? '已標記為已發放' : '已改回未發放',
+                message: messages[payoutStatus],
                 data: review
             });
         } catch (error) {

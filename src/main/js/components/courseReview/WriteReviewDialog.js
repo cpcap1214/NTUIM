@@ -19,6 +19,7 @@ import {
     Autocomplete,
     CircularProgress,
     FormHelperText,
+    Chip,
 } from '@mui/material';
 import courseReviewService from '../../services/courseReviewService';
 import { translateApiError } from '../../utils';
@@ -101,6 +102,10 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
     // 學期下拉的選取值：ALL_TERMS 或「西元年-學期」。
     // 它同時是課程搜尋的範圍，以及（非 ALL_TERMS 時）這筆評價的學年期。
     const [termSelection, setTermSelection] = useState(ALL_TERMS);
+    // 目前選定課程的回饋金名額（整個選項物件，含 quotaLimit / quotaUsed / quotaRemaining）。
+    // 只在從下拉選單挑課時才有值——手動輸入的課程比對不到課程目錄，沒有名額資訊可顯示。
+    // null 代表「不知道」，此時不顯示任何名額警告，而不是顯示 0/0。
+    const [selectedQuota, setSelectedQuota] = useState(null);
 
     const isEditing = !!review;
     // 被拒絕的評價修改後其實是「重新送出」而不是單純存檔，按鈕文字要對應改變，讓使用者清楚知道這是要重新進入審核
@@ -169,6 +174,9 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
         }
         setError('');
         setAutoFilled(false);
+        // 名額不隨草稿保存：草稿可能是幾天前存的，那時的數字現在多半已經過期。
+        // 使用者重新從選單挑課時才會拿到最新的。
+        setSelectedQuota(null);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [review, open]);
 
@@ -248,6 +256,39 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [formData.courseName, termSelection, open, isEditing]);
 
+    // 手動輸入課程時補查名額（防抖 400ms）。
+    //
+    // 從下拉選單挑課的人在 handleCourseSelect 就拿到名額了，這個 effect 只服務
+    // 自己打課號與教授的人——他們比對不到課程目錄，沒有這一段就完全看不到名額，
+    // 等於回到「投稿之後才發現沒有回饋金」。
+    // 查不到就維持 null（不顯示），絕不因為查詢失敗而擋住任何事。
+    useEffect(() => {
+        if (!open || isEditing || autoFilled) return;
+        const courseCode = formData.courseCode.trim();
+        const professor = formData.professor.trim();
+        if (!courseCode || !professor || termSelection === ALL_TERMS) return;
+
+        let cancelled = false;
+        const timer = setTimeout(async () => {
+            try {
+                const quota = await courseReviewService.getCourseQuota({
+                    courseCode,
+                    professor,
+                    year: formData.year,
+                    semester: formData.semester,
+                });
+                if (!cancelled) setSelectedQuota(quota || null);
+            } catch (e) {
+                if (!cancelled) setSelectedQuota(null);
+            }
+        }, 400);
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [formData.courseCode, formData.professor, formData.year, formData.semester, termSelection, open, isEditing, autoFilled]);
+
     const handleChange = (field, value) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
         setError('');
@@ -260,6 +301,8 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
         setTermSelection(value);
         setCourseOptions([]);
         setAutoFilled(false);
+        // 名額是綁在「課號＋教授＋學年期」上的，換了學期就跟著失效，理由同上面清課號與教授
+        setSelectedQuota(null);
         setFormData((prev) => ({
             ...prev,
             courseCode: '',
@@ -289,6 +332,8 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
         if (termSelection === ALL_TERMS) {
             setTermSelection(`${option.year}-${option.semester}`);
         }
+        // 後端沒帶名額（尚未部署新版）時保持 null，警告就不會出現
+        setSelectedQuota(typeof option.quotaLimit === 'number' ? option : null);
         setCourseOptions([]);
         setAutoFilled(true);
         setError('');
@@ -469,14 +514,22 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                             onInputChange={(e, newValue, reason) => {
                                 handleChange('courseName', newValue);
                                 // 使用者自己動手改課程名稱（而不是從選單挑）就解除鎖定，讓他能手動填課號與教授
-                                if (reason === 'input') setAutoFilled(false);
+                                if (reason === 'input') {
+                                    setAutoFilled(false);
+                                    // 名額屬於剛才選的那門課，課名一改就不再適用
+                                    setSelectedQuota(null);
+                                }
                             }}
                             onChange={(e, selectedOption) => handleCourseSelect(selectedOption)}
                             getOptionLabel={(option) => (typeof option === 'string' ? option : option.courseName)}
                             isOptionEqualToValue={(option, val) => option.courseCode === val.courseCode && option.professor === val.professor && option.year === val.year && option.semester === val.semester}
                             renderOption={(props, option) => (
-                                <li {...props} key={`${option.courseCode}-${option.professor}-${option.year}-${option.semester}`}>
-                                    <Box>
+                                <li
+                                    {...props}
+                                    key={`${option.courseCode}-${option.professor}-${option.year}-${option.semester}`}
+                                    style={{ ...props.style, display: 'flex', justifyContent: 'space-between', gap: 8 }}
+                                >
+                                    <Box sx={{ minWidth: 0 }}>
                                         <Typography variant="body2">{option.courseName}</Typography>
                                         <Typography variant="caption" color="text.secondary">
                                             {/* 限定單一學期時所有選項的學年期都一樣，顯示它只是雜訊；
@@ -485,6 +538,21 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                                             {!isScopedTerm && ` · ${courseReviewService.getAcademicTermLabel(option.year, option.semester)}`}
                                         </Typography>
                                     </Box>
+                                    {/* 回饋金名額。用 typeof 檢查而不是 truthy：quotaLimit 是數字，
+                                        而且後端若還沒部署到帶名額的版本，這裡要安靜地不顯示，
+                                        而不是渲染出 undefined/undefined */}
+                                    {typeof option.quotaLimit === 'number' && (
+                                        <Chip
+                                            size="small"
+                                            variant="outlined"
+                                            color={option.quotaRemaining > 0 ? 'success' : 'default'}
+                                            label={t('courseReview.quota.chip', {
+                                                tier: t(`courseReview.quota.tier.${option.quotaTier}`),
+                                                used: option.quotaUsed,
+                                                limit: option.quotaLimit,
+                                            })}
+                                        />
+                                    )}
                                 </li>
                             )}
                             renderInput={(params) => (
@@ -513,10 +581,23 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                                 {t('courseReview.form.courseNameHelper')}
                             </FormHelperText>
                         )}
+                        {!isEditing && (
+                            <FormHelperText sx={{ mx: 1.75 }}>
+                                {t('courseReview.quota.helper')}
+                            </FormHelperText>
+                        )}
                         {!isEditing && courseSearchTruncated && (
                             <FormHelperText error sx={{ mx: 1.75 }}>
                                 {t('courseReview.form.searchTruncatedHint')}
                             </FormHelperText>
+                        )}
+                        {/* 額滿只是「沒有回饋金」，不是不能投稿——這裡刻意用 warning 而不是 error，
+                            而且完全不影響送出按鈕。擋下投稿會讓使用者白寫 50 字，
+                            而熱門必修的第 10 篇評價對讀者仍然有價值 */}
+                        {!isEditing && selectedQuota && selectedQuota.quotaRemaining <= 0 && (
+                            <Alert severity="warning" sx={{ mt: 1 }}>
+                                {t('courseReview.quota.fullWarning', { limit: selectedQuota.quotaLimit })}
+                            </Alert>
                         )}
                     </Grid>
                     {/* 第二列：授課教授在前、課號在後，各佔一半 */}

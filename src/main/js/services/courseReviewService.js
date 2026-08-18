@@ -60,6 +60,20 @@ const courseReviewService = {
         }
     },
 
+    // 單一課程的回饋金名額。
+    // /course-catalog/search 的每一列都已經帶名額了，這支只給「手動輸入課程」的情況用——
+    // 沒從下拉選單挑課的人比對不到課程目錄，不查一次就完全看不到名額資訊。
+    async getCourseQuota({ courseCode, professor, year, semester }) {
+        try {
+            const response = await api.get('/course-catalog/quota', {
+                params: { courseCode, professor, year, semester },
+            });
+            return response.data.data;
+        } catch (error) {
+            throw error.response?.data || error;
+        }
+    },
+
     // 新增評價
     async createReview(reviewData) {
         try {
@@ -123,10 +137,11 @@ const courseReviewService = {
     },
 
     // 取得回饋金發放清單（總務或管理員）；paid 傳 'true'/'false' 可只看已/未發放
-    async getPayouts(paid) {
+    // payoutStatus: 'pending' | 'paid' | 'declined'，不給就是全部
+    async getPayouts(payoutStatus) {
         try {
             const response = await api.get('/course-reviews/payouts', {
-                params: paid === undefined ? {} : { paid }
+                params: payoutStatus === undefined ? {} : { payoutStatus }
             });
             return response.data.data || [];
         } catch (error) {
@@ -135,9 +150,10 @@ const courseReviewService = {
     },
 
     // 標記回饋金是否已發放（總務或管理員）
-    async setPayoutStatus(id, isPaid) {
+    // payoutStatus: 'pending'（未處理）| 'paid'（已發放）| 'declined'（不發放）
+    async setPayoutStatus(id, payoutStatus) {
         try {
-            const response = await api.patch(`/course-reviews/${id}/payout`, { isPaid });
+            const response = await api.patch(`/course-reviews/${id}/payout`, { payoutStatus });
             return response.data;
         } catch (error) {
             throw error.response?.data || error;
