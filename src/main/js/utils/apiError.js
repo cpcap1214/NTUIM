@@ -21,7 +21,13 @@ export const translateApiError = (err, fallback) => {
     if (firstError) {
         const msg = firstError.msg;
         if (msg && typeof msg === 'object' && msg.code) {
-            return i18n.t(`errors.${msg.code}`, { defaultValue: msg.message || defaultFallback });
+            // params 讓譯文可以插值（例如字數門檻的 {{min}} / {{max}}）。
+            // 少了它，語言檔就得把數字寫死，改門檻時四份文案要同步改——
+            // 漏一份的症狀是「錯誤訊息說至少 5 字，但伺服器實際要 50」。
+            return i18n.t(`errors.${msg.code}`, {
+                ...(msg.params || {}),
+                defaultValue: msg.message || defaultFallback,
+            });
         }
         if (typeof msg === 'string') return msg;
     }

@@ -12,6 +12,16 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import WriteReviewDialog from '../../../main/js/components/courseReview/WriteReviewDialog';
 import courseReviewService from '../../../main/js/services/courseReviewService';
+import { REVIEW_CONTENT_LIMITS } from '../../../main/resources/config/constants';
+
+// 把五個內容欄位填到剛好達標。長度由常數推導，門檻日後調整時測試不會跟著壞——
+// 寫死字串的話，每次改門檻都要回來重寫一次假資料。
+const fillContentFields = () => {
+    Object.entries(REVIEW_CONTENT_LIMITS).forEach(([field, { min }]) => {
+        const input = screen.getByLabelText(new RegExp(`courseReview\\.form\\.${field}`));
+        fireEvent.change(input, { target: { value: '測'.repeat(min) } });
+    });
+};
 
 // 必須給明確的 factory，不能只寫 jest.mock(path)：
 // 自動 mock 仍會載入真實模組來推導形狀，而它會經 api.js 拉進 axios，
@@ -298,7 +308,7 @@ describe('WriteReviewDialog 回饋金名額', () => {
     });
 
     test('額滿時仍然可以送出——名額只影響回饋金，不擋投稿', async () => {
-        // 這是整個功能的核心約定。硬性擋下會讓使用者寫完 50 字才被拒絕，
+        // 這是整個功能的核心約定。硬性擋下會讓使用者寫完整篇才被拒絕，
         // 而且熱門必修的第 10 篇評價對讀者仍然有價值。
         await selectCourse('曾漢塘 · Phl1511');
         await screen.findByText('courseReview.quota.fullWarning');
@@ -306,16 +316,30 @@ describe('WriteReviewDialog 回饋金名額', () => {
         // 四個評分都給 5 顆星（每個 Rating 各有一個「5 Stars」的 radio）
         screen.getAllByLabelText('5 Stars').forEach((input) => fireEvent.click(input));
 
-        fireEvent.change(screen.getByLabelText(/courseReview\.form\.courseContent/), {
-            target: { value: '介紹命題邏輯與述詞邏輯' },
-        });
-        // 心得的下限是 50 字，這裡刻意寫足，否則會被 COMMENT_LENGTH 擋下而測不到名額的行為
-        fireEvent.change(screen.getByLabelText(/courseReview\.form\.comment/), {
-            target: { value: '這門課的內容相當扎實，作業量適中，老師講解清楚，考試範圍明確，整體來說很推薦想要打好邏輯基礎的同學修習。' },
-        });
+        // 五個內容欄位都要填到門檻以上，否則會先被字數檢查擋下而測不到名額的行為。
+        // 長度直接由 REVIEW_CONTENT_LIMITS 產生——門檻日後再調整時這個測試不會跟著壞。
+        fillContentFields();
 
         fireEvent.click(screen.getByText('courseReview.form.submitReview'));
 
         await waitFor(() => expect(courseReviewService.createReview).toHaveBeenCalled());
+    });
+
+    test('內容欄位未達字數門檻時擋在前端，不會打 API', async () => {
+        // 回饋金是 100 元，門檻存在的意義就在這裡：不合格的投稿根本不該送到後端。
+        await selectCourse('曾漢塘 · Phl1511');
+        await screen.findByText('courseReview.quota.fullWarning');
+        screen.getAllByLabelText('5 Stars').forEach((input) => fireEvent.click(input));
+
+        fillContentFields();
+        // 只把心得改成差一個字
+        fireEvent.change(screen.getByLabelText(/courseReview\.form\.comment/), {
+            target: { value: '短'.repeat(REVIEW_CONTENT_LIMITS.comment.min - 1) },
+        });
+
+        fireEvent.click(screen.getByText('courseReview.form.submitReview'));
+
+        await waitFor(() => expect(screen.getByText('errors.COMMENT_LENGTH')).toBeInTheDocument());
+        expect(courseReviewService.createReview).not.toHaveBeenCalled();
     });
 });

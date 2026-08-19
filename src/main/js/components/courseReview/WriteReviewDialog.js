@@ -24,6 +24,17 @@ import {
 import courseReviewService from '../../services/courseReviewService';
 import { translateApiError } from '../../utils';
 import i18n from '../../i18n';
+import { REVIEW_CONTENT_LIMITS, REVIEW_PAYOUT_AMOUNT } from '../../../resources/config/constants';
+
+// 內容欄位與對應的錯誤碼。順序即檢查順序，也是表單由上而下的順序，
+// 使用者看到的第一個錯誤會是他最先該補的那一欄。
+const CONTENT_FIELDS = [
+    { field: 'courseContent', code: 'COURSE_CONTENT_LENGTH' },
+    { field: 'teachingMethod', code: 'TEACHING_METHOD_LENGTH' },
+    { field: 'assignmentExamFormat', code: 'ASSIGNMENT_EXAM_FORMAT_LENGTH' },
+    { field: 'gradingBreakdown', code: 'GRADING_BREAKDOWN_LENGTH' },
+    { field: 'comment', code: 'COMMENT_LENGTH' },
+];
 
 const emptyForm = {
     courseCode: '',
@@ -367,14 +378,21 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
             setError(t('courseReview.form.ratingsIncomplete'));
             return;
         }
-        const courseContentLength = formData.courseContent.trim().length;
-        if (courseContentLength < 5 || courseContentLength > 1000) {
-            setError(t('errors.COURSE_CONTENT_REQUIRED'));
-            return;
-        }
-        const commentLength = formData.comment.trim().length;
-        if (commentLength < 50 || commentLength > 1000) {
-            setError(t('errors.COMMENT_LENGTH'));
+        // 內容欄位的字數檢查。門檻讀共用常數，不要在這裡寫死數字——
+        // 後端 config/reviewContent.js 有對應的一份，兩邊不一致的症狀是
+        // 「表單放行、伺服器退件」，使用者只會看到莫名其妙的錯誤。
+        //
+        // 編輯既有評價時只檢查有填的欄位：那些評價寫在這三欄還是選填的年代，
+        // 空著是合法的（後端 PUT 的驗證器也是同一套邏輯）。
+        const contentError = CONTENT_FIELDS.find(({ field }) => {
+            const length = (formData[field] || '').trim().length;
+            const { min, max } = REVIEW_CONTENT_LIMITS[field];
+            if (isEditing && length === 0) return false;
+            return length < min || length > max;
+        });
+        if (contentError) {
+            const { min, max } = REVIEW_CONTENT_LIMITS[contentError.field];
+            setError(t(`errors.${contentError.code}`, { min, max }));
             return;
         }
 
@@ -583,7 +601,7 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                         )}
                         {!isEditing && (
                             <FormHelperText sx={{ mx: 1.75 }}>
-                                {t('courseReview.quota.helper')}
+                                {t('courseReview.quota.helper', { amount: REVIEW_PAYOUT_AMOUNT })}
                             </FormHelperText>
                         )}
                         {!isEditing && courseSearchTruncated && (
@@ -650,7 +668,7 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                             value={formData.courseContent}
                             onChange={(e) => handleChange('courseContent', e.target.value)}
                             inputProps={{ maxLength: 1000 }}
-                            helperText={t('courseReview.form.courseContentHelper', { count: formData.courseContent.trim().length })}
+                            helperText={t('courseReview.form.courseContentHelper', { count: formData.courseContent.trim().length, ...REVIEW_CONTENT_LIMITS.courseContent })}
                         />
                     </Grid>
 
@@ -663,7 +681,7 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                             value={formData.teachingMethod}
                             onChange={(e) => handleChange('teachingMethod', e.target.value)}
                             inputProps={{ maxLength: 1000 }}
-                            helperText={t('courseReview.form.optionalFieldHelper', { count: formData.teachingMethod.trim().length })}
+                            helperText={t('courseReview.form.requiredFieldHelper', { count: formData.teachingMethod.trim().length, ...REVIEW_CONTENT_LIMITS.teachingMethod })}
                         />
                     </Grid>
 
@@ -676,7 +694,7 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                             value={formData.assignmentExamFormat}
                             onChange={(e) => handleChange('assignmentExamFormat', e.target.value)}
                             inputProps={{ maxLength: 1000 }}
-                            helperText={t('courseReview.form.optionalFieldHelper', { count: formData.assignmentExamFormat.trim().length })}
+                            helperText={t('courseReview.form.requiredFieldHelper', { count: formData.assignmentExamFormat.trim().length, ...REVIEW_CONTENT_LIMITS.assignmentExamFormat })}
                         />
                     </Grid>
 
@@ -689,7 +707,7 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                             value={formData.gradingBreakdown}
                             onChange={(e) => handleChange('gradingBreakdown', e.target.value)}
                             inputProps={{ maxLength: 1000 }}
-                            helperText={t('courseReview.form.optionalFieldHelper', { count: formData.gradingBreakdown.trim().length })}
+                            helperText={t('courseReview.form.requiredFieldHelper', { count: formData.gradingBreakdown.trim().length, ...REVIEW_CONTENT_LIMITS.gradingBreakdown })}
                         />
                     </Grid>
 
@@ -703,7 +721,7 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                             value={formData.comment}
                             onChange={(e) => handleChange('comment', e.target.value)}
                             inputProps={{ maxLength: 1000 }}
-                            helperText={t('courseReview.form.commentHelper', { count: formData.comment.trim().length })}
+                            helperText={t('courseReview.form.commentHelper', { count: formData.comment.trim().length, ...REVIEW_CONTENT_LIMITS.comment })}
                         />
                     </Grid>
 
