@@ -4,6 +4,7 @@ const { body, validationResult, query } = require('express-validator');
 const { CourseReview, User, Course, CourseCatalog } = require('../models');
 const { authenticateToken, requirePermission, isOwnerOrHasPermission } = require('../middleware/auth');
 const { reviewWriteLimiter } = require('../middleware/rateLimits');
+const { CONTENT_LIMITS } = require('../config/reviewContent');
 const { Op } = require('sequelize');
 const sequelize = require('../models').sequelize;
 const { isTermReviewable } = require('../utils/semesterEligibility');
@@ -44,6 +45,20 @@ const courseExistsInCatalog = async (courseCode, professor, year, semester) => {
 // 錯誤訊息一律回傳 errorCode，實際中文文字由前端 i18n 語言檔（src/main/js/i18n/locales/zh-TW.js
 // 的 errors 區塊）負責翻譯；error 欄位保留中文純文字作為未支援 i18n 的舊客戶端 fallback。
 const errorResponse = (errorCode, message) => ({ error: message, errorCode });
+
+// 內容欄位的驗證錯誤。
+//
+// params 帶上 min/max，前端的 translateApiError 會把它們插進譯文——
+// 語言檔裡因此不需要寫死數字，改門檻不必同步改四份文案。
+// 中文 message 是給沒有 i18n 的客戶端看的退路，數字一樣從常數帶入。
+const contentError = (codePrefix, label, field) => {
+    const { min, max } = CONTENT_LIMITS[field];
+    return {
+        code: `${codePrefix}_LENGTH`,
+        message: `${label}為必填，請填寫 ${min}-${max} 字`,
+        params: { min, max },
+    };
+};
 
 // 幫一批評價補上回饋金名額狀態（payoutEligible / quotaTier / quotaLimit / quotaUsed）。
 //
@@ -209,11 +224,18 @@ router.post('/',
         body('difficulty').isFloat({ min: 0.5, max: 5 }).withMessage({ code: 'DIFFICULTY_RANGE', message: '難易度須為0.5-5' }),
         body('sweetness').isFloat({ min: 0.5, max: 5 }).withMessage({ code: 'SWEETNESS_RANGE', message: '給分高低須為0.5-5' }),
         body('usefulness').isFloat({ min: 0.5, max: 5 }).withMessage({ code: 'USEFULNESS_RANGE', message: '實用性須為0.5-5' }),
-        body('courseContent').trim().isLength({ min: 5, max: 1000 }).withMessage({ code: 'COURSE_CONTENT_REQUIRED', message: '課程內容為必填，請填寫至少 5 字' }),
-        body('teachingMethod').optional({ checkFalsy: true }).trim().isLength({ max: 1000 }).withMessage({ code: 'TEACHING_METHOD_TOO_LONG', message: '教學方式請勿超過 1000 字' }),
-        body('assignmentExamFormat').optional({ checkFalsy: true }).trim().isLength({ max: 1000 }).withMessage({ code: 'ASSIGNMENT_EXAM_FORMAT_TOO_LONG', message: '作業與考試形式請勿超過 1000 字' }),
-        body('gradingBreakdown').optional({ checkFalsy: true }).trim().isLength({ max: 1000 }).withMessage({ code: 'GRADING_BREAKDOWN_TOO_LONG', message: '評分佔比請勿超過 1000 字' }),
-        body('comment').trim().isLength({ min: 50, max: 1000 }).withMessage({ code: 'COMMENT_LENGTH', message: '心得為必填，請填寫 50-1000 字' }),
+        // 內容欄位的門檻集中在 config/reviewContent.js。新增時五個欄位全部必填——
+        // 回饋金是 100 元，舊的「55 個字」門檻是在還沒有金錢誘因時訂的。
+        body('courseContent').trim().isLength(CONTENT_LIMITS.courseContent)
+            .withMessage(contentError('COURSE_CONTENT', '課程內容', 'courseContent')),
+        body('teachingMethod').trim().isLength(CONTENT_LIMITS.teachingMethod)
+            .withMessage(contentError('TEACHING_METHOD', '教學方式', 'teachingMethod')),
+        body('assignmentExamFormat').trim().isLength(CONTENT_LIMITS.assignmentExamFormat)
+            .withMessage(contentError('ASSIGNMENT_EXAM_FORMAT', '作業與考試形式', 'assignmentExamFormat')),
+        body('gradingBreakdown').trim().isLength(CONTENT_LIMITS.gradingBreakdown)
+            .withMessage(contentError('GRADING_BREAKDOWN', '評分佔比', 'gradingBreakdown')),
+        body('comment').trim().isLength(CONTENT_LIMITS.comment)
+            .withMessage(contentError('COMMENT', '心得', 'comment')),
         body('isAnonymous').optional().isBoolean()
     ],
     async (req, res) => {
@@ -323,11 +345,26 @@ router.put('/:id',
         body('difficulty').optional().isFloat({ min: 0.5, max: 5 }),
         body('sweetness').optional().isFloat({ min: 0.5, max: 5 }),
         body('usefulness').optional().isFloat({ min: 0.5, max: 5 }),
-        body('courseContent').optional().trim().isLength({ min: 5, max: 1000 }).withMessage({ code: 'COURSE_CONTENT_REQUIRED', message: '課程內容為必填，請填寫至少 5 字' }),
-        body('teachingMethod').optional({ checkFalsy: true }).trim().isLength({ max: 1000 }).withMessage({ code: 'TEACHING_METHOD_TOO_LONG', message: '教學方式請勿超過 1000 字' }),
-        body('assignmentExamFormat').optional({ checkFalsy: true }).trim().isLength({ max: 1000 }).withMessage({ code: 'ASSIGNMENT_EXAM_FORMAT_TOO_LONG', message: '作業與考試形式請勿超過 1000 字' }),
-        body('gradingBreakdown').optional({ checkFalsy: true }).trim().isLength({ max: 1000 }).withMessage({ code: 'GRADING_BREAKDOWN_TOO_LONG', message: '評分佔比請勿超過 1000 字' }),
-        body('comment').optional().trim().isLength({ min: 50, max: 1000 }).withMessage({ code: 'COMMENT_LENGTH_OPTIONAL', message: '心得請填寫 50-1000 字' }),
+        // ⚠️ 修改時「不」套用新增時的必填規則。
+        //
+        // 正式環境既有的評價是在這三欄還是選填時寫的，其中確實有欄位為空的
+        // （實測：唯一那筆的 assignmentExamFormat 是 null）。若這裡也要求必填，
+        // 那些評價會立刻變成無法編輯——包括被退件後想修改的情況。
+        // checkFalsy 讓空字串被視為未提供而跳過（前端編輯時一律送出完整表單）。
+        //
+        // 殘留漏洞：可以先照新規則投稿、通過審核後再回來清空這三欄。
+        // 要堵它得加「這篇適用哪一版規則」的旗標並再開一次 migration，
+        // 而目前全站評價數個位數、審核又是人工的——不值得。日後量大了再處理。
+        body('courseContent').optional({ checkFalsy: true }).trim().isLength(CONTENT_LIMITS.courseContent)
+            .withMessage(contentError('COURSE_CONTENT', '課程內容', 'courseContent')),
+        body('teachingMethod').optional({ checkFalsy: true }).trim().isLength(CONTENT_LIMITS.teachingMethod)
+            .withMessage(contentError('TEACHING_METHOD', '教學方式', 'teachingMethod')),
+        body('assignmentExamFormat').optional({ checkFalsy: true }).trim().isLength(CONTENT_LIMITS.assignmentExamFormat)
+            .withMessage(contentError('ASSIGNMENT_EXAM_FORMAT', '作業與考試形式', 'assignmentExamFormat')),
+        body('gradingBreakdown').optional({ checkFalsy: true }).trim().isLength(CONTENT_LIMITS.gradingBreakdown)
+            .withMessage(contentError('GRADING_BREAKDOWN', '評分佔比', 'gradingBreakdown')),
+        body('comment').optional({ checkFalsy: true }).trim().isLength(CONTENT_LIMITS.comment)
+            .withMessage(contentError('COMMENT', '心得', 'comment')),
         body('isAnonymous').optional().isBoolean()
     ],
     async (req, res) => {

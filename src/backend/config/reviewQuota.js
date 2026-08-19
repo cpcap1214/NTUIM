@@ -19,6 +19,15 @@ const QUOTA_LIMITS = {
     other: 1        // 外系、通識、校訂必修
 };
 
+// 每則具備資格的評價可獲得的回饋金（新台幣）。
+//
+// 和 QUOTA_LIMITS 放在一起，因為兩者是同一份政策：改金額卻沒調名額（或反過來）
+// 就是預算失控的起點，拆開放遲早會有一邊被改到、另一邊沒有。
+//
+// 前端不要自己再寫一份 100——這個值沿著既有的 quota 資料流帶到畫面上
+// （routes/courseCatalog.js 已經在回 quotaTier / quotaLimit）。
+const PAYOUT_AMOUNT = 100;
+
 // 半形空白、全形空白、tab 一律去掉再比對。NOL 的欄位常有零星空白。
 const stripSpaces = (value) => String(value ?? '').replace(/[\s　]/g, '');
 
@@ -158,6 +167,7 @@ const rankEligible = (reviews, limit) => {
 
 module.exports = {
     QUOTA_LIMITS,
+    PAYOUT_AMOUNT,
     normalizeRequirement,
     isImTargetAudience,
     isCommonCore,
