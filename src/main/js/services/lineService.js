@@ -30,6 +30,28 @@ const lineService = {
             throw error.response?.data || error;
         }
     },
+
+    // 以下兩支需 users.manage 權限。
+
+    // 已綁定的成員名單。回傳不含 lineUserId——畫面只需要知道「這個人綁定了」。
+    async getBindings() {
+        try {
+            const response = await api.get('/line/bindings');
+            return response.data.data || [];
+        } catch (error) {
+            throw error.response?.data || error;
+        }
+    },
+
+    // 替他人解除綁定（交接用：離任幹部沒自己解綁的話會繼續收到通知）
+    async unbindUser(userId) {
+        try {
+            const response = await api.delete(`/line/bindings/${userId}`);
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error;
+        }
+    },
 };
 
 export default lineService;

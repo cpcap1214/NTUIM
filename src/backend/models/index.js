@@ -90,6 +90,11 @@ const User = sequelize.define('User', {
     lineBindingExpiresAt: {
         type: DataTypes.DATE,
         field: 'line_binding_expires_at'
+    },
+    // 綁定建立的時間，供交接時分辨新舊。既有綁定為 NULL（無從得知，不捏造）
+    lineBoundAt: {
+        type: DataTypes.DATE,
+        field: 'line_bound_at'
     }
 }, {
     tableName: 'users',

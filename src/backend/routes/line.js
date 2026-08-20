@@ -2,8 +2,9 @@ const express = require('express');
 const router = express.Router();
 const { Op } = require('sequelize');
 const { User } = require('../models');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, requirePermission } = require('../middleware/auth');
 const lineService = require('../services/lineService');
+const permissionService = require('../services/permissionService');
 const {
     isEnabled,
     verifySignature,
@@ -57,7 +58,7 @@ const handleEvent = async (event) => {
     if (event.type === 'unfollow') {
         if (lineUserId) {
             await User.update(
-                { lineUserId: null },
+                { lineUserId: null, lineBoundAt: null },
                 { where: { lineUserId } }
             );
         }
@@ -86,10 +87,11 @@ const handleEvent = async (event) => {
     // 一個 LINE 帳號只能綁一個系統帳號（資料表有 partial unique index 把關）。
     // 先清掉同一個 lineUserId 的舊綁定，否則寫入會撞索引而整個失敗——
     // 使用者換帳號重綁是合理操作，不該被擋。
-    await User.update({ lineUserId: null }, { where: { lineUserId, id: { [Op.ne]: user.id } } });
+    await User.update({ lineUserId: null, lineBoundAt: null }, { where: { lineUserId, id: { [Op.ne]: user.id } } });
 
     await user.update({
         lineUserId,
+        lineBoundAt: new Date(),
         lineBindingCode: null,
         lineBindingExpiresAt: null,
     });
@@ -152,11 +154,89 @@ router.post('/binding-code', authenticateToken, async (req, res) => {
 router.delete('/binding', authenticateToken, async (req, res) => {
     try {
         const user = await User.findByPk(req.user.id);
-        await user.update({ lineUserId: null, lineBindingCode: null, lineBindingExpiresAt: null });
+        await user.update({ lineUserId: null, lineBoundAt: null, lineBindingCode: null, lineBindingExpiresAt: null });
         res.json({ message: '已解除綁定' });
     } catch (error) {
         console.error('解除 LINE 綁定錯誤:', error);
         res.status(500).json(errorResponse('LINE_UNBIND_FAILED', '解除綁定失敗'));
+    }
+});
+
+// ---------------------------------------------------------------------------
+// 綁定名單管理（需 users.manage）
+// ---------------------------------------------------------------------------
+//
+// 用 users.manage 而不是另開一個 line.manage：持有它的人在「用戶管理」裡本來就
+// 看得到姓名、學號、Email，為「誰綁了 LINE」這種更少的資訊另設權限，
+// 只是多一個要記得設定的東西。
+
+const manageUsers = [authenticateToken, requirePermission('users.manage')];
+
+// 通知類型 → 所需權限。與 services/notificationService.js 用的是同一組判斷，
+// 改那邊的話這裡也要跟著改（兩邊都只有這一處，刻意不抽共用模組——
+// 一個兩筆的對照表抽成模組，讀的人反而要多跳一次檔案）。
+const NOTIFY_KINDS = [
+    { key: 'courseReviews', permission: 'courseReviews.moderate' },
+    { key: 'feedback', permission: 'feedback.manage' },
+];
+
+router.get('/bindings', ...manageUsers, async (req, res) => {
+    try {
+        const bound = await User.findAll({
+            where: { lineUserId: { [Op.ne]: null } },
+            attributes: ['id', 'username', 'fullName', 'role', 'lineBoundAt'],
+            order: [['line_bound_at', 'DESC'], ['id', 'ASC']],
+        });
+
+        const data = [];
+        for (const user of bound) {
+            // 已綁定的人數很少（幹部規模），逐一解析權限的成本可以忽略
+            // eslint-disable-next-line no-await-in-loop
+            const resolved = await permissionService.resolve(user);
+            data.push({
+                id: user.id,
+                username: user.username,
+                fullName: user.fullName,
+                // 既有綁定沒有時間可考，回 null，前端顯示為「未知」
+                boundAt: user.lineBoundAt,
+                // 這個人「實際上」收得到哪些通知。
+                // 沒有這一欄的話，「綁了卻沒有審核權限」在畫面上完全看不出來，
+                // 只會被當成 bot 壞掉——那是最常見的疑問。
+                notifies: NOTIFY_KINDS
+                    .filter((k) => permissionService.hasPermission(resolved, k.permission))
+                    .map((k) => k.key),
+                // ⚠️ 刻意不回傳 lineUserId。前端沒有任何用途需要它，
+                //    而它是 LINE 平台上的使用者識別碼——能少送就少送。
+            });
+        }
+
+        res.json({ data });
+    } catch (error) {
+        console.error('取得 LINE 綁定名單錯誤:', error);
+        res.status(500).json(errorResponse('LINE_BINDINGS_FETCH_FAILED', '取得綁定名單失敗'));
+    }
+});
+
+// 替他人解除綁定。主要用途是交接：離任幹部若沒自己解綁，
+// 畢業後仍會繼續收到待審核通知（內含後台連結）。
+router.delete('/bindings/:userId', ...manageUsers, async (req, res) => {
+    try {
+        const user = await User.findByPk(req.params.userId);
+        if (!user) {
+            return res.status(404).json(errorResponse('USER_NOT_FOUND', '找不到該使用者'));
+        }
+
+        await user.update({
+            lineUserId: null,
+            lineBoundAt: null,
+            lineBindingCode: null,
+            lineBindingExpiresAt: null,
+        });
+
+        res.json({ message: '已解除該使用者的綁定' });
+    } catch (error) {
+        console.error('解除他人 LINE 綁定錯誤:', error);
+        res.status(500).json(errorResponse('LINE_UNBIND_OTHER_FAILED', '解除綁定失敗'));
     }
 });
 

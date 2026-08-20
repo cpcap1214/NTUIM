@@ -120,6 +120,24 @@ const zhTW = {
         unbind: '解除綁定',
         unbound: '已解除綁定',
         unbindFailed: '解除綁定失敗',
+        myBinding: '我的綁定',
+        admin: {
+            title: '已綁定的成員',
+            description: '交接時記得解除離任幹部的綁定，否則他們畢業後仍會繼續收到通知。',
+            empty: '目前沒有人綁定 LINE。',
+            fetchFailed: '取得綁定名單失敗',
+            colUser: '成員',
+            colBoundAt: '綁定時間',
+            colNotifies: '收得到的通知',
+            boundAtUnknown: '未知',
+            notifiesNone: '收不到任何通知',
+            notify: {
+                courseReviews: '課程評價',
+                feedback: '意見回饋',
+            },
+            unbindTitle: '解除該成員的綁定',
+            confirmUnbind: '確定要解除「{{name}}」的 LINE 綁定嗎？對方不會收到任何提示，只會從此不再收到通知。',
+        },
     },
 
     feedback: {
@@ -850,6 +868,8 @@ const zhTW = {
         LINE_BINDING_FETCH_FAILED: '取得 LINE 綁定狀態失敗',
         LINE_BINDING_CODE_FAILED: '產生綁定碼失敗',
         LINE_UNBIND_FAILED: '解除綁定失敗',
+        LINE_BINDINGS_FETCH_FAILED: '取得綁定名單失敗',
+        LINE_UNBIND_OTHER_FAILED: '解除該成員的綁定失敗',
         RATE_LIMITED: '操作過於頻繁，請於 {{minutes}} 分鐘後再試',
         REVIEW_RATE_LIMITED: '評價送出過於頻繁，請於 {{minutes}} 分鐘後再試',
         FEEDBACK_RATE_LIMITED: '回饋送出過於頻繁，請於 {{minutes}} 分鐘後再試',

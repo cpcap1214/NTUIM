@@ -123,6 +123,24 @@ const en = {
         unbind: 'Unlink',
         unbound: 'LINE account unlinked',
         unbindFailed: 'Could not unlink your LINE account',
+        myBinding: 'My linked account',
+        admin: {
+            title: 'Linked members',
+            description: 'Remember to unlink outgoing officers during handover — otherwise they keep receiving notifications after they graduate.',
+            empty: 'Nobody has linked a LINE account yet.',
+            fetchFailed: 'Could not load the list of linked members',
+            colUser: 'Member',
+            colBoundAt: 'Linked at',
+            colNotifies: 'Receives',
+            boundAtUnknown: 'Unknown',
+            notifiesNone: 'Receives nothing',
+            notify: {
+                courseReviews: 'Course reviews',
+                feedback: 'Feedback',
+            },
+            unbindTitle: 'Unlink this member',
+            confirmUnbind: 'Unlink the LINE account of "{{name}}"? They will not be told — they will simply stop receiving notifications.',
+        },
     },
 
     feedback: {
@@ -847,6 +865,8 @@ const en = {
         LINE_BINDING_FETCH_FAILED: 'Could not load your LINE linking status',
         LINE_BINDING_CODE_FAILED: 'Could not generate a linking code',
         LINE_UNBIND_FAILED: 'Could not unlink your LINE account',
+        LINE_BINDINGS_FETCH_FAILED: 'Could not load the list of linked members',
+        LINE_UNBIND_OTHER_FAILED: 'Could not unlink that member',
         RATE_LIMITED: 'Too many requests — please try again in {{minutes}} minutes',
         REVIEW_RATE_LIMITED: 'You are submitting reviews too quickly — please try again in {{minutes}} minutes',
         FEEDBACK_RATE_LIMITED: 'You are sending feedback too quickly — please try again in {{minutes}} minutes',

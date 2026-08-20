@@ -196,6 +196,11 @@ const AdminPage = () => {
   // LINE 通知綁定狀態。null = 還在載入（此時顯示進度條而不是「未綁定」，
   // 否則畫面會先閃一下錯的狀態）。
   const [lineBinding, setLineBinding] = useState(null);
+  // 已綁定的成員名單（需 users.manage）
+  const [lineBindings, setLineBindings] = useState([]);
+  const [lineBindingsLoading, setLineBindingsLoading] = useState(false);
+  const [lineUnbindDialog, setLineUnbindDialog] = useState(false);
+  const [lineUnbindTarget, setLineUnbindTarget] = useState(null);
 
   // 回饋金發放管理相關狀態
   const [payouts, setPayouts] = useState([]);
@@ -279,6 +284,9 @@ const AdminPage = () => {
       fetchAnnouncements();
     } else if (activeTab === 10) {
       fetchFeedback();
+    } else if (activeTab === 11) {
+      // 名單需要 users.manage；沒權限的人只看得到上半部的「我的綁定」
+      if (hasPermission('users.manage')) fetchLineBindings();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, navigate, authLoading, activeTab]);
@@ -517,6 +525,32 @@ const AdminPage = () => {
   const handleUnbindLine = async () => {
     try {
       await lineService.unbind();
+      await fetchLineBinding();
+      if (hasPermission('users.manage')) await fetchLineBindings();
+      setSuccess(t('line.unbound'));
+    } catch (err) {
+      setError(translateApiError(err, t('line.unbindFailed')));
+    }
+  };
+
+  const fetchLineBindings = async () => {
+    try {
+      setLineBindingsLoading(true);
+      setLineBindings(await lineService.getBindings());
+    } catch (err) {
+      setError(translateApiError(err, t('line.admin.fetchFailed')));
+    } finally {
+      setLineBindingsLoading(false);
+    }
+  };
+
+  const handleUnbindOther = async () => {
+    try {
+      await lineService.unbindUser(lineUnbindTarget.id);
+      setLineUnbindDialog(false);
+      setLineUnbindTarget(null);
+      await fetchLineBindings();
+      // 解到自己頭上時，上半部的「我的綁定」也要跟著更新
       await fetchLineBinding();
       setSuccess(t('line.unbound'));
     } catch (err) {
@@ -1299,6 +1333,10 @@ const AdminPage = () => {
     [
       { labelKey: 'announcement.admin.title', descKey: 'announcement.admin.description', value: 9, permission: 'announcements.manage' },
       { labelKey: 'feedback.admin.title', descKey: 'feedback.admin.description', value: 10, permission: 'feedback.manage' },
+      // 刻意沒有 permission：綁定 LINE 是個人設定，不是管理功能。
+      // 鎖在 users.manage 後面的話，只有審核權限的幹部就綁不了自己的帳號——
+      // 而他們正是最需要收到待審通知的人。分頁內部的「已綁定成員」清單才鎖權限。
+      { labelKey: 'line.title', descKey: 'line.description', value: 11 },
     ],
     [
       { labelKey: 'nav.adminExamManage', descKey: 'admin.sections.examManage', value: 3, permission: 'exams.manage' },
@@ -1311,7 +1349,10 @@ const AdminPage = () => {
       { labelKey: 'courseReview.payout.title', descKey: 'courseReview.payout.description', value: 6, permission: 'courseReviews.payout' },
     ],
   ]
-    .map((row) => row.filter((section) => hasPermission(section.permission)))
+    // 沒有 permission 的項目一律顯示。hasPermission(undefined) 會回 false
+    // （AuthContext 的 default 分支是 permissions.includes(undefined)），
+    // 所以必須明確跳過，否則無權限限制的卡片永遠不會出現。
+    .map((row) => row.filter((section) => !section.permission || hasPermission(section.permission)))
     .filter((row) => row.length > 0);
 
   if (authLoading || loading) return (
@@ -1382,57 +1423,156 @@ const AdminPage = () => {
             ))}
           </Stack>
 
-          {/* LINE 通知綁定。放在卡片下方而不是獨立分頁：它是「個人設定」不是「管理功能」，
-              而且只有綁了才收得到通知，擺在進門就看得到的位置才會有人去綁。 */}
-          <Divider sx={{ my: 3 }} />
-          <Box>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
-              {t('line.title')}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              {t('line.description')}
-            </Typography>
-
-            {!lineBinding ? (
-              <LinearProgress />
-            ) : !lineBinding.enabled ? (
-              <Alert severity="info">{t('line.notConfigured')}</Alert>
-            ) : lineBinding.bound ? (
-              <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
-                <Chip color="success" label={t('line.bound')} />
-                <Button size="small" color="error" onClick={handleUnbindLine}>
-                  {t('line.unbind')}
-                </Button>
-              </Stack>
-            ) : (
-              <Stack spacing={1.5} alignItems="flex-start">
-                {lineBinding.bindingCode ? (
-                  <>
-                    <Alert severity="success" sx={{ width: '100%' }}>
-                      {t('line.codeReady')}
-                    </Alert>
-                    <Typography
-                      variant="h4"
-                      sx={{ fontWeight: 700, letterSpacing: '0.25em', fontFamily: 'monospace' }}
-                    >
-                      {lineBinding.bindingCode}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {t('line.codeExpiresAt', {
-                        time: new Date(lineBinding.expiresAt).toLocaleTimeString(i18n.language),
-                      })}
-                    </Typography>
-                  </>
-                ) : (
-                  <Chip variant="outlined" label={t('line.notBound')} />
-                )}
-                <Button variant="contained" size="small" onClick={handleCreateLineCode}>
-                  {t(lineBinding.bindingCode ? 'line.regenerateCode' : 'line.generateCode')}
-                </Button>
-              </Stack>
-            )}
-          </Box>
         </Paper>
+
+      {/* LINE 通知分頁 */}
+      {activeTab === 11 && (
+        <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 3 }}>
+          {/* 上半：我的綁定。任何進得了控制台的人都看得到——綁定是個人設定。 */}
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            {t('line.myBinding')}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {t('line.description')}
+          </Typography>
+
+          {!lineBinding ? (
+            <LinearProgress />
+          ) : !lineBinding.enabled ? (
+            <Alert severity="info">{t('line.notConfigured')}</Alert>
+          ) : lineBinding.bound ? (
+            <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+              <Chip color="success" label={t('line.bound')} />
+              <Button size="small" color="error" onClick={handleUnbindLine}>
+                {t('line.unbind')}
+              </Button>
+            </Stack>
+          ) : (
+            <Stack spacing={1.5} alignItems="flex-start">
+              {lineBinding.bindingCode ? (
+                <>
+                  <Alert severity="success" sx={{ width: '100%' }}>
+                    {t('line.codeReady')}
+                  </Alert>
+                  <Typography
+                    variant="h4"
+                    sx={{ fontWeight: 700, letterSpacing: '0.25em', fontFamily: 'monospace' }}
+                  >
+                    {lineBinding.bindingCode}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {t('line.codeExpiresAt', {
+                      time: new Date(lineBinding.expiresAt).toLocaleTimeString(i18n.language),
+                    })}
+                  </Typography>
+                </>
+              ) : (
+                <Chip variant="outlined" label={t('line.notBound')} />
+              )}
+              <Button variant="contained" size="small" onClick={handleCreateLineCode}>
+                {t(lineBinding.bindingCode ? 'line.regenerateCode' : 'line.generateCode')}
+              </Button>
+            </Stack>
+          )}
+
+          {/* 下半：已綁定的成員。這一段才需要 users.manage。 */}
+          {hasPermission('users.manage') && (
+            <>
+              <Divider sx={{ my: 3 }} />
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                {t('line.admin.title')}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {t('line.admin.description')}
+              </Typography>
+
+              {lineBindingsLoading && <LinearProgress sx={{ mb: 2 }} />}
+
+              {lineBindings.length === 0 && !lineBindingsLoading ? (
+                <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
+                  {t('line.admin.empty')}
+                </Typography>
+              ) : (
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>{t('line.admin.colUser')}</TableCell>
+                        <TableCell>{t('line.admin.colBoundAt')}</TableCell>
+                        <TableCell>{t('line.admin.colNotifies')}</TableCell>
+                        <TableCell align="right">{t('announcement.admin.colActions')}</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {lineBindings.map((b) => (
+                        <TableRow key={b.id} hover>
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                              {b.fullName || b.username}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {b.username}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="caption" color="text.secondary">
+                              {/* 舊綁定沒有時間可考（見 migration 014），顯示「未知」而不是假的日期 */}
+                              {b.boundAt
+                                ? new Date(b.boundAt).toLocaleString(i18n.language)
+                                : t('line.admin.boundAtUnknown')}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            {b.notifies.length === 0 ? (
+                              // 綁了卻沒有任何審核權限——這是「我綁了為什麼沒收到通知」的答案
+                              <Chip size="small" color="warning" variant="outlined"
+                                label={t('line.admin.notifiesNone')} />
+                            ) : (
+                              <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                                {b.notifies.map((k) => (
+                                  <Chip key={k} size="small" label={t(`line.admin.notify.${k}`)} />
+                                ))}
+                              </Stack>
+                            )}
+                          </TableCell>
+                          <TableCell align="right">
+                            <Button
+                              size="small"
+                              color="error"
+                              onClick={() => { setLineUnbindTarget(b); setLineUnbindDialog(true); }}
+                            >
+                              {t('line.unbind')}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </>
+          )}
+        </Paper>
+      )}
+
+      {/* 解除他人綁定的確認。這個動作會讓對方「安靜地」停止收到通知，
+          沒有任何提示，所以要確認一次。 */}
+      <Dialog open={lineUnbindDialog} onClose={() => setLineUnbindDialog(false)}>
+        <DialogTitle>{t('line.admin.unbindTitle')}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {t('line.admin.confirmUnbind', {
+              name: lineUnbindTarget?.fullName || lineUnbindTarget?.username,
+            })}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setLineUnbindDialog(false)}>{t('common.cancel')}</Button>
+          <Button color="error" variant="contained" onClick={handleUnbindOther}>
+            {t('line.unbind')}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* 用戶管理分頁 */}
       {activeTab === 0 && (

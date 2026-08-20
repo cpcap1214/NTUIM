@@ -179,11 +179,20 @@ curl -s localhost:5000/api/health  # 應回 {"status":"OK",...}
 
 `users.line_user_id` 是通知的收件位址。沒清掉的話，離任者**畢業後仍會繼續收到待審核通知，內含後台連結**。
 
-請他們自己在管理員控制台按「解除綁定」，或直接處理：
+**後台 → LINE 通知 → 已綁定的成員 → 解除綁定**（需 `users.manage` 權限）。
+
+那個清單也會顯示每個人的**綁定時間**與**實際收得到哪些通知**：
+
+- 綁定時間能分辨哪些是上一屆留下來的（舊資料顯示「未知」，因為那個欄位是後來才加的，沒有回填假時間）
+- 「收不到任何通知」的標記代表那個人綁了但沒有對應的審核權限——這也是「我綁了為什麼沒收到通知」的答案
+
+> 解除他人綁定時對方**不會收到任何提示**，只會從此不再收到通知。
+
+介面壞掉時的備援：
 
 ```bash
 cd ~/NTUIM/src/backend
-sqlite3 database/ntuim.db "UPDATE users SET line_user_id = NULL, line_binding_code = NULL, line_binding_expires_at = NULL WHERE username = '離任者帳號';"
+sqlite3 database/ntuim.db "UPDATE users SET line_user_id = NULL, line_bound_at = NULL, line_binding_code = NULL, line_binding_expires_at = NULL WHERE username = '離任者帳號';"
 ```
 
 ### LINE 相關設定放在哪
