@@ -106,6 +106,22 @@ const zhTW = {
         },
     },
 
+    line: {
+        title: 'LINE 通知',
+        description: '綁定 LINE 之後，有待審核的項目會主動通知你。只有具備對應權限的人會收到。',
+        notConfigured: '伺服器尚未設定 LINE 通知，請聯繫網站管理者。',
+        bound: '已綁定',
+        notBound: '尚未綁定',
+        generateCode: '產生綁定碼',
+        regenerateCode: '重新產生',
+        codeReady: '請把下面這組代碼傳給系學會的 LINE 官方帳號，即可完成綁定。',
+        codeExpiresAt: '有效至 {{time}}，逾期請重新產生',
+        codeFailed: '產生綁定碼失敗',
+        unbind: '解除綁定',
+        unbound: '已解除綁定',
+        unbindFailed: '解除綁定失敗',
+    },
+
     feedback: {
         title: '意見回饋',
         category: '分類',
@@ -829,6 +845,11 @@ const zhTW = {
 
     // 後端以 errorCode 回傳，前端統一在這裡查對應的中文訊息
     errors: {
+        LINE_BAD_SIGNATURE: '簽章驗證失敗',
+        LINE_NOT_CONFIGURED: 'LINE 通知尚未設定',
+        LINE_BINDING_FETCH_FAILED: '取得 LINE 綁定狀態失敗',
+        LINE_BINDING_CODE_FAILED: '產生綁定碼失敗',
+        LINE_UNBIND_FAILED: '解除綁定失敗',
         RATE_LIMITED: '操作過於頻繁，請於 {{minutes}} 分鐘後再試',
         REVIEW_RATE_LIMITED: '評價送出過於頻繁，請於 {{minutes}} 分鐘後再試',
         FEEDBACK_RATE_LIMITED: '回饋送出過於頻繁，請於 {{minutes}} 分鐘後再試',

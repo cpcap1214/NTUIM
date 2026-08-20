@@ -74,6 +74,22 @@ const User = sequelize.define('User', {
         type: DataTypes.BOOLEAN,
         defaultValue: false,
         field: 'has_paid_fee'
+    },
+    // LINE 通知的收件位址。NULL = 尚未綁定。
+    // 這是「通知位址」而不是身分憑證——不要拿它來授權任何操作，
+    // 詳見 routes/line.js 的說明。
+    lineUserId: {
+        type: DataTypes.STRING(64),
+        field: 'line_user_id'
+    },
+    // 一次性綁定碼與到期時間，綁定成功後一併清空
+    lineBindingCode: {
+        type: DataTypes.STRING(16),
+        field: 'line_binding_code'
+    },
+    lineBindingExpiresAt: {
+        type: DataTypes.DATE,
+        field: 'line_binding_expires_at'
     }
 }, {
     tableName: 'users',

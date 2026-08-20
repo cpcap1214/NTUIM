@@ -65,6 +65,7 @@ import roleService from '../services/roleService';
 import moduleService from '../services/moduleService';
 import announcementService from '../services/announcementService';
 import feedbackService from '../services/feedbackService';
+import lineService from '../services/lineService';
 import ReviewCard from '../components/courseReview/ReviewCard';
 import { translateApiError } from '../utils';
 
@@ -192,6 +193,10 @@ const AdminPage = () => {
   const [feedbackDeleteDialog, setFeedbackDeleteDialog] = useState(false);
   const [feedbackToDelete, setFeedbackToDelete] = useState(null);
 
+  // LINE 通知綁定狀態。null = 還在載入（此時顯示進度條而不是「未綁定」，
+  // 否則畫面會先閃一下錯的狀態）。
+  const [lineBinding, setLineBinding] = useState(null);
+
   // 回饋金發放管理相關狀態
   const [payouts, setPayouts] = useState([]);
   const [payoutLoading, setPayoutLoading] = useState(false);
@@ -277,6 +282,13 @@ const AdminPage = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, navigate, authLoading, activeTab]);
+
+  // LINE 綁定狀態在控制台一進來就要顯示（它在卡片下方，不屬於任何分頁），
+  // 所以只依賴 user 而不是 activeTab。
+  useEffect(() => {
+    if (user) fetchLineBinding();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   // 用戶管理的身分組多選需要身分組清單。
   //
@@ -480,6 +492,36 @@ const AdminPage = () => {
     if (a.publishAt && new Date(a.publishAt) > now) return 'scheduled';
     if (a.expireAt && new Date(a.expireAt) <= now) return 'expired';
     return 'active';
+  };
+
+  // --- LINE 通知綁定 ---------------------------------------------------------
+
+  const fetchLineBinding = async () => {
+    try {
+      setLineBinding(await lineService.getBinding());
+    } catch (err) {
+      // 綁定狀態拿不到不該擋住整個控制台，顯示成「未設定」即可
+      setLineBinding({ enabled: false, bound: false, bindingCode: null });
+    }
+  };
+
+  const handleCreateLineCode = async () => {
+    try {
+      const data = await lineService.createBindingCode();
+      setLineBinding((prev) => ({ ...prev, ...data }));
+    } catch (err) {
+      setError(translateApiError(err, t('line.codeFailed')));
+    }
+  };
+
+  const handleUnbindLine = async () => {
+    try {
+      await lineService.unbind();
+      await fetchLineBinding();
+      setSuccess(t('line.unbound'));
+    } catch (err) {
+      setError(translateApiError(err, t('line.unbindFailed')));
+    }
   };
 
   // --- 回饋管理 -------------------------------------------------------------
@@ -1339,6 +1381,57 @@ const AdminPage = () => {
               </Grid>
             ))}
           </Stack>
+
+          {/* LINE 通知綁定。放在卡片下方而不是獨立分頁：它是「個人設定」不是「管理功能」，
+              而且只有綁了才收得到通知，擺在進門就看得到的位置才會有人去綁。 */}
+          <Divider sx={{ my: 3 }} />
+          <Box>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
+              {t('line.title')}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('line.description')}
+            </Typography>
+
+            {!lineBinding ? (
+              <LinearProgress />
+            ) : !lineBinding.enabled ? (
+              <Alert severity="info">{t('line.notConfigured')}</Alert>
+            ) : lineBinding.bound ? (
+              <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+                <Chip color="success" label={t('line.bound')} />
+                <Button size="small" color="error" onClick={handleUnbindLine}>
+                  {t('line.unbind')}
+                </Button>
+              </Stack>
+            ) : (
+              <Stack spacing={1.5} alignItems="flex-start">
+                {lineBinding.bindingCode ? (
+                  <>
+                    <Alert severity="success" sx={{ width: '100%' }}>
+                      {t('line.codeReady')}
+                    </Alert>
+                    <Typography
+                      variant="h4"
+                      sx={{ fontWeight: 700, letterSpacing: '0.25em', fontFamily: 'monospace' }}
+                    >
+                      {lineBinding.bindingCode}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {t('line.codeExpiresAt', {
+                        time: new Date(lineBinding.expiresAt).toLocaleTimeString(i18n.language),
+                      })}
+                    </Typography>
+                  </>
+                ) : (
+                  <Chip variant="outlined" label={t('line.notBound')} />
+                )}
+                <Button variant="contained" size="small" onClick={handleCreateLineCode}>
+                  {t(lineBinding.bindingCode ? 'line.regenerateCode' : 'line.generateCode')}
+                </Button>
+              </Stack>
+            )}
+          </Box>
         </Paper>
 
       {/* 用戶管理分頁 */}

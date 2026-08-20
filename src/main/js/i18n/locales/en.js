@@ -109,6 +109,22 @@ const en = {
         },
     },
 
+    line: {
+        title: 'LINE notifications',
+        description: 'Link your LINE account to be notified when something needs review. Only people with the matching permission receive them.',
+        notConfigured: 'LINE notifications are not configured on the server yet — please contact the site maintainer.',
+        bound: 'Linked',
+        notBound: 'Not linked',
+        generateCode: 'Generate linking code',
+        regenerateCode: 'Generate a new code',
+        codeReady: 'Send the code below to the association LINE account to finish linking.',
+        codeExpiresAt: 'Valid until {{time}} — generate a new one if it expires',
+        codeFailed: 'Could not generate a linking code',
+        unbind: 'Unlink',
+        unbound: 'LINE account unlinked',
+        unbindFailed: 'Could not unlink your LINE account',
+    },
+
     feedback: {
         title: 'Send feedback',
         category: 'Category',
@@ -826,6 +842,11 @@ const en = {
 
     // Looked up by the errorCode the backend returns
     errors: {
+        LINE_BAD_SIGNATURE: 'Signature verification failed',
+        LINE_NOT_CONFIGURED: 'LINE notifications are not configured',
+        LINE_BINDING_FETCH_FAILED: 'Could not load your LINE linking status',
+        LINE_BINDING_CODE_FAILED: 'Could not generate a linking code',
+        LINE_UNBIND_FAILED: 'Could not unlink your LINE account',
         RATE_LIMITED: 'Too many requests — please try again in {{minutes}} minutes',
         REVIEW_RATE_LIMITED: 'You are submitting reviews too quickly — please try again in {{minutes}} minutes',
         FEEDBACK_RATE_LIMITED: 'You are sending feedback too quickly — please try again in {{minutes}} minutes',

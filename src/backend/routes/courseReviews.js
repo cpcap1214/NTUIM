@@ -5,6 +5,7 @@ const { CourseReview, User, Course, CourseCatalog } = require('../models');
 const { authenticateToken, requirePermission, isOwnerOrHasPermission } = require('../middleware/auth');
 const { reviewWriteLimiter } = require('../middleware/rateLimits');
 const { CONTENT_LIMITS } = require('../config/reviewContent');
+const notificationService = require('../services/notificationService');
 const { Op } = require('sequelize');
 const sequelize = require('../models').sequelize;
 const { isTermReviewable } = require('../utils/semesterEligibility');
@@ -325,6 +326,12 @@ router.post('/',
                 message: '評價已送出，待管理員審核後將公開顯示',
                 data: review
             });
+
+            // 通知在回應「之後」才觸發，而且一定要接住錯誤：
+            // 通知失敗不能讓投稿失敗，而沒接住的 rejection 在 Node 會變成
+            // unhandledRejection，預設直接讓行程結束——等於「LINE 掛掉 → 後端掛掉」。
+            notificationService.notifyReviewPending(review)
+                .catch((e) => console.error('LINE 通知失敗（新評價待審）:', e.message));
         } catch (error) {
             // 資料庫的 UNIQUE 約束是重複評價檢查的最後一道防線（例如連點兩下送出鍵、
             // 或開兩個分頁同時送出，都可能繞過前面 findOne 的預先檢查）
@@ -409,7 +416,8 @@ router.put('/:id',
             //
             // 只有 rejected → pending 算重新排隊；單純編輯已核准的評價不算，
             // 那種情況下位置本來就是他的。
-            if (review.status === 'rejected') {
+            const wasRejected = review.status === 'rejected';
+            if (wasRejected) {
                 updates.requeuedAt = new Date();
             }
 
@@ -419,6 +427,13 @@ router.put('/:id',
                 message: '評價已更新，將重新進入審核',
                 data: review
             });
+
+            // 只有「被退件後重送」才通知。單純編輯已核准的評價不需要驚動審核者，
+            // 每次改錯字都推一則通知只會讓人把整個 bot 靜音。
+            if (wasRejected) {
+                notificationService.notifyReviewResubmitted(review)
+                    .catch((e) => console.error('LINE 通知失敗（評價重送）:', e.message));
+            }
         } catch (error) {
             console.error('更新評價錯誤:', error);
             res.status(500).json(errorResponse('UPDATE_FAILED', '更新評價失敗'));

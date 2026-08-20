@@ -27,6 +27,7 @@ const roleRoutes = require('./routes/roles');
 const adminRoutes = require('./routes/admin');
 const announcementRoutes = require('./routes/announcements');
 const feedbackRoutes = require('./routes/feedback');
+const lineRoutes = require('./routes/line');
 
 // 引入中間件
 const { authenticateToken, optionalAuth, tokenFromQuery, requireModuleAccess } = require('./middleware/auth');
@@ -57,7 +58,14 @@ app.use(helmet({
 
 // 最寬鬆的 CORS - 允許所有來源和方法
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({
+    limit: '10mb',
+    // LINE webhook 的簽章是對「原始位元組」算 HMAC 的。解析成物件後再 JSON.stringify
+    // 回去不保證與原文逐位元組相同（鍵順序、空白、Unicode 逸出都可能不同），
+    // 拿它驗簽會永遠失敗——而失敗的樣子是「webhook 完全沒反應」，從外面看不出原因。
+    // 這裡把原始 buffer 留一份給 routes/line.js 用，不必調整中介層順序。
+    verify: (req, res, buf) => { req.rawBody = buf; },
+}));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // 認證相關端點的速率限制：登入/註冊/改密碼都是猜密碼與帳號枚舉的目標，
@@ -129,6 +137,9 @@ app.use('/api/announcements', announcementRoutes);
 // 回饋的送出端點自己掛 authenticateToken（路由檔內），不在這裡統一套用——
 // 管理端點另外要求 feedback.manage 權限
 app.use('/api/feedback', feedbackRoutes);
+// LINE：webhook 由 LINE 的伺服器呼叫，沒有我們的 token，所以這裡不能掛
+// authenticateToken——它靠 X-Line-Signature 驗證。綁定管理的端點在路由檔內各自要求登入。
+app.use('/api/line', lineRoutes);
 
 // admin 路由原本完全沒掛 authenticateToken（它自己有一套平行的認證實作），
 // 現在統一走共用中介層，路由檔內各自再用 requirePermission 檢查權限

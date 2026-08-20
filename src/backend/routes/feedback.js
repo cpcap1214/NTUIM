@@ -4,6 +4,7 @@ const { body, validationResult } = require('express-validator');
 const { Feedback } = require('../models');
 const { authenticateToken, requirePermission } = require('../middleware/auth');
 const { feedbackLimiter } = require('../middleware/rateLimits');
+const notificationService = require('../services/notificationService');
 
 const errorResponse = (errorCode, message) => ({ error: message, errorCode });
 
@@ -34,15 +35,21 @@ router.post('/',
         }
 
         try {
+            const category = req.body.category || 'other';
             await Feedback.create({
                 body: req.body.body.trim(),
-                category: req.body.category || 'other'
+                category
                 // 這裡沒有 userId，也不該有
             });
 
             // 刻意「不」回傳建立出來的資料列。回傳 id 等於給出一條把後台某一筆
             // 對回「剛才是誰送的」的線索——送出者的瀏覽器與伺服器日誌都會留下那個 id。
             res.status(201).json({ message: '已收到您的回饋，謝謝！' });
+
+            // 通知只帶分類，不帶內文——內文可能包含足以辨識送出者的細節。
+            // 注意這則通知本身會洩漏「剛剛有人送了回饋」的時間，詳見 notificationService。
+            notificationService.notifyFeedbackReceived(category)
+                .catch((e) => console.error('LINE 通知失敗（新回饋）:', e.message));
         } catch (error) {
             console.error('建立回饋錯誤:', error);
             res.status(500).json(errorResponse('CREATE_FEEDBACK_FAILED', '送出回饋失敗'));
