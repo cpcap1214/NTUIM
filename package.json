@@ -63,8 +63,7 @@
     ]
   },
   "homepage": ".",
-  "//proxy": "開發環境專用：把 /api 轉給本機後端。正式環境是 nginx 做這件事（見 nginx.conf），這個設定不影響 build 產物。沒有它的話前端的 /api 請求會打到 CRA 開發伺服器自己、拿回 index.html，前端 parse JSON 失敗顯示「取得評價失敗」。",
-  "proxy": "http://localhost:5001",
+  "//proxy": "刻意不設 proxy。開發環境的 API 位址改由 .env.local 的 REACT_APP_API_URL 指定（那裡有完整說明）。設了 proxy 會讓 react-scripts 啟用 host 檢查，而本機有 Tailscale 介面時 dev server 會直接崩潰，詳見 .env.local。",
   "keywords": [
     "react",
     "mui",

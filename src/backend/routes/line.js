@@ -12,6 +12,7 @@ const {
     bindingCodeExpiry,
     isBindingCodeExpired,
     normalizeBindingCode,
+    classifyMessage,
     CODE_TTL_MS,
 } = require('../config/line');
 
@@ -74,12 +75,21 @@ const handleEvent = async (event) => {
 
     if (event.type !== 'message' || event.message?.type !== 'text') return;
 
+    // 不像綁定碼就完全不回應——常見問題交給 LINE 的關鍵字自動回應處理
+    // （設定方式見 HANDOVER.md）。
+    //
+    // ⚠️ 這裡若對一般訊息回了任何東西，關鍵字訊息就會收到兩則回覆：
+    //    我們一則、LINE 的自動回應一則。兩邊互不重疊是這個分工能成立的前提。
+    if (classifyMessage(event.message.text) === 'ignore') return;
+
     const code = normalizeBindingCode(event.message.text);
     const user = await User.findOne({ where: { lineBindingCode: code } });
 
     if (!user || isBindingCodeExpired(user.lineBindingExpiresAt)) {
+        // 格式對但查不到或已過期才回這句。打錯碼的人一定要有回饋，
+        // 否則他只會一直重傳同一組失效的碼。
         await lineService.reply(event.replyToken, [
-            lineService.textMessage(`找不到有效的綁定碼（可能已過期）。\n\n${HELP_TEXT}`),
+            lineService.textMessage(`綁定碼無效或已過期。\n\n${HELP_TEXT}`),
         ]);
         return;
     }

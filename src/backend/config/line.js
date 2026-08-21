@@ -45,6 +45,26 @@ const isBindingCodeExpired = (expiresAt, now = Date.now()) => {
 // 使用者可能連同空白或小寫一起貼上來，正規化之後再比對
 const normalizeBindingCode = (raw) => String(raw ?? '').trim().toUpperCase();
 
+// 這串文字「看起來」是不是綁定碼：長度正確，且每個字元都來自綁定碼字母表。
+//
+// 有了這個判斷，webhook 才分辨得出「這是綁定嘗試」與「這是在跟 bot 講話」。
+// 少了它，任何一句話都會被當成打錯的綁定碼——使用者說聲哈囉就收到
+// 「找不到有效的綁定碼」，看起來像 bot 壞了。那正是這個函式要修掉的 bug。
+const BINDING_CODE_RE = new RegExp(`^[${CODE_ALPHABET}]{${CODE_LENGTH}}$`);
+const looksLikeBindingCode = (raw) => BINDING_CODE_RE.test(normalizeBindingCode(raw));
+
+// 一則文字訊息該怎麼處理。
+//
+// 抽成純函式是為了可測：「哪些訊息會得到回覆」是這次唯一的行為改變，
+// 而它在真實環境只能靠人工一則一則傳訊息驗證，成本高又容易漏掉邊界情況。
+//
+//   'binding-attempt' → 由 webhook 處理（綁定成功／碼無效）
+//   'ignore'          → webhook 完全不回應，交給 LINE 的關鍵字自動回應
+//
+// ⚠️ 'ignore' 必須真的完全不回應。LINE 的自動回應與 webhook 同時啟用時，
+//    兩邊都回就會讓使用者收到兩則訊息——這是這個分工唯一的失敗模式。
+const classifyMessage = (text) => (looksLikeBindingCode(text) ? 'binding-attempt' : 'ignore');
+
 // --- 簽章 -----------------------------------------------------------------
 
 // 驗證 LINE webhook 的 X-Line-Signature。
@@ -87,5 +107,7 @@ module.exports = {
     bindingCodeExpiry,
     isBindingCodeExpired,
     normalizeBindingCode,
+    looksLikeBindingCode,
+    classifyMessage,
     verifySignature,
 };

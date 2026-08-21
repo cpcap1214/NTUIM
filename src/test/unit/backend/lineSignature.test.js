@@ -8,6 +8,8 @@
 // 所以用測試釘住。
 
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
 const SECRET = 'test-channel-secret';
 
@@ -124,5 +126,72 @@ describe('綁定碼', () => {
         // 使用者從網頁複製貼上時很容易帶到空白
         expect(line.normalizeBindingCode('  abc23xyz \n')).toBe('ABC23XYZ');
         expect(line.normalizeBindingCode(null)).toBe('');
+    });
+});
+
+describe('訊息分類：哪些訊息 webhook 才該回應', () => {
+    const line = loadLine();
+
+    // 這一組是迴歸測試。原本的實作把「每一則文字訊息」都當成綁定碼嘗試，
+    // 查不到就回「找不到有效的綁定碼」——使用者說聲哈囉就收到那句，看起來像 bot 壞了。
+    //
+    // 而且這不只是體驗問題：常見問題改由 LINE 的關鍵字自動回應處理之後，
+    // webhook 若對一般訊息也回話，關鍵字訊息會收到兩則回覆（我們一則、LINE 一則）。
+    // 「不是綁定碼就完全不回應」是兩邊分工能成立的前提。
+
+    test.each([
+        ['哈囉'],
+        ['如何繳交系學會費'],
+        ['hello'],
+        ['請問考古題在哪'],
+        [''],
+        ['   '],
+        [null],
+        [undefined],
+    ])('一般訊息 %s 不觸發回應', (text) => {
+        expect(line.classifyMessage(text)).toBe('ignore');
+    });
+
+    test.each([
+        ['ABCDEFG', '少一碼'],
+        ['ABCDEFGHI', '多一碼'],
+        ['ABCDEF0G', '含字母表排除的 0'],
+        ['ABCDEFOG', '含字母表排除的 O'],
+        ['ABCDEF1G', '含字母表排除的 1'],
+        ['ABCDEFIG', '含字母表排除的 I'],
+        ['ABC DEFG', '中間有空白'],
+        ['ABCDEF-G', '含符號'],
+    ])('%s（%s）不算綁定碼', (text) => {
+        expect(line.looksLikeBindingCode(text)).toBe(false);
+        expect(line.classifyMessage(text)).toBe('ignore');
+    });
+
+    test('產生出來的碼一定會被認得', () => {
+        // 若哪天改了字母表或長度卻忘了同步，這條會先紅
+        for (let i = 0; i < 50; i += 1) {
+            const code = line.generateBindingCode();
+            expect(line.looksLikeBindingCode(code)).toBe(true);
+            expect(line.classifyMessage(code)).toBe('binding-attempt');
+        }
+    });
+
+    test('小寫與前後空白仍算綁定碼（會先正規化）', () => {
+        const code = line.generateBindingCode();
+        expect(line.classifyMessage(`  ${code.toLowerCase()} `)).toBe('binding-attempt');
+    });
+
+    test('webhook 真的有用 classifyMessage 把關', () => {
+        // 上面測的都是純函式。函式本身正確、但 route 沒呼叫它的話，
+        // 一般訊息照樣會收到「綁定碼無效」——而那些測試仍然全綠。
+        // 這裡直接檢查接線，理由同 feedbackAnonymity.test.js。
+        const src = fs.readFileSync(
+            path.resolve(process.cwd(), 'src/backend/routes/line.js'), 'utf8'
+        );
+
+        const handler = /if \(event\.type !== 'message'[\s\S]*?lineBindingCode: code/.exec(src);
+        expect(handler).not.toBeNull();
+
+        // 在查資料庫之前就要先擋掉非綁定碼的訊息
+        expect(handler[0]).toMatch(/classifyMessage\([\s\S]*?===\s*'ignore'[\s\S]*?return/);
     });
 });
