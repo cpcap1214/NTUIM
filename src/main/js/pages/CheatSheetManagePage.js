@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
     Box,
     Typography,
@@ -37,110 +37,82 @@ import {
     Edit as EditIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import { API_BASE_URL } from '../services/api';
+import { useResourceManage } from '../hooks/useResourceManage';
 import cheatSheetService from '../services/cheatSheetService';
 import EditCheatSheetDialog from '../components/EditCheatSheetDialog';
+
+// 標籤配色。原本定義在元件內部，但它不依賴任何 state，
+// 放在裡面只會讓每次 render 都重建一次這個物件。
+//
+// 註：這些鍵是使用者自己打的標籤字串，所以刻意不走 i18n——
+// 對不上就退回 'default'，多一個新標籤也不必改這裡。
+const TAG_COLORS = {
+    資料庫: 'primary',
+    React: 'info',
+    JavaScript: 'warning',
+    前端: 'success',
+    機器學習: 'secondary',
+    AI: 'error',
+    演算法: 'primary',
+    理論: 'info',
+};
+
+const getTagColor = (tag) => TAG_COLORS[tag] || 'default';
 
 const CheatSheetManagePage = () => {
     const { t, i18n } = useTranslation();
     const { user, isAdmin } = useAuth();
-    const [cheatSheets, setCheatSheets] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-    const [cheatSheetToDelete, setCheatSheetToDelete] = useState(null);
-    const [editDialogOpen, setEditDialogOpen] = useState(false);
-    const [cheatSheetToEdit, setCheatSheetToEdit] = useState(null);
-    const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-    const [searchTerm, setSearchTerm] = useState('');
+    // 共用的狀態機在 hooks/useResourceManage.js，考古題管理頁用的是同一支。
+    const {
+        items: cheatSheets,
+        filteredItems: filteredCheatSheets,
+        loading,
+        error,
+        searchTerm,
+        setSearchTerm,
+        snackbar,
+        notify,
+        closeSnackbar,
+        deleteTarget: cheatSheetToDelete,
+        requestDelete: handleDeleteClick,
+        cancelDelete: handleDeleteCancel,
+        confirmDelete: handleDeleteConfirm,
+        editTarget: cheatSheetToEdit,
+        requestEdit: handleEditClick,
+        closeEdit: handleEditClose,
+        refresh: fetchCheatSheets,
+        download: handleDownload,
+        openPreview,
+    } = useResourceManage({
+        resourcePath: 'cheat-sheets',
+        // 大抄比對標題、課名、描述——注意這裡沒有課號，跟考古題頁不同。
+        // 表格裡看得到課號卻搜不到，是複製貼上後各自長歪的結果，
+        // 已由 test/unit/pages/ManagePages.test.js 釘住現況；
+        // 要統一的話是一次刻意的決定，不該在重構時順手改掉。
+        matches: (sheet, term) =>
+            sheet.title.toLowerCase().includes(term) ||
+            sheet.courseName.toLowerCase().includes(term) ||
+            (sheet.description && sheet.description.toLowerCase().includes(term)),
+        messages: {
+            fetchFailed: t('cheatSheet.fetchFailed'),
+            deleteFailed: t('manage.deleteFailed'),
+            deleted: t('manage.cheatSheetDeleted'),
+            downloadFailed: t('cheatSheet.downloadFailedRetry'),
+        },
+    });
 
-    // 從 API 獲取大抄資料
-    useEffect(() => {
-        fetchCheatSheets();
-        // fetchCheatSheets 現在引用 t（i18n 訊息），linter 不再視它為穩定值；
-        // 加進依賴會無限重抓，照專案既有做法關掉這條規則
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    const deleteDialogOpen = Boolean(cheatSheetToDelete);
+    const editDialogOpen = Boolean(cheatSheetToEdit);
 
-    const fetchCheatSheets = async () => {
-        try {
-            setLoading(true);
-            const response = await fetch(`${API_BASE_URL}/cheat-sheets`);
-
-            if (!response.ok) {
-                throw new Error(t('cheatSheet.fetchFailed'));
-            }
-
-            const result = await response.json();
-            setCheatSheets(result.data || []);
-        } catch (err) {
-            console.error('獲取大抄錯誤:', err);
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleDeleteClick = (cheatSheet) => {
-        setCheatSheetToDelete(cheatSheet);
-        setDeleteDialogOpen(true);
-    };
-
-    const handleDeleteConfirm = async () => {
-        if (!cheatSheetToDelete) return;
-
-        try {
-            const response = await fetch(`${API_BASE_URL}/cheat-sheets/${cheatSheetToDelete.id}`, {
-                method: 'DELETE',
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`,
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error(t('manage.deleteFailed'));
-            }
-
-            // 重新獲取資料
-            await fetchCheatSheets();
-
-            setSnackbar({
-                open: true,
-                message: t('manage.cheatSheetDeleted'),
-                severity: 'success',
-            });
-        } catch (error) {
-            console.error('刪除大抄錯誤:', error);
-            setSnackbar({
-                open: true,
-                message: error.message || t('manage.deleteFailed'),
-                severity: 'error',
-            });
-        } finally {
-            setDeleteDialogOpen(false);
-            setCheatSheetToDelete(null);
-        }
-    };
-
-    const handleDeleteCancel = () => {
-        setDeleteDialogOpen(false);
-        setCheatSheetToDelete(null);
-    };
-
-    const handleEditClick = (cheatSheet) => {
-        setCheatSheetToEdit(cheatSheet);
-        setEditDialogOpen(true);
-    };
+    // 原本指向 /uploads/cheat_sheets/{id}/preview，那是磁碟上不存在的路徑（一直是 404）。
+    // 改用有認證的 API 端點，跟 CheatSheetPage 一致。
+    const handlePreview = (cheatSheetId) => openPreview(`${cheatSheetId}/preview`);
 
     const handleEditSave = async (cheatSheetId, cheatSheetData) => {
         try {
             await cheatSheetService.updateCheatSheet(cheatSheetId, cheatSheetData);
-            await fetchCheatSheets(); // 重新載入資料
-            setSnackbar({
-                open: true,
-                message: t('manage.cheatSheetInfoUpdated'),
-                severity: 'success',
-            });
+            await fetchCheatSheets();
+            notify(t('manage.cheatSheetInfoUpdated'), 'success');
         } catch (error) {
             console.error('更新大抄錯誤:', error);
             throw new Error(error.error || t('exam.form.updateFailed'));
@@ -150,87 +122,13 @@ const CheatSheetManagePage = () => {
     const handleFileUpdate = async (cheatSheetId, formData) => {
         try {
             await cheatSheetService.updateCheatSheetFile(cheatSheetId, formData);
-            await fetchCheatSheets(); // 重新載入資料
-            setSnackbar({
-                open: true,
-                message: t('manage.cheatSheetFileUpdated'),
-                severity: 'success',
-            });
+            await fetchCheatSheets();
+            notify(t('manage.cheatSheetFileUpdated'), 'success');
         } catch (error) {
             console.error('更新大抄檔案錯誤:', error);
             throw new Error(error.error || t('exam.form.fileUpdateFailed'));
         }
     };
-
-    const handleEditClose = () => {
-        setEditDialogOpen(false);
-        setCheatSheetToEdit(null);
-    };
-
-    const handlePreview = (cheatSheetId) => {
-        // 原本指向 /uploads/cheat_sheets/{id}/preview，那是磁碟上不存在的路徑（一直是 404）。
-        // 改用有認證的 API 端點，跟 CheatSheetPage 一致。
-        const token = localStorage.getItem('token');
-        window.open(
-            `${API_BASE_URL}/cheat-sheets/${cheatSheetId}/preview?token=${token}`,
-            '_blank',
-        );
-    };
-
-    const handleDownload = async (cheatSheetId, filename) => {
-        try {
-            const response = await fetch(`${API_BASE_URL}/cheat-sheets/${cheatSheetId}/download`, {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`,
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error(t('cheatSheet.downloadFailed'));
-            }
-
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url);
-        } catch (error) {
-            console.error('下載錯誤:', error);
-            setSnackbar({
-                open: true,
-                message: t('cheatSheet.downloadFailedRetry'),
-                severity: 'error',
-            });
-        }
-    };
-
-    // 這些鍵是資料庫裡實際的標籤字串，不是介面文案——抽到語言檔會讓配色在英文介面下失效
-    const getTagColor = (tag) => {
-        const colors = {
-            資料庫: 'primary',
-            React: 'info',
-            JavaScript: 'warning',
-            前端: 'success',
-            機器學習: 'secondary',
-            AI: 'error',
-            演算法: 'primary',
-            理論: 'info',
-        };
-        return colors[tag] || 'default';
-    };
-
-    const filteredCheatSheets = cheatSheets.filter(
-        (sheet) =>
-            sheet.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            sheet.courseName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (sheet.description &&
-                sheet.description.toLowerCase().includes(searchTerm.toLowerCase())),
-    );
-
     // 檢查是否為管理員
     if (!user || !isAdmin) {
         return (
@@ -546,13 +444,9 @@ const CheatSheetManagePage = () => {
                 />
 
                 {/* Snackbar 通知 */}
-                <Snackbar
-                    open={snackbar.open}
-                    autoHideDuration={6000}
-                    onClose={() => setSnackbar({ ...snackbar, open: false })}
-                >
+                <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={closeSnackbar}>
                     <Alert
-                        onClose={() => setSnackbar({ ...snackbar, open: false })}
+                        onClose={closeSnackbar}
                         severity={snackbar.severity}
                         sx={{ width: '100%' }}
                     >

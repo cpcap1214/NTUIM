@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
     Box,
     Typography,
@@ -34,111 +34,64 @@ import {
     Edit as EditIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import { API_BASE_URL } from '../services/api';
+import { useResourceManage } from '../hooks/useResourceManage';
 import examService from '../services/examService';
 import EditExamDialog from '../components/EditExamDialog';
 
 const ExamManagePage = () => {
     const { t, i18n } = useTranslation();
     const { user, isAdmin } = useAuth();
-    const [exams, setExams] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-    const [examToDelete, setExamToDelete] = useState(null);
-    const [editDialogOpen, setEditDialogOpen] = useState(false);
-    const [examToEdit, setExamToEdit] = useState(null);
-    const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-    const [searchTerm, setSearchTerm] = useState('');
+    // 共用的狀態機在 hooks/useResourceManage.js。大抄管理頁用的是同一支——
+    // 抽取前這兩頁有 69% 的行完全相同。
+    const {
+        items: exams,
+        filteredItems: filteredExams,
+        loading,
+        error,
+        searchTerm,
+        setSearchTerm,
+        snackbar,
+        notify,
+        closeSnackbar,
+        deleteTarget: examToDelete,
+        requestDelete: handleDeleteClick,
+        cancelDelete: handleDeleteCancel,
+        confirmDelete: handleDeleteConfirm,
+        editTarget: examToEdit,
+        requestEdit: handleEditClick,
+        closeEdit: handleEditClose,
+        refresh: fetchExams,
+        download: handleDownload,
+        openPreview,
+    } = useResourceManage({
+        resourcePath: 'exams',
+        // 不分頁，管理頁要一次看到全部
+        listQuery: '?limit=1000',
+        // 考古題可以用課名、課號、教授搜尋
+        matches: (exam, term) =>
+            exam.courseName.toLowerCase().includes(term) ||
+            exam.courseCode.toLowerCase().includes(term) ||
+            (exam.professor && exam.professor.toLowerCase().includes(term)),
+        messages: {
+            fetchFailed: t('exam.fetchFailed'),
+            deleteFailed: t('manage.deleteFailed'),
+            deleted: t('manage.examDeleted'),
+            downloadFailed: t('cheatSheet.downloadFailedRetry'),
+        },
+    });
 
-    // 從 API 獲取考古題資料
-    useEffect(() => {
-        fetchExams();
-        // fetchExams 現在引用 t（i18n 訊息），linter 不再視它為穩定值；
-        // 加進依賴會無限重抓，照專案既有做法關掉這條規則
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    const deleteDialogOpen = Boolean(examToDelete);
+    const editDialogOpen = Boolean(examToEdit);
 
-    const fetchExams = async () => {
-        try {
-            setLoading(true);
-            // 不設限制，獲取所有考古題
-            const response = await fetch(`${API_BASE_URL}/exams?limit=1000`);
-
-            if (!response.ok) {
-                throw new Error(t('exam.fetchFailed'));
-            }
-
-            const result = await response.json();
-            setExams(result.data || []);
-        } catch (err) {
-            console.error('獲取考古題錯誤:', err);
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleDeleteClick = (exam) => {
-        setExamToDelete(exam);
-        setDeleteDialogOpen(true);
-    };
-
-    const handleDeleteConfirm = async () => {
-        if (!examToDelete) return;
-
-        try {
-            const response = await fetch(`${API_BASE_URL}/exams/${examToDelete.id}`, {
-                method: 'DELETE',
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`,
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error(t('manage.deleteFailed'));
-            }
-
-            // 重新獲取資料
-            await fetchExams();
-
-            setSnackbar({
-                open: true,
-                message: t('manage.examDeleted'),
-                severity: 'success',
-            });
-        } catch (error) {
-            console.error('刪除考古題錯誤:', error);
-            setSnackbar({
-                open: true,
-                message: error.message || t('manage.deleteFailed'),
-                severity: 'error',
-            });
-        } finally {
-            setDeleteDialogOpen(false);
-            setExamToDelete(null);
-        }
-    };
-
-    const handleDeleteCancel = () => {
-        setDeleteDialogOpen(false);
-        setExamToDelete(null);
-    };
-
-    const handleEditClick = (exam) => {
-        setExamToEdit(exam);
-        setEditDialogOpen(true);
-    };
+    // 原本指向 /uploads/exams/{id}/preview，那是磁碟上不存在的路徑（一直是 404）。
+    // 改用有認證的 API 端點，跟 ExamArchivePage 一致。
+    const handlePreview = (examId) => openPreview(`${examId}/preview/question`);
 
     const handleEditSave = async (examId, examData) => {
         try {
             await examService.updateExam(examId, examData);
-            await fetchExams(); // 重新載入資料
-            setSnackbar({
-                open: true,
-                message: t('manage.examInfoUpdated'),
-                severity: 'success',
-            });
+            await fetchExams();
+            notify(t('manage.examInfoUpdated'), 'success');
         } catch (error) {
             console.error('更新考古題錯誤:', error);
             throw new Error(error.error || t('exam.form.updateFailed'));
@@ -148,69 +101,13 @@ const ExamManagePage = () => {
     const handleFileUpdate = async (examId, formData) => {
         try {
             await examService.updateExamFiles(examId, formData);
-            await fetchExams(); // 重新載入資料
-            setSnackbar({
-                open: true,
-                message: t('manage.examFileUpdated'),
-                severity: 'success',
-            });
+            await fetchExams();
+            notify(t('manage.examFileUpdated'), 'success');
         } catch (error) {
             console.error('更新考古題檔案錯誤:', error);
             throw new Error(error.error || t('exam.form.fileUpdateFailed'));
         }
     };
-
-    const handleEditClose = () => {
-        setEditDialogOpen(false);
-        setExamToEdit(null);
-    };
-
-    const handlePreview = (examId) => {
-        // 原本指向 /uploads/exams/{id}/preview，那是磁碟上不存在的路徑（一直是 404）。
-        // 改用有認證的 API 端點，跟 ExamArchivePage 一致；token 走 query string 是因為
-        // window.open 沒辦法帶 Authorization 標頭。
-        const token = localStorage.getItem('token');
-        window.open(`${API_BASE_URL}/exams/${examId}/preview/question?token=${token}`, '_blank');
-    };
-
-    const handleDownload = async (examId, filename) => {
-        try {
-            const response = await fetch(`${API_BASE_URL}/exams/${examId}/download`, {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`,
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error(t('cheatSheet.downloadFailed'));
-            }
-
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url);
-        } catch (error) {
-            console.error('下載錯誤:', error);
-            setSnackbar({
-                open: true,
-                message: t('cheatSheet.downloadFailedRetry'),
-                severity: 'error',
-            });
-        }
-    };
-
-    const filteredExams = exams.filter(
-        (exam) =>
-            exam.courseName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            exam.courseCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (exam.professor && exam.professor.toLowerCase().includes(searchTerm.toLowerCase())),
-    );
-
     // 檢查是否為管理員
     if (!user || !isAdmin) {
         return (
@@ -463,13 +360,9 @@ const ExamManagePage = () => {
                 />
 
                 {/* Snackbar 通知 */}
-                <Snackbar
-                    open={snackbar.open}
-                    autoHideDuration={6000}
-                    onClose={() => setSnackbar({ ...snackbar, open: false })}
-                >
+                <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={closeSnackbar}>
                     <Alert
-                        onClose={() => setSnackbar({ ...snackbar, open: false })}
+                        onClose={closeSnackbar}
                         severity={snackbar.severity}
                         sx={{ width: '100%' }}
                     >
