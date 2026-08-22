@@ -26,8 +26,8 @@ const examService = {
         try {
             const response = await api.post('/exams', formData, {
                 headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
+                    'Content-Type': 'multipart/form-data',
+                },
             });
             return response.data;
         } catch (error) {
@@ -39,9 +39,9 @@ const examService = {
     async downloadExam(id) {
         try {
             const response = await api.get(`/exams/${id}/download`, {
-                responseType: 'blob'
+                responseType: 'blob',
             });
-            
+
             // 從 header 取得檔名
             const contentDisposition = response.headers['content-disposition'];
             let filename = 'download.pdf';
@@ -83,8 +83,8 @@ const examService = {
         try {
             const response = await api.put(`/exams/${id}/files`, formData, {
                 headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
+                    'Content-Type': 'multipart/form-data',
+                },
             });
             return response.data;
         } catch (error) {
@@ -115,7 +115,7 @@ const examService = {
             formData.append('professor', examData.professor);
         }
         return formData;
-    }
+    },
 };
 
 export default examService;

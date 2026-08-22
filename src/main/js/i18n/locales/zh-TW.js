@@ -41,7 +41,8 @@ const zhTW = {
 
     preview: {
         viewingAs: '正在以',
-        viewingAsSuffix: '的身分檢視，全站權限與 API 回應都已切換。此模式為唯讀，無法變更任何資料。',
+        viewingAsSuffix:
+            '的身分檢視，全站權限與 API 回應都已切換。此模式為唯讀，無法變更任何資料。',
         stop: '停用檢視',
         stopping: '停用中…',
         someRole: '某個身分組',
@@ -136,7 +137,8 @@ const zhTW = {
                 feedback: '意見回饋',
             },
             unbindTitle: '解除該成員的綁定',
-            confirmUnbind: '確定要解除「{{name}}」的 LINE 綁定嗎？對方不會收到任何提示，只會從此不再收到通知。',
+            confirmUnbind:
+                '確定要解除「{{name}}」的 LINE 綁定嗎？對方不會收到任何提示，只會從此不再收到通知。',
         },
     },
 
@@ -176,7 +178,8 @@ const zhTW = {
             editNote: '管理員備註',
             noteHelper: '只有管理員看得到，送出回饋的人不會知道。',
             note: '管理員備註',
-            anonymityNotice: '回饋不記錄送出者，資料庫裡也沒有這個欄位。請勿嘗試用時間戳比對伺服器日誌來回推來源。',
+            anonymityNotice:
+                '回饋不記錄送出者，資料庫裡也沒有這個欄位。請勿嘗試用時間戳比對伺服器日誌來回推來源。',
             status: {
                 new: '未處理',
                 read: '已讀',
@@ -249,7 +252,8 @@ const zhTW = {
         passwordTooShort: '密碼長度至少需要 6 個字元',
         registerFailed: '註冊失敗，請稍後再試',
         registerSubtitle: '加入台大資管系學會',
-        registerFeeNotice: '註冊後若需要使用完整功能（下載考古題、上傳大抄等），請聯繫系學會繳交會費。',
+        registerFeeNotice:
+            '註冊後若需要使用完整功能（下載考古題、上傳大抄等），請聯繫系學會繳交會費。',
         studentId: '學號',
         studentIdExample: '例：B09705001',
         username: '使用者名稱',
@@ -375,9 +379,11 @@ const zhTW = {
         notice: {
             title: '上傳前請注意',
             range: '<b>五年內</b>：含當前學期往前推（114-1 認可 110~114）。超過範圍不計入回饋。',
-            answers: '<b>解答規範</b>：若有解答請一併附上，但<b>請勿自行撰寫答案</b>（若確定滿分例外）。',
+            answers:
+                '<b>解答規範</b>：若有解答請一併附上，但<b>請勿自行撰寫答案</b>（若確定滿分例外）。',
             naming: '<b>檔案命名</b>：<code>{{pattern}}</code>（例：112-1_程式設計_期末.pdf）',
-            namingWarning: '<b>未依命名格式者，不做計算</b>。若考題與答案分開，請分成兩個檔案上傳。',
+            namingWarning:
+                '<b>未依命名格式者，不做計算</b>。若考題與答案分開，請分成兩個檔案上傳。',
         },
         rules: {
             title: '資管系考古上傳規範',
@@ -389,34 +395,41 @@ const zhTW = {
             s2: {
                 title: '二、五年內 = <red>含當前學期</red>往前推五年',
                 example1Label: '例子一 ✌',
-                example1: '現在 114-1（認可 110~114 之考古），融融上傳 111~114 年的統計學考古共 4 份 → 通過審核，拿到回饋獎勵 <b>NT$ 250</b>',
+                example1:
+                    '現在 114-1（認可 110~114 之考古），融融上傳 111~114 年的統計學考古共 4 份 → 通過審核，拿到回饋獎勵 <b>NT$ 250</b>',
                 example2Label: '例子二 ✗',
-                example2: '現在 114-1，某同學上傳 1993~1996 年的資結考古共 4 份 → 因<b>超過規定時間</b>，拿不到回饋獎勵',
+                example2:
+                    '現在 114-1，某同學上傳 1993~1996 年的資結考古共 4 份 → 因<b>超過規定時間</b>，拿不到回饋獎勵',
             },
             s3: {
                 title: '三、注意事項與獎勵',
-                answers: '・<b>解答規範</b>：若有解答請一併附上；<red>請勿自行撰寫答案</red>（若確定滿分例外）',
+                answers:
+                    '・<b>解答規範</b>：若有解答請一併附上；<red>請勿自行撰寫答案</red>（若確定滿分例外）',
                 reward: '・<b>回饋獎勵</b>：每次上傳<b>4 份考古題 / 大抄</b>（不含系訂必修），待審核通過即可獲得<b> NT$ 250 </b>獎勵',
             },
             s4: {
                 title: '四、上傳份數 / 回饋上限 ⚠',
                 body: '為了讓每位同學都有公平繳交考古題的機會，每位同學在累積繳交滿 <redBold>32 份</redBold> 並獲得 <redBold>NT$ 2000</redBold> 獎金後，將不再繼續發放獎金。',
                 exampleLabel: '例子',
-                example: '吱吱上傳 110~114 年共 99 份考古 + 課程評價 → 雖通過審核，但因回饋獎勵<b>上限僅能拿到 NT$ 2000</b>',
+                example:
+                    '吱吱上傳 110~114 年共 99 份考古 + 課程評價 → 雖通過審核，但因回饋獎勵<b>上限僅能拿到 NT$ 2000</b>',
             },
             s5: {
                 title: '五、上傳格式',
                 examFormat: '・<b>形式</b>：原始考題電子檔及題目掃描為主，整理後以 PDF 上傳',
                 examQuality: '・<b>要求</b>：清晰且可辨識文字',
                 cheatSheetFormat: '・<b>形式</b>：不限手寫或打字，整理後以 PDF 上傳',
-                cheatSheetQuality: '・<b>要求</b>：清晰整齊且可辨識文字，有助同學複習考試（學術部會再審核）',
+                cheatSheetQuality:
+                    '・<b>要求</b>：清晰整齊且可辨識文字，有助同學複習考試（學術部會再審核）',
             },
             s6: {
                 title: '六、上傳流程',
                 step1Title: '1. 檢視已上傳之考古',
-                step1Body: '為避免重複上傳，請先點擊上方流程區的「檢視已上傳清單」按鈕，至 Google Sheet 確認',
+                step1Body:
+                    '為避免重複上傳，請先點擊上方流程區的「檢視已上傳清單」按鈕，至 Google Sheet 確認',
                 step2Title: '2. 填寫表單',
-                step2Body: '使用台大信箱（@ntu.edu.tw）填寫；檔案命名：<code>{{pattern}}</code>（例：112-1_程式設計_期末.pdf）。<red>未依命名格式者不做計算</red>；若考題與答案分開，請分成兩個檔案上傳',
+                step2Body:
+                    '使用台大信箱（@ntu.edu.tw）填寫；檔案命名：<code>{{pattern}}</code>（例：112-1_程式設計_期末.pdf）。<red>未依命名格式者不做計算</red>；若考題與答案分開，請分成兩個檔案上傳',
                 step3Title: '3. 等待審核',
                 step3Body: '待審核通過 & 累積達 4 份後，學術部將於統一時間通知並發放回饋獎勵',
             },
@@ -450,9 +463,18 @@ const zhTW = {
             },
         },
         steps: {
-            checkList: { label: '檢視已上傳清單', desc: '為避免重複上傳，先到 Google Sheet 確認檔案是否已存在' },
-            fillForm: { label: '填寫表單上傳檔案', desc: '使用 @ntu.edu.tw 信箱，依命名規則上傳 PDF' },
-            awaitReview: { label: '等待學術部審核', desc: '累積達 4 份且通過審核，學術部會統一通知並發放獎勵' },
+            checkList: {
+                label: '檢視已上傳清單',
+                desc: '為避免重複上傳，先到 Google Sheet 確認檔案是否已存在',
+            },
+            fillForm: {
+                label: '填寫表單上傳檔案',
+                desc: '使用 @ntu.edu.tw 信箱，依命名規則上傳 PDF',
+            },
+            awaitReview: {
+                label: '等待學術部審核',
+                desc: '累積達 4 份且通過審核，學術部會統一通知並發放獎勵',
+            },
         },
     },
 
@@ -594,11 +616,13 @@ const zhTW = {
             colorLabel: '顏色',
             priorityLabel: '排序權重',
             priorityHelper: '數字越大越前面',
-            deleteWarning: '將刪除「{{name}}」，持有此身分組的 {{count}} 位使用者會失去對應權限。此操作無法復原。',
+            deleteWarning:
+                '將刪除「{{name}}」，持有此身分組的 {{count}} 位使用者會失去對應權限。此操作無法復原。',
         },
         modules: {
             title: '模組管理',
-            description: '控制每個功能開放給誰。設為「限定」後，只有白名單內的身分組或使用者可以使用，管理員則一律可用（才能在正式環境先測試再公開）',
+            description:
+                '控制每個功能開放給誰。設為「限定」後，只有白名單內的身分組或使用者可以使用，管理員則一律可用（才能在正式環境先測試再公開）',
             fetchFailed: '取得模組設定失敗',
             saved: '模組設定已更新',
             saveFailed: '更新模組設定失敗',
@@ -671,15 +695,15 @@ const zhTW = {
         },
 
         semester: {
-            '1': '上學期',
-            '2': '下學期',
+            1: '上學期',
+            2: '下學期',
             summer: '暑期',
         },
 
         // 學年期簡寫格式（例如 115-2、115-暑）專用的學期後綴，跟 semester 的完整名稱分開維護
         academicTermSuffix: {
-            '1': '1',
-            '2': '2',
+            1: '1',
+            2: '2',
             summer: '暑',
         },
 
@@ -758,9 +782,12 @@ const zhTW = {
             professor: '授課教授',
             academicTerm: '學年期',
             allTerms: '全部',
-            courseNameHelper: '先選學期，再輸入名稱從選單挑選，會自動帶入教授與課號；找不到也可以直接手動輸入',
-            termRequiredForManualEntry: '學期選「全部」時請從選單挑選課程；若要手動輸入，請先指定具體學期',
-            searchTruncatedHint: '符合的課程過多，選單只顯示一部分。請輸入更完整的課程名稱，或直接輸入授課教授姓名',
+            courseNameHelper:
+                '先選學期，再輸入名稱從選單挑選，會自動帶入教授與課號；找不到也可以直接手動輸入',
+            termRequiredForManualEntry:
+                '學期選「全部」時請從選單挑選課程；若要手動輸入，請先指定具體學期',
+            searchTruncatedHint:
+                '符合的課程過多，選單只顯示一部分。請輸入更完整的課程名稱，或直接輸入授課教授姓名',
             courseContent: '課程內容',
             teachingMethod: '教學方式',
             assignmentExamFormat: '作業與考試形式',
@@ -772,7 +799,8 @@ const zhTW = {
             // 字數一律插值，不要寫死（見 resources/config/constants.js 的 REVIEW_CONTENT_LIMITS）
             courseContentHelper: '{{count}} / {{max}} 字（至少 {{min}} 字，內容會自動暫存草稿）',
             requiredFieldHelper: '{{count}} / {{max}} 字（至少 {{min}} 字）',
-            commentHelper: '{{count}} / {{max}} 字（至少 {{min}} 字，評價通過審核後才會公開顯示；內容會自動暫存草稿）',
+            commentHelper:
+                '{{count}} / {{max}} 字（至少 {{min}} 字，評價通過審核後才會公開顯示；內容會自動暫存草稿）',
             basicInfoRequired: '課號、課程名稱、授課教授為必填',
             ratingsIncomplete: '請完成所有評分項目',
             draftRestored: '已還原上次未完成的草稿',
@@ -791,7 +819,8 @@ const zhTW = {
             full: '已額滿',
             remaining: '尚餘 {{count}} 名',
             helper: '每則通過審核的評價可獲得 {{amount}} 元回饋金。每門課有名額上限（系上必修 3、系上選修 2、其他 1），額滿後仍然可以投稿，只是不會發放回饋金。',
-            fullWarning: '這門課的回饋金名額（{{limit}} 名）已經額滿。你仍然可以送出評價，而且一樣會公開顯示，只是不會發放回饋金。',
+            fullWarning:
+                '這門課的回饋金名額（{{limit}} 名）已經額滿。你仍然可以送出評價，而且一樣會公開顯示，只是不會發放回饋金。',
             overQuota: '超出名額',
             overQuotaHint: '這門課的名額已被更早投稿的評價佔滿，本篇不發放回饋金',
             eligible: '名額內',
@@ -839,7 +868,8 @@ const zhTW = {
 
         admin: {
             title: '課程評價管理',
-            description: '撰寫課程評價有金錢回饋，所有評價須經審核通過後才會公開顯示；也可在此刪除任何評價',
+            description:
+                '撰寫課程評價有金錢回饋，所有評價須經審核通過後才會公開顯示；也可在此刪除任何評價',
             searchPlaceholder: '搜尋課程名稱、代碼或教授...',
             noMatchingReviews: '沒有符合條件的評價',
             noMatchingSearchReviews: '沒有找到符合搜尋條件的評價',

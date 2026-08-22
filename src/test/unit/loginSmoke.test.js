@@ -30,7 +30,7 @@ const renderLogin = () =>
             <AuthProvider>
                 <LoginPage />
             </AuthProvider>
-        </MemoryRouter>
+        </MemoryRouter>,
     );
 
 describe('登入頁冒煙測試', () => {
@@ -63,7 +63,10 @@ describe('登入頁冒煙測試', () => {
         fireEvent.click(screen.getByRole('button', { name: /log in|登入/i }));
 
         await waitFor(() => {
-            expect(instance.post).toHaveBeenCalledWith('/auth/login', expect.objectContaining({ username: 'admin' }));
+            expect(instance.post).toHaveBeenCalledWith(
+                '/auth/login',
+                expect.objectContaining({ username: 'admin' }),
+            );
         });
     });
 });

@@ -32,7 +32,11 @@
 const https = require('https');
 const cheerio = require('cheerio');
 const { CourseCatalog, sequelize } = require('../models');
-const { normalizeRequirement, isImTargetAudience, catalogRowRank } = require('../config/reviewQuota');
+const {
+    normalizeRequirement,
+    isImTargetAudience,
+    catalogRowRank,
+} = require('../config/reviewQuota');
 
 const BASE_URL = 'https://nol.ntu.edu.tw/nol/coursesearch/search_for_02_dpt.php';
 const REQUEST_TIMEOUT_MS = 15000;
@@ -57,7 +61,9 @@ const fetchHtml = (url) =>
             }
             let data = '';
             res.setEncoding('utf8');
-            res.on('data', (chunk) => { data += chunk; });
+            res.on('data', (chunk) => {
+                data += chunk;
+            });
             res.on('end', () => resolve(data));
         });
         req.on('timeout', () => req.destroy(new Error('請求逾時')));
@@ -65,8 +71,8 @@ const fetchHtml = (url) =>
     });
 
 const pageUrl = (semester, startrec) =>
-    `${BASE_URL}?current_sem=${encodeURIComponent(semester)}&dptname=0`
-    + `&page_cnt=${ROWS_PER_PAGE}&startrec=${startrec}`;
+    `${BASE_URL}?current_sem=${encodeURIComponent(semester)}&dptname=0` +
+    `&page_cnt=${ROWS_PER_PAGE}&startrec=${startrec}`;
 
 // 上一個學期：115-2 的上一個是 115-1，115-1 的上一個是 114-2
 // （NOL 的 current_sem 只在 1/2 兩個學期代碼之間循環，沒有暑期代碼）
@@ -134,7 +140,7 @@ const parseCourseRows = (html) => {
             // 必選修在 NOL 上是相對於「授課對象」的（同一門課對資管是必修、對外系可能是選修），
             // 所以這兩個值必須成對保留，交給下面的合併邏輯挑出資管的那一列
             requirement: normalizeRequirement(requirementRaw),
-            isImTarget: isImTargetAudience(targetAudience)
+            isImTarget: isImTargetAudience(targetAudience),
         });
     });
 
@@ -151,7 +157,11 @@ const romanSemesterToRecord = (sem) => {
 const parseCliSemesters = () => {
     const arg = process.argv.find((a) => a.startsWith('--semesters='));
     if (!arg) return null;
-    return arg.replace('--semesters=', '').split(',').map((s) => s.trim()).filter(Boolean);
+    return arg
+        .replace('--semesters=', '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
 };
 
 // 逃生門：明知資料不完整仍要寫入。正常情況不該用到，修正後重跑才是對的做法
@@ -195,9 +205,11 @@ const fetchSemester = async (semester) => {
     parsed += firstRows.length;
     addAll(firstRows);
 
-    for (let startrec = ROWS_PER_PAGE, page = 1;
+    for (
+        let startrec = ROWS_PER_PAGE, page = 1;
         startrec < total && page < MAX_PAGES_PER_SEMESTER;
-        startrec += ROWS_PER_PAGE, page += 1) {
+        startrec += ROWS_PER_PAGE, page += 1
+    ) {
         await sleep(REQUEST_DELAY_MS);
         try {
             const rows = parseCourseRows(await fetchHtml(pageUrl(semester, startrec)));
@@ -252,7 +264,7 @@ async function main() {
     const semesters = parseCliSemesters() || [
         currentSem,
         decrementSemester(currentSem),
-        decrementSemester(decrementSemester(currentSem))
+        decrementSemester(decrementSemester(currentSem)),
     ];
 
     console.log(`學期：${semesters.join(', ')}`);
@@ -287,8 +299,8 @@ async function main() {
         // 只是分類錯了。這種失敗比缺資料危險得多，寧可整個學期不寫。
         if (!allowPartial && (result.failedPages.length > 0 || result.parsed !== result.total)) {
             console.error(
-                `  ${semester} 資料不完整（解析 ${result.parsed}/${result.total}，`
-                + `失敗分頁 ${result.failedPages.length} 頁），跳過寫入。`
+                `  ${semester} 資料不完整（解析 ${result.parsed}/${result.total}，` +
+                    `失敗分頁 ${result.failedPages.length} 頁），跳過寫入。`,
             );
             console.error('    修正後重跑即可；確定要寫入不完整的資料請加 --allow-partial');
             hadFailure = true;
@@ -300,19 +312,22 @@ async function main() {
         try {
             await sequelize.transaction(async (t) => {
                 for (const course of result.courses) {
-                    await CourseCatalog.upsert({
-                        courseCode: course.courseCode,
-                        courseName: course.courseName,
-                        professor: course.professor,
-                        year: semRecord.year,
-                        semester: semRecord.semester,
-                        departmentCode: null,
-                        departmentName: course.targetAudience || null,
-                        // 一律明確傳入，包含 null。省略欄位會讓 upsert 保留舊值，
-                        // 那樣重跑就沒辦法把過期的分類「降級」回未知
-                        requirement: course.requirement,
-                        isImTarget: course.isImTarget
-                    }, { transaction: t });
+                    await CourseCatalog.upsert(
+                        {
+                            courseCode: course.courseCode,
+                            courseName: course.courseName,
+                            professor: course.professor,
+                            year: semRecord.year,
+                            semester: semRecord.semester,
+                            departmentCode: null,
+                            departmentName: course.targetAudience || null,
+                            // 一律明確傳入，包含 null。省略欄位會讓 upsert 保留舊值，
+                            // 那樣重跑就沒辦法把過期的分類「降級」回未知
+                            requirement: course.requirement,
+                            isImTarget: course.isImTarget,
+                        },
+                        { transaction: t },
+                    );
                     written += 1;
                 }
             });
@@ -341,8 +356,8 @@ async function main() {
     for (const r of report) {
         const ok = r.parsed === r.total;
         console.log(
-            `  ${r.semester.padEnd(8)}${String(r.total).padEnd(11)}${String(r.parsed).padEnd(11)}${r.written}`
-            + (ok ? '' : '   ⚠️ 解析數與 NOL 回報不符')
+            `  ${r.semester.padEnd(8)}${String(r.total).padEnd(11)}${String(r.parsed).padEnd(11)}${r.written}` +
+                (ok ? '' : '   ⚠️ 解析數與 NOL 回報不符'),
         );
         if (!ok) hadFailure = true;
     }
@@ -353,7 +368,9 @@ async function main() {
 
     if (hadFailure) {
         console.log('');
-        console.error('⚠️ 有學期或分頁未成功，資料可能不完整。修正後重新執行即可（upsert 可重複執行）。');
+        console.error(
+            '⚠️ 有學期或分頁未成功，資料可能不完整。修正後重新執行即可（upsert 可重複執行）。',
+        );
     }
 
     await sequelize.close();

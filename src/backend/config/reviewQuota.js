@@ -14,9 +14,9 @@
 // 有副作用的查詢在 src/backend/services/reviewQuotaService.js。
 
 const QUOTA_LIMITS = {
-    imRequired: 3,  // 系上必修
-    imElective: 2,  // 系上選修
-    other: 1        // 外系、通識、校訂必修
+    imRequired: 3, // 系上必修
+    imElective: 2, // 系上選修
+    other: 1, // 外系、通識、校訂必修
 };
 
 // 每則具備資格的評價可獲得的回饋金（新台幣）。
@@ -152,7 +152,8 @@ const rankEligible = (reviews, limit) => {
         const exempt = Number(Boolean(b.quotaExempt)) - Number(Boolean(a.quotaExempt));
         if (exempt !== 0) return exempt;
 
-        const queued = toMillis(a.requeuedAt ?? a.createdAt) - toMillis(b.requeuedAt ?? b.createdAt);
+        const queued =
+            toMillis(a.requeuedAt ?? a.createdAt) - toMillis(b.requeuedAt ?? b.createdAt);
         if (queued !== 0) return queued;
 
         return Number(a.id) - Number(b.id);
@@ -175,5 +176,5 @@ module.exports = {
     limitForTier,
     catalogRowRank,
     computeUsage,
-    rankEligible
+    rankEligible,
 };

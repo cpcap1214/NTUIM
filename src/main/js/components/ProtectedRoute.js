@@ -12,7 +12,7 @@ const ProtectedRoute = ({
     requireAdmin = false,
     requirePermission = null,
     requireModule = null,
-    fallback = null
+    fallback = null,
 }) => {
     const { t } = useTranslation();
     const { user, loading, hasPermission, isModuleAccessible, isModuleComingSoon } = useAuth();
@@ -30,23 +30,31 @@ const ProtectedRoute = ({
     // 模組是否開放。這一關要放在登入檢查「之前」——未開放的功能，
     // 對未登入者也該直接說「尚未開放」，而不是先叫他去登入、登入完才發現不能用。
     if (requireModule && !isModuleAccessible(requireModule)) {
-        return fallback || (
-            <Box maxWidth="md" mx="auto" p={3}>
-                <Paper sx={{ p: 4, textAlign: 'center' }}>
-                    <Lock sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
-                    <Typography variant="h5" gutterBottom>
-                        {t(isModuleComingSoon(requireModule) ? 'nav.comingSoon' : 'guard.moduleUnavailableTitle')}
-                    </Typography>
-                    <Typography color="textSecondary" paragraph>
-                        {t(isModuleComingSoon(requireModule)
-                            ? 'guard.comingSoonBody'
-                            : 'guard.moduleUnavailableBody')}
-                    </Typography>
-                    <Button variant="contained" href="/" sx={{ mt: 2 }}>
-                        {t('guard.backHome')}
-                    </Button>
-                </Paper>
-            </Box>
+        return (
+            fallback || (
+                <Box maxWidth="md" mx="auto" p={3}>
+                    <Paper sx={{ p: 4, textAlign: 'center' }}>
+                        <Lock sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+                        <Typography variant="h5" gutterBottom>
+                            {t(
+                                isModuleComingSoon(requireModule)
+                                    ? 'nav.comingSoon'
+                                    : 'guard.moduleUnavailableTitle',
+                            )}
+                        </Typography>
+                        <Typography color="textSecondary" paragraph>
+                            {t(
+                                isModuleComingSoon(requireModule)
+                                    ? 'guard.comingSoonBody'
+                                    : 'guard.moduleUnavailableBody',
+                            )}
+                        </Typography>
+                        <Button variant="contained" href="/" sx={{ mt: 2 }}>
+                            {t('guard.backHome')}
+                        </Button>
+                    </Paper>
+                </Box>
+            )
         );
     }
 
@@ -57,64 +65,70 @@ const ProtectedRoute = ({
 
     // 檢查特定權限（新式權限 key，例如 'users.manage'）
     if (requirePermission && !hasPermission(requirePermission)) {
-        return fallback || (
-            <Box maxWidth="md" mx="auto" p={3}>
-                <Paper sx={{ p: 4, textAlign: 'center' }}>
-                    <AdminPanelSettings sx={{ fontSize: 60, color: 'error.main', mb: 2 }} />
-                    <Typography variant="h5" gutterBottom>
-                        {t('guard.noPermissionTitle')}
-                    </Typography>
-                    <Typography color="textSecondary" paragraph>
-                        {t('guard.noPermissionBody')}
-                    </Typography>
-                    <Button variant="contained" href="/" sx={{ mt: 2 }}>
-                        {t('guard.backHome')}
-                    </Button>
-                </Paper>
-            </Box>
+        return (
+            fallback || (
+                <Box maxWidth="md" mx="auto" p={3}>
+                    <Paper sx={{ p: 4, textAlign: 'center' }}>
+                        <AdminPanelSettings sx={{ fontSize: 60, color: 'error.main', mb: 2 }} />
+                        <Typography variant="h5" gutterBottom>
+                            {t('guard.noPermissionTitle')}
+                        </Typography>
+                        <Typography color="textSecondary" paragraph>
+                            {t('guard.noPermissionBody')}
+                        </Typography>
+                        <Button variant="contained" href="/" sx={{ mt: 2 }}>
+                            {t('guard.backHome')}
+                        </Button>
+                    </Paper>
+                </Box>
+            )
         );
     }
 
     // 檢查管理員權限
     if (requireAdmin && !hasPermission('admin')) {
-        return fallback || (
-            <Box maxWidth="md" mx="auto" p={3}>
-                <Paper sx={{ p: 4, textAlign: 'center' }}>
-                    <AdminPanelSettings sx={{ fontSize: 60, color: 'error.main', mb: 2 }} />
-                    <Typography variant="h5" gutterBottom>
-                        {t('guard.adminRequiredTitle')}
-                    </Typography>
-                    <Typography color="textSecondary" paragraph>
-                        {t('guard.adminRequiredBody')}
-                    </Typography>
-                    <Button variant="contained" href="/" sx={{ mt: 2 }}>
-                        {t('guard.backHome')}
-                    </Button>
-                </Paper>
-            </Box>
+        return (
+            fallback || (
+                <Box maxWidth="md" mx="auto" p={3}>
+                    <Paper sx={{ p: 4, textAlign: 'center' }}>
+                        <AdminPanelSettings sx={{ fontSize: 60, color: 'error.main', mb: 2 }} />
+                        <Typography variant="h5" gutterBottom>
+                            {t('guard.adminRequiredTitle')}
+                        </Typography>
+                        <Typography color="textSecondary" paragraph>
+                            {t('guard.adminRequiredBody')}
+                        </Typography>
+                        <Button variant="contained" href="/" sx={{ mt: 2 }}>
+                            {t('guard.backHome')}
+                        </Button>
+                    </Paper>
+                </Box>
+            )
         );
     }
 
     // 檢查繳費要求
     if (requirePaid && !hasPermission('paid')) {
-        return fallback || (
-            <Box maxWidth="md" mx="auto" p={3}>
-                <Paper sx={{ p: 4, textAlign: 'center' }}>
-                    <Payment sx={{ fontSize: 60, color: 'warning.main', mb: 2 }} />
-                    <Typography variant="h5" gutterBottom>
-                        {t('guard.paymentRequiredTitle')}
-                    </Typography>
-                    <Typography color="textSecondary" paragraph>
-                        {t('guard.paymentRequiredBody')}
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary" paragraph>
-                        {t('guard.paymentRequiredHint')}
-                    </Typography>
-                    <Button variant="contained" href="/about" sx={{ mt: 2 }}>
-                        {t('guard.contactUs')}
-                    </Button>
-                </Paper>
-            </Box>
+        return (
+            fallback || (
+                <Box maxWidth="md" mx="auto" p={3}>
+                    <Paper sx={{ p: 4, textAlign: 'center' }}>
+                        <Payment sx={{ fontSize: 60, color: 'warning.main', mb: 2 }} />
+                        <Typography variant="h5" gutterBottom>
+                            {t('guard.paymentRequiredTitle')}
+                        </Typography>
+                        <Typography color="textSecondary" paragraph>
+                            {t('guard.paymentRequiredBody')}
+                        </Typography>
+                        <Typography variant="body2" color="textSecondary" paragraph>
+                            {t('guard.paymentRequiredHint')}
+                        </Typography>
+                        <Button variant="contained" href="/about" sx={{ mt: 2 }}>
+                            {t('guard.contactUs')}
+                        </Button>
+                    </Paper>
+                </Box>
+            )
         );
     }
 

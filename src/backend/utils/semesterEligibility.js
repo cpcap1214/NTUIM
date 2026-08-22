@@ -26,7 +26,8 @@ const dateToTerm = (date) => {
 const parseFinalExamEnd = (event) => {
     const start = new Date(`${event.date}T00:00:00`);
     const matched = /至\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日\s*止/.exec(event.title || '');
-    if (!matched) return new Date(start.getFullYear(), start.getMonth(), start.getDate(), 23, 59, 59);
+    if (!matched)
+        return new Date(start.getFullYear(), start.getMonth(), start.getDate(), 23, 59, 59);
 
     const endMonth = parseInt(matched[1], 10);
     const endDay = parseInt(matched[2], 10);
@@ -75,7 +76,7 @@ const isTermReviewable = (year, semester, now = new Date()) => {
     return now.getTime() > examEnd.getTime();
 };
 
-const SEMESTER_RANK = { '1': 1, '2': 2, summer: 3 };
+const SEMESTER_RANK = { 1: 1, 2: 2, summer: 3 };
 
 // 列出目前可填寫評價的學年期（新到舊），給前端的「學年期」下拉選單用
 const listReviewableTerms = (now = new Date(), yearsBack = 4) => {
@@ -89,7 +90,9 @@ const listReviewableTerms = (now = new Date(), yearsBack = 4) => {
             }
         });
     }
-    return terms.sort((a, b) => b.year - a.year || SEMESTER_RANK[b.semester] - SEMESTER_RANK[a.semester]);
+    return terms.sort(
+        (a, b) => b.year - a.year || SEMESTER_RANK[b.semester] - SEMESTER_RANK[a.semester],
+    );
 };
 
 module.exports = { isTermReviewable, listReviewableTerms };

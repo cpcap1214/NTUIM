@@ -26,8 +26,8 @@ const cheatSheetService = {
         try {
             const response = await api.post('/cheat-sheets', formData, {
                 headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
+                    'Content-Type': 'multipart/form-data',
+                },
             });
             return response.data;
         } catch (error) {
@@ -39,9 +39,9 @@ const cheatSheetService = {
     async downloadCheatSheet(id) {
         try {
             const response = await api.get(`/cheat-sheets/${id}/download`, {
-                responseType: 'blob'
+                responseType: 'blob',
             });
-            
+
             // 從 header 取得檔名
             const contentDisposition = response.headers['content-disposition'];
             let filename = 'download.pdf';
@@ -83,8 +83,8 @@ const cheatSheetService = {
         try {
             const response = await api.put(`/cheat-sheets/${id}/file`, formData, {
                 headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
+                    'Content-Type': 'multipart/form-data',
+                },
             });
             return response.data;
         } catch (error) {
@@ -113,7 +113,7 @@ const cheatSheetService = {
             formData.append('description', cheatSheetData.description);
         }
         return formData;
-    }
+    },
 };
 
 export default cheatSheetService;

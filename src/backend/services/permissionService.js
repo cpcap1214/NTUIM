@@ -26,7 +26,7 @@ const getUserRoles = async (user) => {
          JOIN roles r ON r.id = ur.role_id
          WHERE ur.user_id = ?
          ORDER BY r.priority DESC`,
-        { replacements: [user.id], type: sequelize.QueryTypes.SELECT }
+        { replacements: [user.id], type: sequelize.QueryTypes.SELECT },
     );
 
     // 已繳費 → 自動併入「會員」身分組（不會出現在 user_roles 裡）
@@ -35,7 +35,7 @@ const getUserRoles = async (user) => {
         if (!alreadyHas) {
             const [autoRole] = await sequelize.query(
                 `SELECT id, key, name, color, priority, is_auto AS isAuto FROM roles WHERE key = ?`,
-                { replacements: [AUTO_MEMBER_ROLE_KEY], type: sequelize.QueryTypes.SELECT }
+                { replacements: [AUTO_MEMBER_ROLE_KEY], type: sequelize.QueryTypes.SELECT },
             );
             if (autoRole) assigned.push(autoRole);
         }
@@ -51,7 +51,7 @@ const getRawPermissions = async (roles) => {
     const roleIds = roles.map((r) => r.id);
     const rows = await sequelize.query(
         `SELECT DISTINCT permission FROM role_permissions WHERE role_id IN (:roleIds)`,
-        { replacements: { roleIds }, type: sequelize.QueryTypes.SELECT }
+        { replacements: { roleIds }, type: sequelize.QueryTypes.SELECT },
     );
     return new Set(rows.map((r) => r.permission));
 };
@@ -66,18 +66,19 @@ const resolve = async (user) => {
         // rawPermissions 保留萬用字元供判斷用；permissions 是展開後的實際清單，供前端顯示
         rawPermissions,
         permissions: expandPermissions(rawPermissions),
-        isAdmin: rawPermissions.has(WILDCARD)
+        isAdmin: rawPermissions.has(WILDCARD),
     };
 };
 
-const hasPermission = (resolved, required) => permissionSatisfies(resolved?.rawPermissions, required);
+const hasPermission = (resolved, required) =>
+    permissionSatisfies(resolved?.rawPermissions, required);
 
 // 解析「只持有某一個身分組」的假想使用者，供管理台的「以身分組檢視」使用。
 // 刻意不套用自動身分組的推導——預覽的語意就是「單獨持有這個身分組會怎樣」。
 const resolveForRole = async (roleId) => {
     const [role] = await sequelize.query(
         `SELECT id, key, name, color, priority, is_auto AS isAuto FROM roles WHERE id = ?`,
-        { replacements: [roleId], type: sequelize.QueryTypes.SELECT }
+        { replacements: [roleId], type: sequelize.QueryTypes.SELECT },
     );
     if (!role) return null;
 
@@ -88,8 +89,8 @@ const resolveForRole = async (roleId) => {
             roles: [{ id: role.id, key: role.key, name: role.name, color: role.color }],
             rawPermissions,
             permissions: expandPermissions(rawPermissions),
-            isAdmin: rawPermissions.has(WILDCARD)
-        }
+            isAdmin: rawPermissions.has(WILDCARD),
+        },
     };
 };
 
@@ -103,13 +104,13 @@ const intersectResolved = (target, caller) => {
     if (permissionSatisfies(caller?.rawPermissions, WILDCARD)) return target;
 
     const rawPermissions = new Set(
-        [...target.rawPermissions].filter((p) => permissionSatisfies(caller?.rawPermissions, p))
+        [...target.rawPermissions].filter((p) => permissionSatisfies(caller?.rawPermissions, p)),
     );
     return {
         ...target,
         rawPermissions,
         permissions: expandPermissions(rawPermissions),
-        isAdmin: rawPermissions.has(WILDCARD)
+        isAdmin: rawPermissions.has(WILDCARD),
     };
 };
 
@@ -145,10 +146,10 @@ const canAccessModule = async (user, resolved, moduleKey) => {
                 moduleId: module.id,
                 userId: user?.id || -1,
                 // IN () 不能是空陣列，塞一個不可能的 id
-                roleIds: roleIds.length > 0 ? roleIds : [-1]
+                roleIds: roleIds.length > 0 ? roleIds : [-1],
             },
-            type: sequelize.QueryTypes.SELECT
-        }
+            type: sequelize.QueryTypes.SELECT,
+        },
     );
 
     return rows.length > 0;
@@ -167,7 +168,7 @@ const listModulesFor = async (user, resolved) => {
             accessible,
             // 不可用但仍要在選單顯示 → 前端標示「即將推出」
             comingSoon: !accessible && module.showWhenRestricted,
-            visible: accessible || module.showWhenRestricted
+            visible: accessible || module.showWhenRestricted,
         };
     }
 
@@ -180,5 +181,5 @@ module.exports = {
     intersectResolved,
     hasPermission,
     canAccessModule,
-    listModulesFor
+    listModulesFor,
 };

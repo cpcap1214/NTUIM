@@ -81,7 +81,12 @@ const FeedbackDialog = ({ open, onClose }) => {
                         <Typography variant="body2" color="text.secondary">
                             {t('feedback.loginRequiredWhy')}
                         </Typography>
-                        <Button component={RouterLink} to="/login" variant="contained" onClick={handleClose}>
+                        <Button
+                            component={RouterLink}
+                            to="/login"
+                            variant="contained"
+                            onClick={handleClose}
+                        >
                             {t('nav.login')}
                         </Button>
                     </Stack>
@@ -104,7 +109,9 @@ const FeedbackDialog = ({ open, onClose }) => {
                                 onChange={(e) => setCategory(e.target.value)}
                             >
                                 <MenuItem value="bug">{t('feedback.categories.bug')}</MenuItem>
-                                <MenuItem value="suggestion">{t('feedback.categories.suggestion')}</MenuItem>
+                                <MenuItem value="suggestion">
+                                    {t('feedback.categories.suggestion')}
+                                </MenuItem>
                                 <MenuItem value="other">{t('feedback.categories.other')}</MenuItem>
                             </Select>
                         </FormControl>
@@ -117,7 +124,10 @@ const FeedbackDialog = ({ open, onClose }) => {
                             minRows={5}
                             fullWidth
                             inputProps={{ maxLength: MAX_LENGTH }}
-                            helperText={t('feedback.bodyHelper', { count: trimmedLength, max: MAX_LENGTH })}
+                            helperText={t('feedback.bodyHelper', {
+                                count: trimmedLength,
+                                max: MAX_LENGTH,
+                            })}
                         />
 
                         {error && <Alert severity="error">{error}</Alert>}
@@ -126,7 +136,9 @@ const FeedbackDialog = ({ open, onClose }) => {
             </DialogContent>
 
             <DialogActions sx={{ px: 3, py: 2 }}>
-                <Button onClick={handleClose}>{sent ? t('common.close') : t('common.cancel')}</Button>
+                <Button onClick={handleClose}>
+                    {sent ? t('common.close') : t('common.cancel')}
+                </Button>
                 {isAuthenticated && !sent && (
                     <Button variant="contained" onClick={handleSubmit} disabled={!canSubmit}>
                         {submitting ? t('feedback.submitting') : t('feedback.submit')}

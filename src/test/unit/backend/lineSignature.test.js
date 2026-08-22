@@ -185,7 +185,8 @@ describe('訊息分類：哪些訊息 webhook 才該回應', () => {
         // 一般訊息照樣會收到「綁定碼無效」——而那些測試仍然全綠。
         // 這裡直接檢查接線，理由同 feedbackAnonymity.test.js。
         const src = fs.readFileSync(
-            path.resolve(process.cwd(), 'src/backend/routes/line.js'), 'utf8'
+            path.resolve(process.cwd(), 'src/backend/routes/line.js'),
+            'utf8',
         );
 
         const handler = /if \(event\.type !== 'message'[\s\S]*?lineBindingCode: code/.exec(src);

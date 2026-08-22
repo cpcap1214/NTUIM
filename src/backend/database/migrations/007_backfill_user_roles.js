@@ -47,8 +47,8 @@ module.exports.up = async ({ run, all }) => {
     if (admins.length === 0) {
         throw new Error(
             '回填後沒有任何使用者持有管理員身分組，已中止並回滾。\n' +
-            '  這代表 users 表裡沒有 role = \'admin\' 的帳號。\n' +
-            '  請先確認資料庫狀態，或用 npm run grant-admin -- <username> 指定管理員後重新執行遷移。'
+                "  這代表 users 表裡沒有 role = 'admin' 的帳號。\n" +
+                '  請先確認資料庫狀態，或用 npm run grant-admin -- <username> 指定管理員後重新執行遷移。',
         );
     }
 
@@ -62,8 +62,12 @@ module.exports.up = async ({ run, all }) => {
     `);
 
     console.log('');
-    console.log(`    管理員身分組：${admins.length} 位（${admins.map((u) => u.username).join(', ')}）`);
-    console.log(`    總務身分組：${treasurers.length} 位${treasurers.length ? `（${treasurers.map((u) => u.username).join(', ')}）` : ''}`);
+    console.log(
+        `    管理員身分組：${admins.length} 位（${admins.map((u) => u.username).join(', ')}）`,
+    );
+    console.log(
+        `    總務身分組：${treasurers.length} 位${treasurers.length ? `（${treasurers.map((u) => u.username).join(', ')}）` : ''}`,
+    );
     console.log('    會員身分組：依 has_paid_fee 自動推導，不寫入 user_roles');
     process.stdout.write('  ');
 };

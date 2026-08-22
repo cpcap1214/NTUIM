@@ -73,9 +73,7 @@ describe('幹部區塊的學年切換', () => {
         getCurrentAcademicYear.mockReturnValue(112);
         render(<AboutUsPage />);
 
-        expect(
-            screen.getByText(i18n.t('about.noStaffForYear', { year: 112 }))
-        ).toBeInTheDocument();
+        expect(screen.getByText(i18n.t('about.noStaffForYear', { year: 112 }))).toBeInTheDocument();
         // 「核心幹部」「各部部長」的標題不該出現
         expect(screen.queryByText(i18n.t('about.coreStaff'))).not.toBeInTheDocument();
         expect(screen.queryByText(i18n.t('about.directors'))).not.toBeInTheDocument();

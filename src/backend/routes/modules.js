@@ -37,64 +37,83 @@ router.get('/admin', authenticateToken, requirePermission('modules.manage'), asy
                 where: { moduleId: module.id },
                 include: [
                     { model: Role, as: 'role', attributes: ['id', 'key', 'name', 'color'] },
-                    { model: User, as: 'user', attributes: ['id', 'username', 'fullName'] }
-                ]
+                    { model: User, as: 'user', attributes: ['id', 'username', 'fullName'] },
+                ],
             });
 
             result.push({
                 ...module.toJSON(),
-                allowedRoles: rules.filter((r) => r.roleId).map((r) => r.role).filter(Boolean),
-                allowedUsers: rules.filter((r) => r.userId).map((r) => r.user).filter(Boolean)
+                allowedRoles: rules
+                    .filter((r) => r.roleId)
+                    .map((r) => r.role)
+                    .filter(Boolean),
+                allowedUsers: rules
+                    .filter((r) => r.userId)
+                    .map((r) => r.user)
+                    .filter(Boolean),
             });
         }
 
         res.json({ data: result });
     } catch (error) {
         console.error('取得模組設定錯誤:', error);
-        res.status(500).json({ error: '取得模組設定失敗', errorCode: 'FETCH_MODULE_SETTINGS_FAILED' });
+        res.status(500).json({
+            error: '取得模組設定失敗',
+            errorCode: 'FETCH_MODULE_SETTINGS_FAILED',
+        });
     }
 });
 
 // 更新模組開放設定
-router.put('/:key', authenticateToken, requirePermission('modules.manage'), [
-    body('visibility').optional().isIn(['public', 'restricted']),
-    body('showWhenRestricted').optional().isBoolean(),
-    body('roleIds').optional().isArray(),
-    body('userIds').optional().isArray()
-], async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
-
-    try {
-        const module = await Module.findOne({ where: { key: req.params.key } });
-        if (!module) return res.status(404).json({ error: '模組不存在', errorCode: 'MODULE_NOT_FOUND' });
-
-        const { visibility, showWhenRestricted, roleIds, userIds } = req.body;
-
-        const updates = {};
-        if (visibility !== undefined) updates.visibility = visibility;
-        if (showWhenRestricted !== undefined) updates.showWhenRestricted = !!showWhenRestricted;
-        await module.update(updates);
-
-        // 白名單一次整批覆蓋。注意 visibility='public' 時白名單一律被忽略，
-        // 但仍然保留下來——這樣暫時開放全站再改回限定時，設定不會消失。
-        if (Array.isArray(roleIds) || Array.isArray(userIds)) {
-            await ModuleAccess.destroy({ where: { moduleId: module.id } });
-            for (const roleId of roleIds || []) {
-                await ModuleAccess.create({ moduleId: module.id, roleId });
-            }
-            for (const userId of userIds || []) {
-                await ModuleAccess.create({ moduleId: module.id, userId });
-            }
+router.put(
+    '/:key',
+    authenticateToken,
+    requirePermission('modules.manage'),
+    [
+        body('visibility').optional().isIn(['public', 'restricted']),
+        body('showWhenRestricted').optional().isBoolean(),
+        body('roleIds').optional().isArray(),
+        body('userIds').optional().isArray(),
+    ],
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
         }
 
-        res.json({ message: '模組設定已更新', data: module });
-    } catch (error) {
-        console.error('更新模組設定錯誤:', error);
-        res.status(500).json({ error: '更新模組設定失敗', errorCode: 'UPDATE_MODULE_SETTINGS_FAILED' });
-    }
-});
+        try {
+            const module = await Module.findOne({ where: { key: req.params.key } });
+            if (!module)
+                return res.status(404).json({ error: '模組不存在', errorCode: 'MODULE_NOT_FOUND' });
+
+            const { visibility, showWhenRestricted, roleIds, userIds } = req.body;
+
+            const updates = {};
+            if (visibility !== undefined) updates.visibility = visibility;
+            if (showWhenRestricted !== undefined) updates.showWhenRestricted = !!showWhenRestricted;
+            await module.update(updates);
+
+            // 白名單一次整批覆蓋。注意 visibility='public' 時白名單一律被忽略，
+            // 但仍然保留下來——這樣暫時開放全站再改回限定時，設定不會消失。
+            if (Array.isArray(roleIds) || Array.isArray(userIds)) {
+                await ModuleAccess.destroy({ where: { moduleId: module.id } });
+                for (const roleId of roleIds || []) {
+                    await ModuleAccess.create({ moduleId: module.id, roleId });
+                }
+                for (const userId of userIds || []) {
+                    await ModuleAccess.create({ moduleId: module.id, userId });
+                }
+            }
+
+            res.json({ message: '模組設定已更新', data: module });
+        } catch (error) {
+            console.error('更新模組設定錯誤:', error);
+            res.status(500).json({
+                error: '更新模組設定失敗',
+                errorCode: 'UPDATE_MODULE_SETTINGS_FAILED',
+            });
+        }
+    },
+);
 
 module.exports = router;

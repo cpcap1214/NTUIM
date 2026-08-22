@@ -1,93 +1,93 @@
 {
-  "name": "ntu-im-student-association-website",
-  "version": "1.0.0",
-  "description": "國立台灣大學資訊管理學系學會官方網站",
-  "private": true,
-  "dependencies": {
-    "@emotion/react": "^11.11.4",
-    "@emotion/styled": "^11.11.0",
-    "@mui/icons-material": "^5.15.15",
-    "@mui/material": "^5.15.15",
-    "axios": "^1.6.8",
-    "bcryptjs": "^3.0.2",
-    "i18next": "^23.16.8",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-hook-form": "^7.51.2",
-    "react-i18next": "^14.1.3",
-    "react-router-dom": "^6.22.3",
-    "react-scripts": "5.0.1"
-  },
-  "scripts": {
-    "prestart": "node scripts/fetch-ntu-calendar.js",
-    "start": "react-scripts start",
-    "prebuild": "node scripts/fetch-ntu-calendar.js",
-    "build": "react-scripts build",
-    "build:production": "node scripts/fetch-ntu-calendar.js && NODE_ENV=production react-scripts build",
-    "fetch-calendar": "node scripts/fetch-ntu-calendar.js",
-    "i18n:template": "node scripts/i18n-template.js",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
-    "lint:fix": "eslint src --ext .js,.jsx,.ts,.tsx --fix",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
-  },
-  "devDependencies": {
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
-    "eslint": "^8.57.0",
-    "eslint-plugin-react": "^7.34.1",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "prettier": "^3.2.5"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ],
-    "rules": {
-      "no-unused-vars": "warn",
-      "react-hooks/exhaustive-deps": "warn"
+    "name": "ntu-im-student-association-website",
+    "version": "1.0.0",
+    "description": "國立台灣大學資訊管理學系學會官方網站",
+    "private": true,
+    "dependencies": {
+        "@emotion/react": "^11.11.4",
+        "@emotion/styled": "^11.11.0",
+        "@mui/icons-material": "^5.15.15",
+        "@mui/material": "^5.15.15",
+        "axios": "^1.6.8",
+        "bcryptjs": "^3.0.2",
+        "i18next": "^23.16.8",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "react-hook-form": "^7.51.2",
+        "react-i18next": "^14.1.3",
+        "react-router-dom": "^6.22.3",
+        "react-scripts": "5.0.1"
     },
-    "overrides": [
-      {
-        "files": [
-          "src/test/**/*.js"
+    "scripts": {
+        "prestart": "node scripts/fetch-ntu-calendar.js",
+        "start": "react-scripts start",
+        "prebuild": "node scripts/fetch-ntu-calendar.js",
+        "build": "react-scripts build",
+        "build:production": "node scripts/fetch-ntu-calendar.js && NODE_ENV=production react-scripts build",
+        "fetch-calendar": "node scripts/fetch-ntu-calendar.js",
+        "i18n:template": "node scripts/i18n-template.js",
+        "test": "react-scripts test",
+        "eject": "react-scripts eject",
+        "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
+        "lint:fix": "eslint src --ext .js,.jsx,.ts,.tsx --fix",
+        "format": "prettier --write .",
+        "format:check": "prettier --check ."
+    },
+    "devDependencies": {
+        "@testing-library/jest-dom": "^5.17.0",
+        "@testing-library/react": "^13.4.0",
+        "@testing-library/user-event": "^13.5.0",
+        "eslint": "^8.57.0",
+        "eslint-plugin-react": "^7.34.1",
+        "eslint-plugin-react-hooks": "^4.6.0",
+        "prettier": "^3.2.5"
+    },
+    "eslintConfig": {
+        "extends": [
+            "react-app",
+            "react-app/jest"
         ],
         "rules": {
-          "import/first": "off"
-        }
-      }
-    ]
-  },
-  "//eslintConfig.overrides": "測試檔關掉 import/first：babel-jest 會把 jest.mock 提升到所有 import 之上，所以「import 一定排最前面」在測試檔反而是誤導的執行順序。那幾支檔案把 mock 寫在 import 前面是刻意的閱讀順序。",
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
+            "no-unused-vars": "warn",
+            "react-hooks/exhaustive-deps": "warn"
+        },
+        "overrides": [
+            {
+                "files": [
+                    "src/test/**/*.js"
+                ],
+                "rules": {
+                    "import/first": "off"
+                }
+            }
+        ]
+    },
+    "//eslintConfig.overrides": "測試檔關掉 import/first：babel-jest 會把 jest.mock 提升到所有 import 之上，所以「import 一定排最前面」在測試檔反而是誤導的執行順序。那幾支檔案把 mock 寫在 import 前面是刻意的閱讀順序。",
+    "browserslist": {
+        "production": [
+            ">0.2%",
+            "not dead",
+            "not op_mini all"
+        ],
+        "development": [
+            "last 1 chrome version",
+            "last 1 firefox version",
+            "last 1 safari version"
+        ]
+    },
+    "homepage": ".",
+    "//proxy": "刻意不設 proxy。開發環境的 API 位址改由 .env.development 的 REACT_APP_API_URL 指定，那裡有完整說明。加回 proxy 會讓 react-scripts 啟用 dev server 的 host 檢查，機器上若有 Tailscale 之類的 CGNAT 介面就會以 allowedHosts[0] 錯誤直接崩潰（已經發生過兩次）。正式環境的 /api 轉發是 nginx 做的（見 nginx.conf），與這個設定無關。",
+    "keywords": [
+        "react",
+        "mui",
+        "student-association",
+        "ntu-im",
+        "academic-website"
     ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
-  },
-  "homepage": ".",
-  "//proxy": "刻意不設 proxy。開發環境的 API 位址改由 .env.development 的 REACT_APP_API_URL 指定，那裡有完整說明。加回 proxy 會讓 react-scripts 啟用 dev server 的 host 檢查，機器上若有 Tailscale 之類的 CGNAT 介面就會以 allowedHosts[0] 錯誤直接崩潰（已經發生過兩次）。正式環境的 /api 轉發是 nginx 做的（見 nginx.conf），與這個設定無關。",
-  "keywords": [
-    "react",
-    "mui",
-    "student-association",
-    "ntu-im",
-    "academic-website"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "local"
-  },
-  "author": "NTU IM Student Association",
-  "license": "MIT"
+    "repository": {
+        "type": "git",
+        "url": "local"
+    },
+    "author": "NTU IM Student Association",
+    "license": "MIT"
 }

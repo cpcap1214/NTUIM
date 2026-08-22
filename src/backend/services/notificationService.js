@@ -47,20 +47,20 @@ const notifyPermission = async (permission, text) => {
 // 通知的用途是「有事發生，點進去看」，不是在 LINE 上讀完。
 
 const reviewLine = (review) =>
-    `${review.courseName}（${review.courseCode}）\n`
-    + `教授：${review.professor}\n`
-    + `學年期：${review.year - 1911}-${review.semester}`;
+    `${review.courseName}（${review.courseCode}）\n` +
+    `教授：${review.professor}\n` +
+    `學年期：${review.year - 1911}-${review.semester}`;
 
 const notifyReviewPending = (review) =>
     notifyPermission(
         'courseReviews.moderate',
-        `📝 有新的課程評價待審核\n\n${reviewLine(review)}\n\n${siteUrl()}/admin`
+        `📝 有新的課程評價待審核\n\n${reviewLine(review)}\n\n${siteUrl()}/admin`,
     );
 
 const notifyReviewResubmitted = (review) =>
     notifyPermission(
         'courseReviews.moderate',
-        `🔁 有被退件的評價重新送出\n\n${reviewLine(review)}\n\n${siteUrl()}/admin`
+        `🔁 有被退件的評價重新送出\n\n${reviewLine(review)}\n\n${siteUrl()}/admin`,
     );
 
 // 回饋是匿名的，所以訊息裡除了分類什麼都不能有。
@@ -71,7 +71,7 @@ const notifyReviewResubmitted = (review) =>
 const notifyFeedbackReceived = (category) =>
     notifyPermission(
         'feedback.manage',
-        `💬 有新的匿名回饋（分類：${category}）\n\n${siteUrl()}/admin`
+        `💬 有新的匿名回饋（分類：${category}）\n\n${siteUrl()}/admin`,
     );
 
 module.exports = {

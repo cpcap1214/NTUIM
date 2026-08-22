@@ -14,25 +14,19 @@ import {
     Divider,
     Paper,
     Chip,
-    Stack
+    Stack,
 } from '@mui/material';
 
-const EditCheatSheetDialog = ({ 
-    open, 
-    onClose, 
-    cheatSheet, 
-    onSave, 
-    onFileUpdate 
-}) => {
+const EditCheatSheetDialog = ({ open, onClose, cheatSheet, onSave, onFileUpdate }) => {
     const { t } = useTranslation();
     const [formData, setFormData] = useState({
         courseCode: '',
         courseName: '',
         title: '',
         description: '',
-        tags: []
+        tags: [],
     });
-    
+
     const [file, setFile] = useState(null);
     const [newTag, setNewTag] = useState('');
     const [loading, setLoading] = useState(false);
@@ -45,33 +39,33 @@ const EditCheatSheetDialog = ({
                 courseName: cheatSheet.courseName || '',
                 title: cheatSheet.title || '',
                 description: cheatSheet.description || '',
-                tags: cheatSheet.tags || []
+                tags: cheatSheet.tags || [],
             });
         }
     }, [cheatSheet]);
 
     const handleInputChange = (field, value) => {
-        setFormData(prev => ({
+        setFormData((prev) => ({
             ...prev,
-            [field]: value
+            [field]: value,
         }));
         setError('');
     };
 
     const handleAddTag = () => {
         if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
-            setFormData(prev => ({
+            setFormData((prev) => ({
                 ...prev,
-                tags: [...prev.tags, newTag.trim()]
+                tags: [...prev.tags, newTag.trim()],
             }));
             setNewTag('');
         }
     };
 
     const handleRemoveTag = (tagToRemove) => {
-        setFormData(prev => ({
+        setFormData((prev) => ({
             ...prev,
-            tags: prev.tags.filter(tag => tag !== tagToRemove)
+            tags: prev.tags.filter((tag) => tag !== tagToRemove),
         }));
     };
 
@@ -142,7 +136,7 @@ const EditCheatSheetDialog = ({
                     <Typography variant="h6" gutterBottom>
                         {t('exam.form.basicInfo')}
                     </Typography>
-                    
+
                     <Grid container spacing={2}>
                         <Grid item xs={12} sm={6}>
                             <TextField
@@ -181,7 +175,7 @@ const EditCheatSheetDialog = ({
                                 onChange={(e) => handleInputChange('description', e.target.value)}
                             />
                         </Grid>
-                        
+
                         {/* 標籤管理 */}
                         <Grid item xs={12}>
                             <Typography variant="subtitle2" gutterBottom>
@@ -219,11 +213,7 @@ const EditCheatSheetDialog = ({
                     </Grid>
 
                     <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-                        <Button
-                            variant="contained"
-                            onClick={handleSaveInfo}
-                            disabled={loading}
-                        >
+                        <Button variant="contained" onClick={handleSaveInfo} disabled={loading}>
                             {t('exam.form.updateInfo')}
                         </Button>
                     </Box>
@@ -236,15 +226,13 @@ const EditCheatSheetDialog = ({
                     <Typography variant="h6" gutterBottom>
                         {t('exam.form.fileManagement')}
                     </Typography>
-                    
+
                     {/* 當前檔案資訊 */}
                     <Box sx={{ mb: 2 }}>
                         <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                             {t('exam.form.currentFiles')}
                         </Typography>
-                        <Typography variant="body2">
-                            {cheatSheet.fileName}
-                        </Typography>
+                        <Typography variant="body2">{cheatSheet.fileName}</Typography>
                     </Box>
 
                     <Grid container spacing={2}>
@@ -273,11 +261,9 @@ const EditCheatSheetDialog = ({
                     </Box>
                 </Paper>
             </DialogContent>
-            
+
             <DialogActions>
-                <Button onClick={handleClose}>
-                    {t('common.close')}
-                </Button>
+                <Button onClick={handleClose}>{t('common.close')}</Button>
             </DialogActions>
         </Dialog>
     );

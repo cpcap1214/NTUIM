@@ -7,7 +7,6 @@ const permissionService = require('../services/permissionService');
 // 因為只要那個使用者名稱在某個環境尚未被註冊，搶註冊的人就能直接取得最高權限。
 const hasAdminAccess = (user) => user?.role === 'admin';
 
-
 // ---------------------------------------------------------------------------
 // 身分預覽（管理台的「以身分組檢視」/「以成員檢視」）
 //
@@ -47,7 +46,7 @@ const applyPreview = async (req, res) => {
     if (!READ_ONLY_METHODS.has(req.method)) {
         res.status(403).json({
             error: '預覽模式為唯讀，請先停用檢視再操作',
-            errorCode: 'PREVIEW_READ_ONLY'
+            errorCode: 'PREVIEW_READ_ONLY',
         });
         return true;
     }
@@ -71,13 +70,13 @@ const applyPreview = async (req, res) => {
             role: found.role.key === 'admin' ? 'admin' : 'user',
             // 「會員」是依繳費狀態推導的，單獨預覽該身分組時要讓它成立
             hasPaidFee: found.role.key === 'member',
-            canManagePayouts: false
+            canManagePayouts: false,
         };
         previewResolved = found.resolved;
         label = `身分組「${found.role.name}」`;
     } else {
         const target = await User.findByPk(id, {
-            attributes: ['id', 'username', 'email', 'role', 'hasPaidFee', 'canManagePayouts']
+            attributes: ['id', 'username', 'email', 'role', 'hasPaidFee', 'canManagePayouts'],
         });
         if (!target) {
             res.status(404).json({ error: '使用者不存在', errorCode: 'PREVIEW_TARGET_MISSING' });
@@ -99,7 +98,9 @@ const applyPreview = async (req, res) => {
     req.permissions = effective;
     req.preview = { kind, id, label };
 
-    console.log(`[身分預覽] ${req.realUser.username}(id=${req.realUser.id}) 以 ${label} 檢視 ${req.method} ${req.originalUrl}`);
+    console.log(
+        `[身分預覽] ${req.realUser.username}(id=${req.realUser.id}) 以 ${label} 檢視 ${req.method} ${req.originalUrl}`,
+    );
     return false;
 };
 
@@ -117,7 +118,7 @@ const authenticateToken = async (req, res, next) => {
 
         // 從資料庫獲取使用者資訊
         const user = await User.findByPk(decoded.userId, {
-            attributes: ['id', 'username', 'email', 'role', 'hasPaidFee', 'canManagePayouts']
+            attributes: ['id', 'username', 'email', 'role', 'hasPaidFee', 'canManagePayouts'],
         });
 
         if (!user) {
@@ -139,12 +140,14 @@ const authenticateToken = async (req, res, next) => {
         if (resolved.isAdmin !== hasAdminAccess(req.user)) {
             console.warn(
                 `[權限影子模式] 判斷不一致 user=${req.user.username}(id=${req.user.id}) ` +
-                `舊(role='admin')=${hasAdminAccess(req.user)} 新(身分組)=${resolved.isAdmin}`
+                    `舊(role='admin')=${hasAdminAccess(req.user)} 新(身分組)=${resolved.isAdmin}`,
             );
         }
     } catch (error) {
         if (error.name === 'TokenExpiredError') {
-            return res.status(401).json({ error: '認證令牌已過期', errorCode: 'AUTH_TOKEN_EXPIRED' });
+            return res
+                .status(401)
+                .json({ error: '認證令牌已過期', errorCode: 'AUTH_TOKEN_EXPIRED' });
         }
         return res.status(403).json({ error: '無效的認證令牌', errorCode: 'AUTH_TOKEN_INVALID' });
     }
@@ -184,7 +187,7 @@ const optionalAuth = async (req, res, next) => {
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const user = await User.findByPk(decoded.userId, {
-            attributes: ['id', 'username', 'email', 'role', 'hasPaidFee', 'canManagePayouts']
+            attributes: ['id', 'username', 'email', 'role', 'hasPaidFee', 'canManagePayouts'],
         });
         if (user) {
             req.user = user.toJSON();
@@ -213,12 +216,16 @@ const optionalAuth = async (req, res, next) => {
 // 要求該模組對此使用者開放。未開放時一律 403（不可 401，會把使用者登出）。
 const requireModuleAccess = (moduleKey) => async (req, res, next) => {
     try {
-        const allowed = await permissionService.canAccessModule(req.user, req.permissions, moduleKey);
+        const allowed = await permissionService.canAccessModule(
+            req.user,
+            req.permissions,
+            moduleKey,
+        );
         if (!allowed) {
             return res.status(403).json({
                 error: '此功能尚未開放',
                 errorCode: 'MODULE_NOT_AVAILABLE',
-                module: moduleKey
+                module: moduleKey,
             });
         }
         next();
@@ -235,7 +242,11 @@ const requireModuleAccess = (moduleKey) => async (req, res, next) => {
 // 同理不帶 requirePayment 欄位，那會觸發 api.js 的原生 alert()。
 const requirePermission = (permission) => (req, res, next) => {
     if (!permissionService.hasPermission(req.permissions, permission)) {
-        return res.status(403).json({ error: '權限不足', errorCode: 'PERMISSION_DENIED', requiredPermission: permission });
+        return res.status(403).json({
+            error: '權限不足',
+            errorCode: 'PERMISSION_DENIED',
+            requiredPermission: permission,
+        });
     }
     next();
 };
@@ -256,8 +267,10 @@ const requireOwnerOrAdmin = (paramName = 'id') => {
     return (req, res, next) => {
         const resourceUserId = req.params[paramName];
 
-        if (permissionService.hasPermission(req.permissions, 'users.manage')
-            || req.user.id === parseInt(resourceUserId)) {
+        if (
+            permissionService.hasPermission(req.permissions, 'users.manage') ||
+            req.user.id === parseInt(resourceUserId)
+        ) {
             next();
         } else {
             res.status(403).json({ error: '無權限執行此操作', errorCode: 'OPERATION_NOT_ALLOWED' });
@@ -270,14 +283,10 @@ const generateToken = (user) => {
     const payload = {
         userId: user.id,
         username: user.username,
-        role: user.role
+        role: user.role,
     };
 
-    return jwt.sign(
-        payload,
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRE || '7d' }
-    );
+    return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
 };
 
 // 重新整理 Token
@@ -285,11 +294,16 @@ const refreshToken = async (req, res) => {
     const { refreshToken } = req.body;
 
     if (!refreshToken) {
-        return res.status(401).json({ error: '未提供重新整理令牌', errorCode: 'AUTH_REFRESH_MISSING' });
+        return res
+            .status(401)
+            .json({ error: '未提供重新整理令牌', errorCode: 'AUTH_REFRESH_MISSING' });
     }
 
     try {
-        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
+        const decoded = jwt.verify(
+            refreshToken,
+            process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
+        );
         const user = await User.findByPk(decoded.userId);
 
         if (!user) {
@@ -313,5 +327,5 @@ module.exports = {
     requireOwnerOrAdmin,
     hasAdminAccess,
     generateToken,
-    refreshToken
+    refreshToken,
 };

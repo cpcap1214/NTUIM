@@ -17,7 +17,12 @@ const rateLimit = require('express-rate-limit');
 // 以登入帳號為 key；沒有 req.user 時退回 IP。
 // ⚠️ 使用時必須掛在 authenticateToken「之後」，否則 req.user 還不存在，
 // 整個限流會退化成 IP 模式而沒有任何錯誤提示。
-const perUser = ({ max, windowMs, errorCode = 'RATE_LIMITED', message = '操作過於頻繁，請稍後再試' }) =>
+const perUser = ({
+    max,
+    windowMs,
+    errorCode = 'RATE_LIMITED',
+    message = '操作過於頻繁，請稍後再試',
+}) =>
     rateLimit({
         windowMs,
         max,

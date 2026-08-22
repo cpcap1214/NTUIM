@@ -21,7 +21,7 @@ function initDatabase() {
 
         // 讀取 schema.sql
         const schema = fs.readFileSync(SCHEMA_PATH, 'utf8');
-        
+
         // 檢查是否已有 users 表
         db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='users'", (err, row) => {
             if (err) {
@@ -29,7 +29,7 @@ function initDatabase() {
                 reject(err);
                 return;
             }
-            
+
             if (row) {
                 console.log('資料庫已存在，跳過架構建立');
                 insertTestData(db)
@@ -40,7 +40,7 @@ function initDatabase() {
                     .catch(reject);
                 return;
             }
-            
+
             // 執行 schema
             db.exec(schema, (err) => {
                 if (err) {
@@ -49,7 +49,7 @@ function initDatabase() {
                     return;
                 }
                 console.log('資料庫架構建立成功');
-                
+
                 // 插入測試資料
                 insertTestData(db)
                     .then(() => {
@@ -66,7 +66,7 @@ function initDatabase() {
 function insertTestData(db) {
     return new Promise((resolve, reject) => {
         const bcrypt = require('bcryptjs');
-        
+
         // 建立測試使用者
         const testUsers = [
             {
@@ -76,7 +76,7 @@ function insertTestData(db) {
                 password: 'admin123',
                 full_name: '系統管理員',
                 role: 'admin',
-                has_paid_fee: true
+                has_paid_fee: true,
             },
             {
                 student_id: 'B09705002',
@@ -85,7 +85,7 @@ function insertTestData(db) {
                 password: 'test123',
                 full_name: '測試使用者',
                 role: 'member',
-                has_paid_fee: true
+                has_paid_fee: true,
             },
             {
                 student_id: 'B09705003',
@@ -94,8 +94,8 @@ function insertTestData(db) {
                 password: 'guest123',
                 full_name: '訪客使用者',
                 role: 'user',
-                has_paid_fee: false
-            }
+                has_paid_fee: false,
+            },
         ];
 
         // 插入使用者
@@ -105,7 +105,7 @@ function insertTestData(db) {
             VALUES (?, ?, ?, ?, ?, ?, ?)
         `);
 
-        testUsers.forEach(user => {
+        testUsers.forEach((user) => {
             const passwordHash = bcrypt.hashSync(user.password, 10);
             stmt.run(
                 user.student_id,
@@ -114,12 +114,12 @@ function insertTestData(db) {
                 passwordHash,
                 user.full_name,
                 user.role,
-                user.has_paid_fee
+                user.has_paid_fee,
             );
         });
 
         stmt.finalize();
-        
+
         console.log('測試資料插入成功');
         resolve();
     });
@@ -132,7 +132,7 @@ if (require.main === module) {
             console.log('資料庫初始化完成');
             process.exit(0);
         })
-        .catch(err => {
+        .catch((err) => {
             console.error('資料庫初始化失敗:', err);
             process.exit(1);
         });

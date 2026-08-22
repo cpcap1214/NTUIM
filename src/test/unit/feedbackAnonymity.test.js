@@ -32,12 +32,36 @@ const feedbackTableDDL = () => {
         .join('\n');
 };
 
-// 同理，只取 sequelize.define('Feedback', {...}) 的欄位定義
+// 同理，只取 sequelize.define('Feedback', {...}) 的欄位定義。
+//
+// 用大括號配對、而不是用正規表示式抓結尾：prettier 會把單行的
+// sequelize.define('Feedback', { ... }) 重排成參數各自一行，
+// 靠排版寫死的 regex 會在下一次格式化時默默失效。而這條測試一旦失效，
+// 它守的匿名性承諾就沒有人在看了。
 const feedbackModelFields = () => {
     const src = read(MODEL);
-    const match = /sequelize\.define\('Feedback',\s*\{([\s\S]*?)\n\}/.exec(src);
-    if (!match) throw new Error(`在 ${MODEL} 裡找不到 Feedback 模型`);
-    return match[1]
+    const anchor = /sequelize\.define\(\s*'Feedback'\s*,/.exec(src);
+    if (!anchor) throw new Error(`在 ${MODEL} 裡找不到 Feedback 模型`);
+
+    // 從錨點之後的第一個 { 開始，配對到對應的 }
+    const start = src.indexOf('{', anchor.index + anchor[0].length);
+    if (start === -1) throw new Error(`在 ${MODEL} 裡找不到 Feedback 的欄位定義`);
+    let depth = 0;
+    let end = -1;
+    for (let i = start; i < src.length; i += 1) {
+        if (src[i] === '{') depth += 1;
+        else if (src[i] === '}') {
+            depth -= 1;
+            if (depth === 0) {
+                end = i;
+                break;
+            }
+        }
+    }
+    if (end === -1) throw new Error(`${MODEL} 裡的 Feedback 欄位定義沒有正確收尾`);
+
+    return src
+        .slice(start + 1, end)
         .split('\n')
         .map((line) => line.replace(/\/\/.*$/, '').trim())
         .filter(Boolean)
@@ -88,7 +112,8 @@ describe('回饋的匿名性', () => {
     test('送出回饋的回應不回傳建立出來的資料列', () => {
         // 回傳 id 等於給出一條把後台某一筆對回「剛才是誰送的」的線索
         const src = read(ROUTE);
-        const postHandler = /router\.post\('\/'[\s\S]*?^\);/m.exec(src);
+        // \s* 是必要的：prettier 會把 router.post(單行參數) 拆成多行
+        const postHandler = /router\.post\(\s*'\/'[\s\S]*?^\);/m.exec(src);
         expect(postHandler).not.toBeNull();
         expect(postHandler[0]).toMatch(/res\.status\(201\)\.json\(\{\s*message:/);
         expect(postHandler[0]).not.toMatch(/res\.status\(201\)\.json\(\{[^}]*data:/);
@@ -98,7 +123,7 @@ describe('回饋的匿名性', () => {
         // 匿名不等於開放匿名寫入：仍然需要帳號，只是不記錄。
         // 把 authenticateToken 拿掉會讓這個端點變成全站唯一的免認證寫入點。
         const src = read(ROUTE);
-        expect(src).toMatch(/router\.post\('\/',\s*\n?\s*authenticateToken/);
+        expect(src).toMatch(/router\.post\(\s*'\/'\s*,\s*authenticateToken/);
         expect(src).toMatch(/feedbackLimiter/);
     });
 });

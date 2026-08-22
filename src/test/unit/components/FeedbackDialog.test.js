@@ -28,7 +28,7 @@ const renderDialog = () =>
     render(
         <MemoryRouter>
             <FeedbackDialog open onClose={jest.fn()} />
-        </MemoryRouter>
+        </MemoryRouter>,
     );
 
 const asGuest = () => useAuth.mockReturnValue({ isAuthenticated: false });
@@ -64,7 +64,9 @@ describe('意見回饋對話框', () => {
         fireEvent.change(bodyField(), { target: { value: '太短' } });
         expect(submitButton()).toBeDisabled();
 
-        fireEvent.change(bodyField(), { target: { value: '這是一段夠長的回饋內容，超過十個字。' } });
+        fireEvent.change(bodyField(), {
+            target: { value: '這是一段夠長的回饋內容，超過十個字。' },
+        });
         expect(submitButton()).toBeEnabled();
     });
 
@@ -73,14 +75,16 @@ describe('意見回饋對話框', () => {
         feedbackService.submit.mockResolvedValue({ message: 'ok' });
         renderDialog();
 
-        fireEvent.change(bodyField(), { target: { value: '這是一段夠長的回饋內容，超過十個字。' } });
+        fireEvent.change(bodyField(), {
+            target: { value: '這是一段夠長的回饋內容，超過十個字。' },
+        });
         fireEvent.click(submitButton());
 
         await waitFor(() =>
             expect(feedbackService.submit).toHaveBeenCalledWith({
                 body: '這是一段夠長的回饋內容，超過十個字。',
                 category: 'suggestion',
-            })
+            }),
         );
     });
 
@@ -89,7 +93,9 @@ describe('意見回饋對話框', () => {
         feedbackService.submit.mockResolvedValue({ message: 'ok' });
         renderDialog();
 
-        fireEvent.change(bodyField(), { target: { value: '這是一段夠長的回饋內容，超過十個字。' } });
+        fireEvent.change(bodyField(), {
+            target: { value: '這是一段夠長的回饋內容，超過十個字。' },
+        });
         fireEvent.click(submitButton());
 
         expect(await screen.findByText(i18n.t('feedback.sent'))).toBeInTheDocument();
@@ -103,7 +109,9 @@ describe('意見回饋對話框', () => {
         feedbackService.submit.mockResolvedValue({ message: 'ok' });
         renderDialog();
 
-        fireEvent.change(bodyField(), { target: { value: '這是一段夠長的回饋內容，超過十個字。' } });
+        fireEvent.change(bodyField(), {
+            target: { value: '這是一段夠長的回饋內容，超過十個字。' },
+        });
         fireEvent.click(submitButton());
         await screen.findByText(i18n.t('feedback.sent'));
 

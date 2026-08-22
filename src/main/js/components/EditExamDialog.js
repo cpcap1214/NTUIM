@@ -16,16 +16,10 @@ import {
     Box,
     Alert,
     Divider,
-    Paper
+    Paper,
 } from '@mui/material';
 
-const EditExamDialog = ({ 
-    open, 
-    onClose, 
-    exam, 
-    onSave, 
-    onFileUpdate 
-}) => {
+const EditExamDialog = ({ open, onClose, exam, onSave, onFileUpdate }) => {
     const { t } = useTranslation();
     const [formData, setFormData] = useState({
         courseCode: '',
@@ -34,14 +28,14 @@ const EditExamDialog = ({
         year: new Date().getFullYear(),
         semester: '1',
         examType: 'final',
-        examAttempt: 1
+        examAttempt: 1,
     });
-    
+
     const [files, setFiles] = useState({
         questionFile: null,
-        answerFile: null
+        answerFile: null,
     });
-    
+
     const [removeAnswerFile, setRemoveAnswerFile] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -55,23 +49,23 @@ const EditExamDialog = ({
                 year: exam.year || new Date().getFullYear(),
                 semester: exam.semester || '1',
                 examType: exam.examType || 'final',
-                examAttempt: exam.examAttempt || 1
+                examAttempt: exam.examAttempt || 1,
             });
         }
     }, [exam]);
 
     const handleInputChange = (field, value) => {
-        setFormData(prev => ({
+        setFormData((prev) => ({
             ...prev,
-            [field]: value
+            [field]: value,
         }));
         setError('');
     };
 
     const handleFileChange = (field, file) => {
-        setFiles(prev => ({
+        setFiles((prev) => ({
             ...prev,
-            [field]: file
+            [field]: file,
         }));
         setError('');
     };
@@ -101,15 +95,15 @@ const EditExamDialog = ({
         setLoading(true);
         try {
             const fileFormData = new FormData();
-            
+
             if (files.questionFile) {
                 fileFormData.append('questionFile', files.questionFile);
             }
-            
+
             if (files.answerFile) {
                 fileFormData.append('answerFile', files.answerFile);
             }
-            
+
             if (removeAnswerFile) {
                 fileFormData.append('removeAnswerFile', 'true');
             }
@@ -148,7 +142,7 @@ const EditExamDialog = ({
                     <Typography variant="h6" gutterBottom>
                         {t('exam.form.basicInfo')}
                     </Typography>
-                    
+
                     <Grid container spacing={2}>
                         <Grid item xs={12} sm={6}>
                             <TextField
@@ -182,7 +176,9 @@ const EditExamDialog = ({
                                 type="number"
                                 label={t('exam.form.year')}
                                 value={formData.year}
-                                onChange={(e) => handleInputChange('year', parseInt(e.target.value))}
+                                onChange={(e) =>
+                                    handleInputChange('year', parseInt(e.target.value))
+                                }
                                 inputProps={{ min: 2000, max: 2100 }}
                             />
                         </Grid>
@@ -220,18 +216,16 @@ const EditExamDialog = ({
                                 type="number"
                                 label={t('exam.form.examAttempt')}
                                 value={formData.examAttempt}
-                                onChange={(e) => handleInputChange('examAttempt', parseInt(e.target.value))}
+                                onChange={(e) =>
+                                    handleInputChange('examAttempt', parseInt(e.target.value))
+                                }
                                 inputProps={{ min: 1, max: 3 }}
                             />
                         </Grid>
                     </Grid>
 
                     <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-                        <Button
-                            variant="contained"
-                            onClick={handleSaveInfo}
-                            disabled={loading}
-                        >
+                        <Button variant="contained" onClick={handleSaveInfo} disabled={loading}>
                             {t('exam.form.updateInfo')}
                         </Button>
                     </Box>
@@ -244,7 +238,7 @@ const EditExamDialog = ({
                     <Typography variant="h6" gutterBottom>
                         {t('exam.form.fileManagement')}
                     </Typography>
-                    
+
                     {/* 當前檔案資訊 */}
                     <Box sx={{ mb: 2 }}>
                         <Typography variant="subtitle2" color="text.secondary" gutterBottom>
@@ -268,7 +262,9 @@ const EditExamDialog = ({
                             <input
                                 type="file"
                                 accept=".pdf"
-                                onChange={(e) => handleFileChange('questionFile', e.target.files[0])}
+                                onChange={(e) =>
+                                    handleFileChange('questionFile', e.target.files[0])
+                                }
                                 style={{ width: '100%' }}
                             />
                         </Grid>
@@ -292,7 +288,11 @@ const EditExamDialog = ({
                                 color="error"
                                 onClick={() => setRemoveAnswerFile(!removeAnswerFile)}
                             >
-                                {t(removeAnswerFile ? 'exam.form.cancelRemoveAnswer' : 'exam.form.removeAnswer')}
+                                {t(
+                                    removeAnswerFile
+                                        ? 'exam.form.cancelRemoveAnswer'
+                                        : 'exam.form.removeAnswer',
+                                )}
                             </Button>
                         </Box>
                     )}
@@ -309,11 +309,9 @@ const EditExamDialog = ({
                     </Box>
                 </Paper>
             </DialogContent>
-            
+
             <DialogActions>
-                <Button onClick={handleClose}>
-                    {t('common.close')}
-                </Button>
+                <Button onClick={handleClose}>{t('common.close')}</Button>
             </DialogActions>
         </Dialog>
     );

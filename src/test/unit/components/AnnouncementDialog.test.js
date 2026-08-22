@@ -35,7 +35,7 @@ const renderDialog = (path = '/') =>
     render(
         <MemoryRouter initialEntries={[path]}>
             <AnnouncementDialog />
-        </MemoryRouter>
+        </MemoryRouter>,
     );
 
 const asGuest = () => useAuth.mockReturnValue({ user: null, loading: false });
@@ -165,7 +165,9 @@ describe('公告視窗', () => {
 
         fireEvent.click(screen.getByRole('button', { name: /關閉|close/i }));
 
-        await waitFor(() => expect(screen.queryByText(ANNOUNCEMENT_A.title)).not.toBeInTheDocument());
+        await waitFor(() =>
+            expect(screen.queryByText(ANNOUNCEMENT_A.title)).not.toBeInTheDocument(),
+        );
         expect(announcementService.dismiss).not.toHaveBeenCalled();
         expect(getDismissedAnnouncements()).toEqual([]);
     });

@@ -20,8 +20,8 @@ const detectLanguage = () => {
     if (stored) return stored;
 
     // navigator.languages 是使用者在瀏覽器裡排好的偏好順序，比 navigator.language 準
-    const candidates = (typeof navigator !== 'undefined'
-        && (navigator.languages || [navigator.language])) || [];
+    const candidates =
+        (typeof navigator !== 'undefined' && (navigator.languages || [navigator.language])) || [];
     for (const candidate of candidates) {
         const resolved = resolveLanguage(candidate);
         if (resolved) return resolved;
@@ -30,7 +30,7 @@ const detectLanguage = () => {
 };
 
 const resources = Object.fromEntries(
-    Object.entries(LOCALES).map(([code, translation]) => [code, { translation }])
+    Object.entries(LOCALES).map(([code, translation]) => [code, { translation }]),
 );
 
 i18n.use(initReactI18next).init({

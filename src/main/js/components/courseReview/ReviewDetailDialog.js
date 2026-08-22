@@ -42,12 +42,27 @@ const ReviewDetailDialog = ({ open, review, onClose }) => {
                         {t('courseReview.detailField.courseCode')}：{review.courseCode}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                        {t('courseReview.detailField.academicTerm')}：{courseReviewService.getAcademicTermLabel(review.year, review.semester)}
+                        {t('courseReview.detailField.academicTerm')}：
+                        {courseReviewService.getAcademicTermLabel(review.year, review.semester)}
                     </Typography>
                 </Stack>
 
-                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ mb: 2 }}>
-                    <Avatar sx={{ width: 28, height: 28, fontSize: '0.8rem', bgcolor: 'grey.300', color: 'text.primary' }}>
+                <Stack
+                    direction="row"
+                    spacing={1}
+                    alignItems="center"
+                    flexWrap="wrap"
+                    sx={{ mb: 2 }}
+                >
+                    <Avatar
+                        sx={{
+                            width: 28,
+                            height: 28,
+                            fontSize: '0.8rem',
+                            bgcolor: 'grey.300',
+                            color: 'text.primary',
+                        }}
+                    >
                         {reviewerName.charAt(0)}
                     </Avatar>
                     <Typography variant="body2">{reviewerName}</Typography>
@@ -61,7 +76,12 @@ const ReviewDetailDialog = ({ open, review, onClose }) => {
                 </Stack>
 
                 {review.reviewedByUser && (
-                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                    <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        display="block"
+                        sx={{ mb: 1 }}
+                    >
                         {t('courseReview.reviewedBy', { name: review.reviewedByUser.fullName })}
                     </Typography>
                 )}
@@ -84,7 +104,13 @@ const ReviewDetailDialog = ({ open, review, onClose }) => {
                                         {t(`courseReview.metrics.${key}`)}
                                     </Typography>
                                     <Tooltip title={t(`courseReview.metricHints.${key}`)} arrow>
-                                        <HelpOutlineIcon sx={{ fontSize: 13, color: 'text.disabled', cursor: 'help' }} />
+                                        <HelpOutlineIcon
+                                            sx={{
+                                                fontSize: 13,
+                                                color: 'text.disabled',
+                                                cursor: 'help',
+                                            }}
+                                        />
                                     </Tooltip>
                                 </Stack>
                                 <RatingDisplay value={review[key]} size="small" />
@@ -100,27 +126,41 @@ const ReviewDetailDialog = ({ open, review, onClose }) => {
                         <Typography variant="subtitle2" gutterBottom>
                             {t('courseReview.form.courseContent')}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
+                        <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ whiteSpace: 'pre-wrap' }}
+                        >
                             {review.courseContent}
                         </Typography>
                     </Box>
 
-                    {OPTIONAL_SECTIONS.filter((key) => review[key] && review[key].trim()).map((key) => (
-                        <Box key={key}>
-                            <Typography variant="subtitle2" gutterBottom>
-                                {t(`courseReview.form.${key}`)}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
-                                {review[key]}
-                            </Typography>
-                        </Box>
-                    ))}
+                    {OPTIONAL_SECTIONS.filter((key) => review[key] && review[key].trim()).map(
+                        (key) => (
+                            <Box key={key}>
+                                <Typography variant="subtitle2" gutterBottom>
+                                    {t(`courseReview.form.${key}`)}
+                                </Typography>
+                                <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{ whiteSpace: 'pre-wrap' }}
+                                >
+                                    {review[key]}
+                                </Typography>
+                            </Box>
+                        ),
+                    )}
 
                     <Box>
                         <Typography variant="subtitle2" gutterBottom>
                             {t('courseReview.form.comment')}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
+                        <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ whiteSpace: 'pre-wrap' }}
+                        >
                             {review.comment}
                         </Typography>
                     </Box>

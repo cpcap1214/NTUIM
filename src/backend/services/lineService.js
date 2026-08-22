@@ -51,7 +51,7 @@ const multicast = async (userIds, messages) => {
 
     // 一批失敗不該影響其他批，所以用 allSettled 而不是 all
     const results = await Promise.allSettled(
-        batches.map((batch) => request('/message/multicast', { to: batch, messages }))
+        batches.map((batch) => request('/message/multicast', { to: batch, messages })),
     );
 
     const failed = results.filter((r) => r.status === 'rejected');

@@ -6,63 +6,37 @@ import theme from '../../../main/js/theme';
 import '@testing-library/jest-dom';
 
 const renderWithTheme = (component) => {
-  return render(
-    <ThemeProvider theme={theme}>
-      {component}
-    </ThemeProvider>
-  );
+    return render(<ThemeProvider theme={theme}>{component}</ThemeProvider>);
 };
 
 describe('SearchBar Component', () => {
-  test('renders with placeholder text', () => {
-    renderWithTheme(
-      <SearchBar 
-        value="" 
-        onChange={() => {}} 
-        placeholder="搜尋課程..." 
-      />
-    );
-    
-    expect(screen.getByPlaceholderText('搜尋課程...')).toBeInTheDocument();
-  });
+    test('renders with placeholder text', () => {
+        renderWithTheme(<SearchBar value="" onChange={() => {}} placeholder="搜尋課程..." />);
 
-  test('calls onChange when input value changes', () => {
-    const mockOnChange = jest.fn();
-    
-    renderWithTheme(
-      <SearchBar 
-        value="" 
-        onChange={mockOnChange} 
-        placeholder="搜尋..." 
-      />
-    );
-    
-    const input = screen.getByPlaceholderText('搜尋...');
-    fireEvent.change(input, { target: { value: '資料庫' } });
-    
-    expect(mockOnChange).toHaveBeenCalled();
-  });
+        expect(screen.getByPlaceholderText('搜尋課程...')).toBeInTheDocument();
+    });
 
-  test('displays current value', () => {
-    renderWithTheme(
-      <SearchBar 
-        value="現有搜尋內容" 
-        onChange={() => {}} 
-      />
-    );
-    
-    expect(screen.getByDisplayValue('現有搜尋內容')).toBeInTheDocument();
-  });
+    test('calls onChange when input value changes', () => {
+        const mockOnChange = jest.fn();
 
-  test('includes search icon', () => {
-    renderWithTheme(
-      <SearchBar 
-        value="" 
-        onChange={() => {}} 
-      />
-    );
-    
-    // MUI 的 Search icon 會渲染為 SVG，且帶有 data-testid="SearchIcon"
-    expect(screen.getByTestId('SearchIcon')).toBeInTheDocument();
-  });
+        renderWithTheme(<SearchBar value="" onChange={mockOnChange} placeholder="搜尋..." />);
+
+        const input = screen.getByPlaceholderText('搜尋...');
+        fireEvent.change(input, { target: { value: '資料庫' } });
+
+        expect(mockOnChange).toHaveBeenCalled();
+    });
+
+    test('displays current value', () => {
+        renderWithTheme(<SearchBar value="現有搜尋內容" onChange={() => {}} />);
+
+        expect(screen.getByDisplayValue('現有搜尋內容')).toBeInTheDocument();
+    });
+
+    test('includes search icon', () => {
+        renderWithTheme(<SearchBar value="" onChange={() => {}} />);
+
+        // MUI 的 Search icon 會渲染為 SVG，且帶有 data-testid="SearchIcon"
+        expect(screen.getByTestId('SearchIcon')).toBeInTheDocument();
+    });
 });

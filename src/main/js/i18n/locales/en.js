@@ -44,7 +44,8 @@ const en = {
 
     preview: {
         viewingAs: 'Viewing as',
-        viewingAsSuffix: '— permissions and API responses across the site have switched. This mode is read-only; nothing can be changed.',
+        viewingAsSuffix:
+            '— permissions and API responses across the site have switched. This mode is read-only; nothing can be changed.',
         stop: 'Exit preview',
         stopping: 'Exiting…',
         someRole: 'a role',
@@ -60,8 +61,10 @@ const en = {
         adminRequiredTitle: 'Administrator access required',
         adminRequiredBody: 'This page is restricted to administrators',
         paymentRequiredTitle: 'Association dues required',
-        paymentRequiredBody: 'This feature is only available to members who have paid their association dues',
-        paymentRequiredHint: 'Please contact an association officer or pay at the department office',
+        paymentRequiredBody:
+            'This feature is only available to members who have paid their association dues',
+        paymentRequiredHint:
+            'Please contact an association officer or pay at the department office',
         backHome: 'Back to home',
         contactUs: 'Contact us',
         notLoggedIn: 'Not logged in',
@@ -72,7 +75,8 @@ const en = {
         thisFeature: 'This feature',
         title: '{{feature}} requires association dues',
         subtitle: 'Pay your dues to unlock the full site',
-        unpaidNotice: 'Your account <strong>{{username}}</strong> has not paid the association dues yet',
+        unpaidNotice:
+            'Your account <strong>{{username}}</strong> has not paid the association dues yet',
         loginFirst: 'Log in or sign up, then pay your association dues to unlock the full site',
         benefitsTitle: 'What your dues get you',
         benefits: [
@@ -82,7 +86,8 @@ const en = {
         ],
         feeLabel: 'Association dues',
         perFourYears: '/ four years',
-        reviewNotice: 'Payments are verified manually and processed each evening. Once approved, the full site unlocks.',
+        reviewNotice:
+            'Payments are verified manually and processed each evening. Once approved, the full site unlocks.',
         contactAssociation: 'Contact the association',
     },
 
@@ -111,8 +116,10 @@ const en = {
 
     line: {
         title: 'LINE notifications',
-        description: 'Link your LINE account to be notified when something needs review. Only people with the matching permission receive them.',
-        notConfigured: 'LINE notifications are not configured on the server yet — please contact the site maintainer.',
+        description:
+            'Link your LINE account to be notified when something needs review. Only people with the matching permission receive them.',
+        notConfigured:
+            'LINE notifications are not configured on the server yet — please contact the site maintainer.',
         bound: 'Linked',
         notBound: 'Not linked',
         generateCode: 'Generate linking code',
@@ -126,7 +133,8 @@ const en = {
         myBinding: 'My linked account',
         admin: {
             title: 'Linked members',
-            description: 'Remember to unlink outgoing officers during handover — otherwise they keep receiving notifications after they graduate.',
+            description:
+                'Remember to unlink outgoing officers during handover — otherwise they keep receiving notifications after they graduate.',
             empty: 'Nobody has linked a LINE account yet.',
             fetchFailed: 'Could not load the list of linked members',
             colUser: 'Member',
@@ -139,7 +147,8 @@ const en = {
                 feedback: 'Feedback',
             },
             unbindTitle: 'Unlink this member',
-            confirmUnbind: 'Unlink the LINE account of "{{name}}"? They will not be told — they will simply stop receiving notifications.',
+            confirmUnbind:
+                'Unlink the LINE account of "{{name}}"? They will not be told — they will simply stop receiving notifications.',
         },
     },
 
@@ -157,7 +166,8 @@ const en = {
         submitting: 'Sending…',
         submitFailed: 'Could not send your feedback',
         sent: 'Thanks — your feedback has been received.',
-        sentHint: 'Because feedback is anonymous we cannot reply individually, but every message is read.',
+        sentHint:
+            'Because feedback is anonymous we cannot reply individually, but every message is read.',
         anonymityNotice: 'This feedback is anonymous.',
         loginRequired: 'Please log in before sending feedback.',
         loginRequiredWhy: 'Logging in is only used to prevent spam.',
@@ -178,7 +188,8 @@ const en = {
             editNote: 'Admin note',
             noteHelper: 'Visible to admins only; the sender will never see it.',
             note: 'Admin note',
-            anonymityNotice: 'Feedback carries no sender information — the column does not exist in the database. Do not attempt to correlate timestamps with server logs to identify senders.',
+            anonymityNotice:
+                'Feedback carries no sender information — the column does not exist in the database. Do not attempt to correlate timestamps with server logs to identify senders.',
             status: {
                 new: 'Unhandled',
                 read: 'Read',
@@ -217,7 +228,8 @@ const en = {
             fieldPublishAt: 'Publish at',
             fieldExpireAt: 'Expire at',
             bodyHelper: 'Plain text; line breaks are preserved.',
-            windowHelper: 'Both are optional — leaving one empty means no limit on that side. Times use your local time zone.',
+            windowHelper:
+                'Both are optional — leaving one empty means no limit on that side. Times use your local time zone.',
             state: {
                 active: 'Live',
                 disabled: 'Disabled',
@@ -236,7 +248,8 @@ const en = {
         yearOption: 'AY {{year}}',
         noStaffForYear: 'The AY {{year}} officer roster has not been published yet.',
         officeLabel: 'Office',
-        officeAddress: 'Department of Information Management Office, 7F, College of Management Building I',
+        officeAddress:
+            'Department of Information Management Office, 7F, College of Management Building I',
     },
 
     auth: {
@@ -251,7 +264,8 @@ const en = {
         passwordTooShort: 'Password must be at least 6 characters',
         registerFailed: 'Sign-up failed, please try again later',
         registerSubtitle: 'Join the NTU IM Student Association',
-        registerFeeNotice: 'After signing up, contact the association to pay your dues if you need full access (downloading past exams, uploading cheat sheets, and so on).',
+        registerFeeNotice:
+            'After signing up, contact the association to pay your dues if you need full access (downloading past exams, uploading cheat sheets, and so on).',
         studentId: 'Student ID',
         studentIdExample: 'e.g. B09705001',
         username: 'Username',
@@ -363,7 +377,8 @@ const en = {
         loginRequiredBody: 'Log in to upload past exams and cheat sheets',
         goToLogin: 'Go to login',
         effectiveFrom: 'Effective from AY 114-1',
-        greeting: 'Hi {{name}} — contribute past exams or cheat sheets to help others and earn a reward',
+        greeting:
+            'Hi {{name}} — contribute past exams or cheat sheets to help others and earn a reward',
         viewFullRules: 'View full rules',
         eligibleItems: 'What you can upload',
         namingPattern: 'year_term_course_examType',
@@ -373,13 +388,16 @@ const en = {
         formTitle: 'Upload form',
         openInNewTab: 'Open in a new tab',
         iframeTitle: 'IM past-exam upload form',
-        formHint: 'You can scroll inside the form. If it is too long or displays incorrectly, use "Open in a new tab" at the top right.',
+        formHint:
+            'You can scroll inside the form. If it is too long or displays incorrectly, use "Open in a new tab" at the top right.',
         notice: {
             title: 'Before you upload',
             range: '<b>Last five years</b>: counting back from the current term (AY 114-1 accepts AY 110–114). Anything older does not count towards a reward.',
-            answers: '<b>Answers</b>: include them if you have them, but <b>do not write your own answers</b> (unless you know they scored full marks).',
+            answers:
+                '<b>Answers</b>: include them if you have them, but <b>do not write your own answers</b> (unless you know they scored full marks).',
             naming: '<b>File naming</b>: <code>{{pattern}}</code> (e.g. 112-1_Programming_Final.pdf)',
-            namingWarning: '<b>Files that do not follow the naming format are not counted.</b> If questions and answers are separate, upload them as two files.',
+            namingWarning:
+                '<b>Files that do not follow the naming format are not counted.</b> If questions and answers are separate, upload them as two files.',
         },
         rules: {
             title: 'IM past-exam upload rules',
@@ -391,43 +409,69 @@ const en = {
             s2: {
                 title: 'II. Five years = five years back, <red>including the current term</red>',
                 example1Label: 'Example 1 ✌',
-                example1: 'It is AY 114-1 (AY 110–114 accepted). A student uploads 4 statistics exams from AY 111–114 → approved, reward of <b>NT$ 250</b>',
+                example1:
+                    'It is AY 114-1 (AY 110–114 accepted). A student uploads 4 statistics exams from AY 111–114 → approved, reward of <b>NT$ 250</b>',
                 example2Label: 'Example 2 ✗',
-                example2: 'It is AY 114-1. A student uploads 4 data-structures exams from 1993–1996 → <b>outside the accepted range</b>, no reward',
+                example2:
+                    'It is AY 114-1. A student uploads 4 data-structures exams from 1993–1996 → <b>outside the accepted range</b>, no reward',
             },
             s3: {
                 title: 'III. Notes and rewards',
-                answers: '・<b>Answers</b>: include them if you have them; <red>do not write your own answers</red> (unless you know they scored full marks)',
+                answers:
+                    '・<b>Answers</b>: include them if you have them; <red>do not write your own answers</red> (unless you know they scored full marks)',
                 reward: '・<b>Reward</b>: every <b>4 past exams / cheat sheets</b> you upload (excluding department-required courses) earns <b> NT$ 250 </b> once approved',
             },
             s4: {
                 title: 'IV. Upload and reward caps ⚠',
                 body: 'So that everyone gets a fair chance to contribute, rewards stop once you have submitted <redBold>32 files</redBold> and received <redBold>NT$ 2000</redBold>.',
                 exampleLabel: 'Example',
-                example: 'A student uploads 99 past exams from AY 110–114 plus course reviews → all approved, but the reward is <b>capped at NT$ 2000</b>',
+                example:
+                    'A student uploads 99 past exams from AY 110–114 plus course reviews → all approved, but the reward is <b>capped at NT$ 2000</b>',
             },
             s5: {
                 title: 'V. File requirements',
-                examFormat: '・<b>Format</b>: original exam files or scans of the questions, uploaded as a PDF once organised',
+                examFormat:
+                    '・<b>Format</b>: original exam files or scans of the questions, uploaded as a PDF once organised',
                 examQuality: '・<b>Quality</b>: clear and legible text',
-                cheatSheetFormat: '・<b>Format</b>: handwritten or typed, uploaded as a PDF once organised',
-                cheatSheetQuality: '・<b>Quality</b>: clear, tidy and legible, genuinely useful for revision (the Academic Division reviews this)',
+                cheatSheetFormat:
+                    '・<b>Format</b>: handwritten or typed, uploaded as a PDF once organised',
+                cheatSheetQuality:
+                    '・<b>Quality</b>: clear, tidy and legible, genuinely useful for revision (the Academic Division reviews this)',
             },
             s6: {
                 title: 'VI. Upload process',
                 step1Title: '1. Check what is already uploaded',
-                step1Body: 'To avoid duplicates, use the "View what is already uploaded" button above to check the Google Sheet first',
+                step1Body:
+                    'To avoid duplicates, use the "View what is already uploaded" button above to check the Google Sheet first',
                 step2Title: '2. Submit the form',
-                step2Body: 'Use your NTU address (@ntu.edu.tw). Name files as <code>{{pattern}}</code> (e.g. 112-1_Programming_Final.pdf). <red>Files that do not follow the format are not counted.</red> If questions and answers are separate, upload them as two files',
+                step2Body:
+                    'Use your NTU address (@ntu.edu.tw). Name files as <code>{{pattern}}</code> (e.g. 112-1_Programming_Final.pdf). <red>Files that do not follow the format are not counted.</red> If questions and answers are separate, upload them as two files',
                 step3Title: '3. Wait for review',
-                step3Body: 'Once approved and 4 files have accumulated, the Academic Division notifies everyone and pays the rewards at the same time',
+                step3Body:
+                    'Once approved and 4 files have accumulated, the Academic Division notifies everyone and pays the rewards at the same time',
             },
         },
         stats: {
-            range: { value: 'Last 5 years', label: 'Eligible range', hint: 'For AY 114-1: AY 110–114 are accepted' },
-            batch: { value: '4 per batch', label: 'Review unit', hint: 'Rewards are paid once 4 files accumulate' },
-            reward: { value: 'NT$ 250', label: 'Per batch', hint: 'Paid once the batch is approved' },
-            cap: { value: '32 files / $2000', label: 'Per-person cap', hint: 'No further rewards after the cap' },
+            range: {
+                value: 'Last 5 years',
+                label: 'Eligible range',
+                hint: 'For AY 114-1: AY 110–114 are accepted',
+            },
+            batch: {
+                value: '4 per batch',
+                label: 'Review unit',
+                hint: 'Rewards are paid once 4 files accumulate',
+            },
+            reward: {
+                value: 'NT$ 250',
+                label: 'Per batch',
+                hint: 'Paid once the batch is approved',
+            },
+            cap: {
+                value: '32 files / $2000',
+                label: 'Per-person cap',
+                hint: 'No further rewards after the cap',
+            },
         },
         categories: {
             exam: {
@@ -452,9 +496,18 @@ const en = {
             },
         },
         steps: {
-            checkList: { label: 'Check what is already uploaded', desc: 'Check the Google Sheet first so you do not upload a duplicate' },
-            fillForm: { label: 'Submit the form with your files', desc: 'Use your @ntu.edu.tw address and follow the file naming rules' },
-            awaitReview: { label: 'Wait for the Academic Division', desc: 'Once 4 files accumulate and pass review, the division notifies you and pays the reward' },
+            checkList: {
+                label: 'Check what is already uploaded',
+                desc: 'Check the Google Sheet first so you do not upload a duplicate',
+            },
+            fillForm: {
+                label: 'Submit the form with your files',
+                desc: 'Use your @ntu.edu.tw address and follow the file naming rules',
+            },
+            awaitReview: {
+                label: 'Wait for the Academic Division',
+                desc: 'Once 4 files accumulate and pass review, the division notifies you and pays the reward',
+            },
         },
     },
 
@@ -523,7 +576,8 @@ const en = {
             deleteThisUser: 'Delete this user',
             editThisUser: 'Edit this user',
             confirmDelete: 'Delete user "{{name}}"?',
-            deleteIrreversible: 'This cannot be undone — all of the user\'s data will be permanently deleted.',
+            deleteIrreversible:
+                "This cannot be undone — all of the user's data will be permanently deleted.",
             detailTitle: 'User details',
             adjustFilters: 'Try adjusting your search terms or filters.',
             empty: 'No users to show.',
@@ -570,7 +624,8 @@ const en = {
         roles: {
             title: 'Role management',
             label: 'Roles',
-            description: 'A user can hold several roles; their permissions are the union of all of them',
+            description:
+                'A user can hold several roles; their permissions are the union of all of them',
             create: 'New role',
             editTitle: 'Edit role',
             fetchFailed: 'Could not load roles',
@@ -587,7 +642,8 @@ const en = {
             none: 'No roles',
             noneAssignable: 'No assignable roles',
             loadingOrNoAccess: 'Loading, or you cannot read roles',
-            memberAutoHint: '"Member" is granted automatically from dues status and cannot be assigned here',
+            memberAutoHint:
+                '"Member" is granted automatically from dues status and cannot be assigned here',
             keyLabel: 'Key',
             keyLocked: 'The key cannot be changed after creation',
             keyHelper: 'Must start with a letter; letters, digits and underscores only',
@@ -596,11 +652,13 @@ const en = {
             colorLabel: 'Colour',
             priorityLabel: 'Sort priority',
             priorityHelper: 'Higher numbers come first',
-            deleteWarning: 'This will delete "{{name}}". The {{count}} users holding it will lose the matching permissions. This cannot be undone.',
+            deleteWarning:
+                'This will delete "{{name}}". The {{count}} users holding it will lose the matching permissions. This cannot be undone.',
         },
         modules: {
             title: 'Module management',
-            description: 'Control who each feature is open to. Once set to "Restricted", only allow-listed roles or users can use it; administrators always can, so a feature can be tested in production before going public.',
+            description:
+                'Control who each feature is open to. Once set to "Restricted", only allow-listed roles or users can use it; administrators always can, so a feature can be tested in production before going public.',
             fetchFailed: 'Could not load module settings',
             saved: 'Module settings updated',
             saveFailed: 'Could not update module settings',
@@ -618,7 +676,8 @@ const en = {
 
     error: {
         boundaryTitle: 'Something went wrong',
-        boundaryBody: 'An error occurred while loading the page. Please refresh, or contact an administrator.',
+        boundaryBody:
+            'An error occurred while loading the page. Please refresh, or contact an administrator.',
         reload: 'Reload',
     },
 
@@ -673,15 +732,15 @@ const en = {
         },
 
         semester: {
-            '1': 'Fall',
-            '2': 'Spring',
+            1: 'Fall',
+            2: 'Spring',
             summer: 'Summer',
         },
 
         // Suffix used in the short academic-term format (e.g. 115-2, 115-Su)
         academicTermSuffix: {
-            '1': '1',
-            '2': '2',
+            1: '1',
+            2: '2',
             summer: 'Su',
         },
 
@@ -758,9 +817,12 @@ const en = {
             professor: 'Instructor',
             academicTerm: 'Term',
             allTerms: 'All',
-            courseNameHelper: 'Pick a term first, then type a name and choose from the list — the instructor and course number fill in automatically. You can also type them in manually.',
-            termRequiredForManualEntry: 'When the term is set to "All", pick a course from the list. To type it in manually, choose a specific term first.',
-            searchTruncatedHint: 'Too many matches to show them all. Type a more complete course name, or type the instructor’s name instead.',
+            courseNameHelper:
+                'Pick a term first, then type a name and choose from the list — the instructor and course number fill in automatically. You can also type them in manually.',
+            termRequiredForManualEntry:
+                'When the term is set to "All", pick a course from the list. To type it in manually, choose a specific term first.',
+            searchTruncatedHint:
+                'Too many matches to show them all. Type a more complete course name, or type the instructor’s name instead.',
             courseContent: 'Course content',
             teachingMethod: 'Teaching style',
             assignmentExamFormat: 'Assignments and exams',
@@ -768,10 +830,13 @@ const en = {
             comment: 'Your review',
             notRatedYet: 'Not rated',
             anonymous: 'Post anonymously',
-            lockedFieldsHint: 'Course, instructor and term cannot be changed after submission. If something is wrong, delete the review and create a new one.',
-            courseContentHelper: '{{count}} / {{max}} characters (at least {{min}}; saved as a draft automatically)',
+            lockedFieldsHint:
+                'Course, instructor and term cannot be changed after submission. If something is wrong, delete the review and create a new one.',
+            courseContentHelper:
+                '{{count}} / {{max}} characters (at least {{min}}; saved as a draft automatically)',
             requiredFieldHelper: '{{count}} / {{max}} characters (at least {{min}})',
-            commentHelper: '{{count}} / {{max}} characters (at least {{min}}; published only after approval; saved as a draft automatically)',
+            commentHelper:
+                '{{count}} / {{max}} characters (at least {{min}}; published only after approval; saved as a draft automatically)',
             basicInfoRequired: 'Course number, course name and instructor are required',
             ratingsIncomplete: 'Please complete all ratings',
             draftRestored: 'Restored your unfinished draft',
@@ -788,9 +853,11 @@ const en = {
             full: 'Full',
             remaining: '{{count}} left',
             helper: 'Each approved review earns {{amount}} NTD. Every course has a limited number of paid slots (3 for IM required courses, 2 for IM electives, 1 otherwise). You can still submit once a course is full — it just will not earn a reward.',
-            fullWarning: 'This course has already used all {{limit}} of its reward slots. You can still submit, and your review will still be published — it just will not earn a reward.',
+            fullWarning:
+                'This course has already used all {{limit}} of its reward slots. You can still submit, and your review will still be published — it just will not earn a reward.',
             overQuota: 'Over quota',
-            overQuotaHint: 'Earlier submissions have taken every slot for this course, so this review earns no reward',
+            overQuotaHint:
+                'Earlier submissions have taken every slot for this course, so this review earns no reward',
             eligible: 'Within quota',
             tier: {
                 imRequired: 'IM required',
@@ -801,7 +868,8 @@ const en = {
 
         payout: {
             title: 'Reward payouts',
-            description: 'Track which course-review rewards have been paid. Only approved reviews appear here.',
+            description:
+                'Track which course-review rewards have been paid. Only approved reviews appear here.',
             searchPlaceholder: 'Search by name, student ID, course or instructor…',
             // Three payout states. "Pending" rather than "Unpaid": the latter reads
             // almost the same as "Declined" but means the opposite (not decided yet
@@ -822,7 +890,8 @@ const en = {
             markPending: 'Move back to pending',
             exportCsv: 'Export CSV',
             anonymousTag: 'Anonymous',
-            anonymousHint: 'This review is shown anonymously, but the reward still goes to this person',
+            anonymousHint:
+                'This review is shown anonymously, but the reward still goes to this person',
             roleTag: 'Treasurer',
             roleOn: 'Can manage reward payouts',
             roleOff: 'No payout permission',
@@ -836,7 +905,8 @@ const en = {
 
         admin: {
             title: 'Course review moderation',
-            description: 'Course reviews earn a reward and must be approved before they appear publicly. You can also delete any review here.',
+            description:
+                'Course reviews earn a reward and must be approved before they appear publicly. You can also delete any review here.',
             searchPlaceholder: 'Search by course name, course number or instructor…',
             noMatchingReviews: 'No reviews match your filters',
             noMatchingSearchReviews: 'No reviews match your search',
@@ -868,9 +938,12 @@ const en = {
         LINE_BINDINGS_FETCH_FAILED: 'Could not load the list of linked members',
         LINE_UNBIND_OTHER_FAILED: 'Could not unlink that member',
         RATE_LIMITED: 'Too many requests — please try again in {{minutes}} minutes',
-        REVIEW_RATE_LIMITED: 'You are submitting reviews too quickly — please try again in {{minutes}} minutes',
-        FEEDBACK_RATE_LIMITED: 'You are sending feedback too quickly — please try again in {{minutes}} minutes',
-        COURSE_NOT_IN_CATALOG: 'That course was not found — please pick one from the search results',
+        REVIEW_RATE_LIMITED:
+            'You are submitting reviews too quickly — please try again in {{minutes}} minutes',
+        FEEDBACK_RATE_LIMITED:
+            'You are sending feedback too quickly — please try again in {{minutes}} minutes',
+        COURSE_NOT_IN_CATALOG:
+            'That course was not found — please pick one from the search results',
         REVIEW_LIMIT_EXCEEDED: 'You have reached the maximum number of reviews',
         FEEDBACK_BODY_REQUIRED: 'Feedback is required and must be 10-2000 characters',
         FEEDBACK_CATEGORY_INVALID: 'Invalid feedback category',
@@ -902,8 +975,10 @@ const en = {
         USEFULNESS_RANGE: 'Usefulness must be between 0.5 and 5',
         COURSE_CONTENT_LENGTH: 'Course content is required and must be {{min}}-{{max}} characters',
         TEACHING_METHOD_LENGTH: 'Teaching style is required and must be {{min}}-{{max}} characters',
-        ASSIGNMENT_EXAM_FORMAT_LENGTH: 'Assignments and exams are required and must be {{min}}-{{max}} characters',
-        GRADING_BREAKDOWN_LENGTH: 'Grade breakdown is required and must be {{min}}-{{max}} characters',
+        ASSIGNMENT_EXAM_FORMAT_LENGTH:
+            'Assignments and exams are required and must be {{min}}-{{max}} characters',
+        GRADING_BREAKDOWN_LENGTH:
+            'Grade breakdown is required and must be {{min}}-{{max}} characters',
         COMMENT_LENGTH: 'Your review is required and must be {{min}}-{{max}} characters',
         TERM_NOT_REVIEWABLE: 'Final exams for that term are not over yet, so it cannot be reviewed',
         DUPLICATE_REVIEW: 'You have already reviewed this course (same term, same instructor)',
@@ -921,7 +996,8 @@ const en = {
         REVIEW_STATUS_UPDATE_FAILED: 'Could not update the review status',
         PAYOUT_STATUS_INVALID: 'Payout status must be pending, paid or declined',
         PAYOUT_REQUIRES_APPROVED: 'Only approved reviews can be marked as paid',
-        PAYOUT_OVER_QUOTA: 'This course has no reward slots left, or an earlier submission is still awaiting moderation',
+        PAYOUT_OVER_QUOTA:
+            'This course has no reward slots left, or an earlier submission is still awaiting moderation',
         PAYOUT_UPDATE_FAILED: 'Could not update payout status',
         FETCH_PAYOUTS_FAILED: 'Could not load the payout list',
         EXPORT_PAYOUTS_FAILED: 'Could not export the payout list',
@@ -938,7 +1014,8 @@ const en = {
         AUTH_TOKEN_EXPIRED: 'Your session has expired',
         AUTH_TOKEN_INVALID: 'Invalid authentication token',
         AUTH_TOKEN_MISSING: 'No authentication token provided',
-        AUTO_ROLE_NOT_ASSIGNABLE: '"{{name}}" is granted automatically from dues status and cannot be assigned manually',
+        AUTO_ROLE_NOT_ASSIGNABLE:
+            '"{{name}}" is granted automatically from dues status and cannot be assigned manually',
         BUILTIN_ROLE_NOT_DELETABLE: 'Built-in roles cannot be deleted',
         CANNOT_DELETE_LAST_ADMIN: 'The last administrator cannot be deleted',
         CANNOT_DELETE_SELF: 'You cannot delete your own account',
@@ -1006,7 +1083,8 @@ const en = {
         QUESTION_FILE_REQUIRED: 'Please choose a question file to upload',
         REGISTER_FAILED: 'Sign-up failed, please try again later',
         RESOURCE_NOT_FOUND: 'Resource not found',
-        ROLE_KEY_FORMAT: 'The key may only contain letters, digits and underscores, and must start with a letter',
+        ROLE_KEY_FORMAT:
+            'The key may only contain letters, digits and underscores, and must start with a letter',
         ROLE_KEY_TAKEN: 'That role key already exists',
         ROLE_LIST_REQUIRED: 'Please provide a list of roles',
         ROLE_NOT_FOUND: 'Role not found',

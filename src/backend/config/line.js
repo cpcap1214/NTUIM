@@ -43,7 +43,10 @@ const isBindingCodeExpired = (expiresAt, now = Date.now()) => {
 };
 
 // 使用者可能連同空白或小寫一起貼上來，正規化之後再比對
-const normalizeBindingCode = (raw) => String(raw ?? '').trim().toUpperCase();
+const normalizeBindingCode = (raw) =>
+    String(raw ?? '')
+        .trim()
+        .toUpperCase();
 
 // 這串文字「看起來」是不是綁定碼：長度正確，且每個字元都來自綁定碼字母表。
 //
@@ -78,10 +81,7 @@ const classifyMessage = (text) => (looksLikeBindingCode(text) ? 'binding-attempt
 const verifySignature = (rawBody, signature) => {
     if (!CHANNEL_SECRET || !rawBody || !signature) return false;
 
-    const expected = crypto
-        .createHmac('sha256', CHANNEL_SECRET)
-        .update(rawBody)
-        .digest();
+    const expected = crypto.createHmac('sha256', CHANNEL_SECRET).update(rawBody).digest();
 
     let received;
     try {

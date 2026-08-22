@@ -58,10 +58,7 @@ const handleEvent = async (event) => {
     // 使用者之後想再收通知，重新加好友並綁定即可。
     if (event.type === 'unfollow') {
         if (lineUserId) {
-            await User.update(
-                { lineUserId: null, lineBoundAt: null },
-                { where: { lineUserId } }
-            );
+            await User.update({ lineUserId: null, lineBoundAt: null }, { where: { lineUserId } });
         }
         return;
     }
@@ -97,7 +94,10 @@ const handleEvent = async (event) => {
     // 一個 LINE 帳號只能綁一個系統帳號（資料表有 partial unique index 把關）。
     // 先清掉同一個 lineUserId 的舊綁定，否則寫入會撞索引而整個失敗——
     // 使用者換帳號重綁是合理操作，不該被擋。
-    await User.update({ lineUserId: null, lineBoundAt: null }, { where: { lineUserId, id: { [Op.ne]: user.id } } });
+    await User.update(
+        { lineUserId: null, lineBoundAt: null },
+        { where: { lineUserId, id: { [Op.ne]: user.id } } },
+    );
 
     await user.update({
         lineUserId,
@@ -107,7 +107,9 @@ const handleEvent = async (event) => {
     });
 
     await lineService.reply(event.replyToken, [
-        lineService.textMessage(`綁定成功！\n帳號：${user.username}\n\n之後有待審核的項目會在這裡通知你。`),
+        lineService.textMessage(
+            `綁定成功！\n帳號：${user.username}\n\n之後有待審核的項目會在這裡通知你。`,
+        ),
     ]);
 };
 
@@ -164,7 +166,12 @@ router.post('/binding-code', authenticateToken, async (req, res) => {
 router.delete('/binding', authenticateToken, async (req, res) => {
     try {
         const user = await User.findByPk(req.user.id);
-        await user.update({ lineUserId: null, lineBoundAt: null, lineBindingCode: null, lineBindingExpiresAt: null });
+        await user.update({
+            lineUserId: null,
+            lineBoundAt: null,
+            lineBindingCode: null,
+            lineBindingExpiresAt: null,
+        });
         res.json({ message: '已解除綁定' });
     } catch (error) {
         console.error('解除 LINE 綁定錯誤:', error);
@@ -195,7 +202,10 @@ router.get('/bindings', ...manageUsers, async (req, res) => {
         const bound = await User.findAll({
             where: { lineUserId: { [Op.ne]: null } },
             attributes: ['id', 'username', 'fullName', 'role', 'lineBoundAt'],
-            order: [['line_bound_at', 'DESC'], ['id', 'ASC']],
+            order: [
+                ['line_bound_at', 'DESC'],
+                ['id', 'ASC'],
+            ],
         });
 
         const data = [];
@@ -212,9 +222,9 @@ router.get('/bindings', ...manageUsers, async (req, res) => {
                 // 這個人「實際上」收得到哪些通知。
                 // 沒有這一欄的話，「綁了卻沒有審核權限」在畫面上完全看不出來，
                 // 只會被當成 bot 壞掉——那是最常見的疑問。
-                notifies: NOTIFY_KINDS
-                    .filter((k) => permissionService.hasPermission(resolved, k.permission))
-                    .map((k) => k.key),
+                notifies: NOTIFY_KINDS.filter((k) =>
+                    permissionService.hasPermission(resolved, k.permission),
+                ).map((k) => k.key),
                 // ⚠️ 刻意不回傳 lineUserId。前端沒有任何用途需要它，
                 //    而它是 LINE 平台上的使用者識別碼——能少送就少送。
             });

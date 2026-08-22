@@ -62,7 +62,9 @@ describe('後端 errorCode 的譯文覆蓋率', () => {
         const mismatched = Object.keys(zhTW.errors)
             .filter((k) => en.errors[k])
             .filter((k) => placeholders(zhTW.errors[k]) !== placeholders(en.errors[k]))
-            .map((k) => `${k}: zh=${placeholders(zhTW.errors[k])} en=${placeholders(en.errors[k])}`);
+            .map(
+                (k) => `${k}: zh=${placeholders(zhTW.errors[k])} en=${placeholders(en.errors[k])}`,
+            );
         expect(mismatched).toEqual([]);
     });
 });

@@ -2,40 +2,40 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
-  AppBar,
-  Toolbar,
-  Typography,
-  Box,
-  IconButton,
-  Drawer,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  useTheme,
-  useMediaQuery,
-  Button,
-  Menu,
-  MenuItem,
-  Avatar,
-  Divider,
-  Chip,
-  Stack,
+    AppBar,
+    Toolbar,
+    Typography,
+    Box,
+    IconButton,
+    Drawer,
+    List,
+    ListItem,
+    ListItemButton,
+    ListItemIcon,
+    ListItemText,
+    useTheme,
+    useMediaQuery,
+    Button,
+    Menu,
+    MenuItem,
+    Avatar,
+    Divider,
+    Chip,
+    Stack,
 } from '@mui/material';
 import {
-  Menu as MenuIcon,
-  Home as HomeIcon,
-  RateReview as ReviewIcon,
-  Quiz as QuizIcon,
-  Description as DescriptionIcon,
-  Info as InfoIcon,
-  Login as LoginIcon,
-  Logout as LogoutIcon,
-  AdminPanelSettings as AdminIcon,
-  CloudUpload as UploadIcon,
-  School as SchoolIcon,
-  OpenInNew as OpenInNewIcon,
+    Menu as MenuIcon,
+    Home as HomeIcon,
+    RateReview as ReviewIcon,
+    Quiz as QuizIcon,
+    Description as DescriptionIcon,
+    Info as InfoIcon,
+    Login as LoginIcon,
+    Logout as LogoutIcon,
+    AdminPanelSettings as AdminIcon,
+    CloudUpload as UploadIcon,
+    School as SchoolIcon,
+    OpenInNew as OpenInNewIcon,
 } from '@mui/icons-material';
 import NavigationTabs from './NavigationTabs';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -44,514 +44,570 @@ import { useAuth } from '../../contexts/AuthContext';
 
 // Google 四色「G」logo（inline SVG，避免額外圖檔依賴）
 const GoogleIcon = ({ size = 16 }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 48 48"
-    width={size}
-    height={size}
-    aria-hidden="true"
-  >
-    <path
-      fill="#FFC107"
-      d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"
-    />
-    <path
-      fill="#FF3D00"
-      d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"
-    />
-    <path
-      fill="#4CAF50"
-      d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"
-    />
-    <path
-      fill="#1976D2"
-      d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"
-    />
-  </svg>
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 48 48"
+        width={size}
+        height={size}
+        aria-hidden="true"
+    >
+        <path
+            fill="#FFC107"
+            d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"
+        />
+        <path
+            fill="#FF3D00"
+            d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"
+        />
+        <path
+            fill="#4CAF50"
+            d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"
+        />
+        <path
+            fill="#1976D2"
+            d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"
+        />
+    </svg>
 );
 
 const iconMap = {
-  home: HomeIcon,
-  rate_review: ReviewIcon,
-  quiz: QuizIcon,
-  description: DescriptionIcon,
-  info: InfoIcon,
+    home: HomeIcon,
+    rate_review: ReviewIcon,
+    quiz: QuizIcon,
+    description: DescriptionIcon,
+    info: InfoIcon,
 };
 
 const GOOGLE_SPACE_URL = 'https://forms.gle/5ckpNSH74FhXBugM8';
 
 const Header = () => {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [anchorEl, setAnchorEl] = useState(null);
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { t } = useTranslation();
-  const { user, logout, isAuthenticated, isAdmin, isModuleVisible, isModuleComingSoon } = useAuth();
+    const [mobileOpen, setMobileOpen] = useState(false);
+    const [anchorEl, setAnchorEl] = useState(null);
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    const location = useLocation();
+    const navigate = useNavigate();
+    const { t } = useTranslation();
+    const { user, logout, isAuthenticated, isAdmin, isModuleVisible, isModuleComingSoon } =
+        useAuth();
 
-  // 移除了 { id: 'admin-upload', path: '/admin/upload' }：App.js 沒有那條路由，
-  // 點下去只會進到空白頁。該功能已由管理員控制台的「上傳考古題／上傳大抄」分頁取代。
-  const adminNavItems = [
-    { id: 'admin-panel', labelKey: 'nav.adminPanel', path: '/admin', icon: AdminIcon },
-    { id: 'admin-exam-manage', labelKey: 'nav.adminExamManage', path: '/admin/exam-manage', icon: SchoolIcon },
-    { id: 'admin-cheatsheet-manage', labelKey: 'nav.adminCheatSheetManage', path: '/admin/cheatsheet-manage', icon: DescriptionIcon },
-  ];
+    // 移除了 { id: 'admin-upload', path: '/admin/upload' }：App.js 沒有那條路由，
+    // 點下去只會進到空白頁。該功能已由管理員控制台的「上傳考古題／上傳大抄」分頁取代。
+    const adminNavItems = [
+        { id: 'admin-panel', labelKey: 'nav.adminPanel', path: '/admin', icon: AdminIcon },
+        {
+            id: 'admin-exam-manage',
+            labelKey: 'nav.adminExamManage',
+            path: '/admin/exam-manage',
+            icon: SchoolIcon,
+        },
+        {
+            id: 'admin-cheatsheet-manage',
+            labelKey: 'nav.adminCheatSheetManage',
+            path: '/admin/cheatsheet-manage',
+            icon: DescriptionIcon,
+        },
+    ];
 
-  const handleDrawerToggle = () => setMobileOpen((v) => !v);
-  const handleMobileNavigation = (path) => {
-    navigate(path);
-    setMobileOpen(false);
-  };
-  const handleUserMenuOpen = (e) => setAnchorEl(e.currentTarget);
-  const handleUserMenuClose = () => setAnchorEl(null);
-  const handleLogout = () => {
-    logout();
-    handleUserMenuClose();
-    navigate('/');
-  };
+    const handleDrawerToggle = () => setMobileOpen((v) => !v);
+    const handleMobileNavigation = (path) => {
+        navigate(path);
+        setMobileOpen(false);
+    };
+    const handleUserMenuOpen = (e) => setAnchorEl(e.currentTarget);
+    const handleUserMenuClose = () => setAnchorEl(null);
+    const handleLogout = () => {
+        logout();
+        handleUserMenuClose();
+        navigate('/');
+    };
 
-  const drawer = (
-    <Box sx={{ width: 280, height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ px: 2.5, py: 2.5 }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'primary.main' }}>
-          {t('app.name')}
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          {t('app.englishName')}
-        </Typography>
-      </Box>
-      <Divider />
-
-      <List sx={{ px: 1, py: 1.5, flexGrow: 1 }}>
-        {NAVIGATION_ITEMS.filter((item) => isModuleVisible(item.moduleKey)).map((item) => {
-          const IconComponent = iconMap[item.icon];
-          const isActive = location.pathname === item.path;
-          return (
-            <ListItem key={item.id} disablePadding sx={{ mb: 0.5 }}>
-              <ListItemButton
-                onClick={() => handleMobileNavigation(item.path)}
-                selected={isActive}
-                sx={{
-                  borderRadius: 1.5,
-                  py: 1,
-                  '&.Mui-selected': {
-                    backgroundColor: 'primary.main',
-                    color: 'primary.contrastText',
-                    '&:hover': { backgroundColor: 'primary.dark' },
-                    '& .MuiListItemIcon-root': { color: 'primary.contrastText' },
-                  },
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 36, color: 'inherit' }}>
-                  <IconComponent sx={{ fontSize: 20 }} />
-                </ListItemIcon>
-                <ListItemText
-                  primary={t(item.labelKey)}
-                  primaryTypographyProps={{ fontWeight: isActive ? 600 : 500, fontSize: '0.9rem' }}
-                />
-                {isModuleComingSoon(item.moduleKey) && (
-                  <Chip label={t('nav.comingSoon')} size="small" color="warning" sx={{ height: 18, fontSize: '0.65rem' }} />
-                )}
-              </ListItemButton>
-            </ListItem>
-          );
-        })}
-
-        {isAdmin && (
-          <>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ px: 1.5, mt: 2, mb: 0.5, display: 'block', fontWeight: 600, letterSpacing: '0.04em' }}
-            >
-              {t('nav.adminSection')}
-            </Typography>
-            {adminNavItems.map((item) => {
-              const IconComponent = item.icon;
-              const isActive = location.pathname === item.path;
-              return (
-                <ListItem key={item.id} disablePadding sx={{ mb: 0.5 }}>
-                  <ListItemButton
-                    onClick={() => handleMobileNavigation(item.path)}
-                    selected={isActive}
-                    sx={{
-                      borderRadius: 1.5,
-                      py: 1,
-                      '&.Mui-selected': {
-                        backgroundColor: 'grey.100',
-                        '&:hover': { backgroundColor: 'grey.200' },
-                      },
-                    }}
-                  >
-                    <ListItemIcon sx={{ minWidth: 36 }}>
-                      <IconComponent sx={{ fontSize: 20, color: isActive ? 'secondary.main' : 'text.secondary' }} />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={t(item.labelKey)}
-                      primaryTypographyProps={{
-                        fontWeight: isActive ? 600 : 500,
-                        fontSize: '0.875rem',
-                        color: isActive ? 'secondary.main' : 'text.primary',
-                      }}
-                    />
-                  </ListItemButton>
-                </ListItem>
-              );
-            })}
-          </>
-        )}
-      </List>
-
-      <Divider />
-      <Box sx={{ p: 2 }}>
-        {isAuthenticated ? (
-          <Stack spacing={1}>
-            {/* User card 內含登出 icon，省一個按鈕 */}
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1.25,
-                p: 1.25,
-                bgcolor: 'grey.50',
-                border: '1px solid',
-                borderColor: 'divider',
-                borderRadius: 1.5,
-              }}
-            >
-              <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: '0.85rem' }}>
-                {user?.username?.charAt(0).toUpperCase()}
-              </Avatar>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
-                  {user?.fullName || user?.username}
+    const drawer = (
+        <Box sx={{ width: 280, height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Box sx={{ px: 2.5, py: 2.5 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                    {t('app.name')}
                 </Typography>
-                <Chip
-                  size="small"
-                  label={t(user?.hasPaidFee ? 'nav.feePaid' : 'nav.feeUnpaid')}
-                  color={user?.hasPaidFee ? 'success' : 'default'}
-                  variant="outlined"
-                  sx={{ height: 18, fontSize: '0.7rem' }}
-                />
-              </Box>
-              <IconButton
-                size="small"
-                aria-label={t('nav.logout')}
-                onClick={() => {
-                  handleLogout();
-                  setMobileOpen(false);
-                }}
-                sx={{ color: 'text.secondary' }}
-              >
-                <LogoutIcon fontSize="small" />
-              </IconButton>
+                <Typography variant="caption" color="text.secondary">
+                    {t('app.englishName')}
+                </Typography>
             </Box>
+            <Divider />
 
-            {/* Primary action：上傳考古題 */}
-            <Button
-              variant="contained"
-              fullWidth
-              size="small"
-              startIcon={<UploadIcon />}
-              onClick={() => handleMobileNavigation('/upload-exam')}
-            >
-              {t('nav.uploadExam')}
-            </Button>
-          </Stack>
-        ) : (
-          <Button
-            variant="contained"
-            fullWidth
-            startIcon={<LoginIcon />}
-            onClick={() => {
-              navigate('/login');
-              setMobileOpen(false);
-            }}
-          >
-            {t('nav.loginOrRegister')}
-          </Button>
-        )}
+            <List sx={{ px: 1, py: 1.5, flexGrow: 1 }}>
+                {NAVIGATION_ITEMS.filter((item) => isModuleVisible(item.moduleKey)).map((item) => {
+                    const IconComponent = iconMap[item.icon];
+                    const isActive = location.pathname === item.path;
+                    return (
+                        <ListItem key={item.id} disablePadding sx={{ mb: 0.5 }}>
+                            <ListItemButton
+                                onClick={() => handleMobileNavigation(item.path)}
+                                selected={isActive}
+                                sx={{
+                                    borderRadius: 1.5,
+                                    py: 1,
+                                    '&.Mui-selected': {
+                                        backgroundColor: 'primary.main',
+                                        color: 'primary.contrastText',
+                                        '&:hover': { backgroundColor: 'primary.dark' },
+                                        '& .MuiListItemIcon-root': {
+                                            color: 'primary.contrastText',
+                                        },
+                                    },
+                                }}
+                            >
+                                <ListItemIcon sx={{ minWidth: 36, color: 'inherit' }}>
+                                    <IconComponent sx={{ fontSize: 20 }} />
+                                </ListItemIcon>
+                                <ListItemText
+                                    primary={t(item.labelKey)}
+                                    primaryTypographyProps={{
+                                        fontWeight: isActive ? 600 : 500,
+                                        fontSize: '0.9rem',
+                                    }}
+                                />
+                                {isModuleComingSoon(item.moduleKey) && (
+                                    <Chip
+                                        label={t('nav.comingSoon')}
+                                        size="small"
+                                        color="warning"
+                                        sx={{ height: 18, fontSize: '0.65rem' }}
+                                    />
+                                )}
+                            </ListItemButton>
+                        </ListItem>
+                    );
+                })}
 
-        {/* Secondary action：Google Workspace（縮短字數避免換行） */}
-        <Button
-          fullWidth
-          size="small"
-          startIcon={<GoogleIcon size={16} />}
-          endIcon={<OpenInNewIcon sx={{ fontSize: 13 }} />}
-          onClick={() => {
-            window.open(GOOGLE_SPACE_URL, '_blank');
-            setMobileOpen(false);
-          }}
-          sx={{
-            mt: 1.25,
-            py: 0.85,
-            borderRadius: 1.5,
-            fontWeight: 500,
-            color: 'text.primary',
-            bgcolor: '#ffffff',
-            border: '1px solid rgba(15, 23, 42, 0.12)',
-            justifyContent: 'space-between',
-            textAlign: 'left',
-            fontSize: '0.8rem',
-            whiteSpace: 'nowrap',
-            transition: 'background-color 180ms ease, border-color 180ms ease',
-            '&:hover': {
-              bgcolor: '#ffffff',
-              borderColor: 'rgba(15, 23, 42, 0.24)',
-            },
-            '& .MuiButton-startIcon': { mr: 0.75 },
-          }}
-        >
-          {t('nav.joinWorkspaceShort')}
-        </Button>
-      </Box>
-    </Box>
-  );
-
-  return (
-    <>
-      <AppBar position="sticky">
-        <Toolbar
-          sx={{
-            maxWidth: 1200,
-            mx: 'auto',
-            width: '100%',
-            px: { xs: 2, sm: 3, md: 4 },
-            minHeight: { xs: 60, md: 64 },
-            gap: 2,
-          }}
-        >
-          {isMobile && (
-            <IconButton
-              edge="start"
-              aria-label={t('nav.openMenu')}
-              onClick={handleDrawerToggle}
-              sx={{ color: 'text.primary' }}
-            >
-              <MenuIcon />
-            </IconButton>
-          )}
-
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: { xs: 1, md: 1.25 },
-              cursor: 'pointer',
-              minWidth: 0,
-              mr: { md: 2 },
-            }}
-            onClick={() => navigate('/')}
-          >
-            {/* IMSA 標誌 — 找不到圖片就只顯示文字（fallback 到原版） */}
-            <Box
-              component="img"
-              src="/images/branding/imsa-logo.png"
-              alt=""
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-              sx={{
-                width: { xs: 30, md: 36 },
-                height: { xs: 30, md: 36 },
-                borderRadius: 1,
-                objectFit: 'contain',
-                flexShrink: 0,
-              }}
-            />
-            <Box sx={{ minWidth: 0 }}>
-              <Typography
-                variant="subtitle1"
-                sx={{ fontWeight: 700, color: 'primary.main', lineHeight: 1.2 }}
-                noWrap
-              >
-                {t('app.name')}
-              </Typography>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ display: { xs: 'none', sm: 'block' }, lineHeight: 1.2 }}
-                noWrap
-              >
-                {t('app.englishName')}
-              </Typography>
-            </Box>
-          </Box>
-
-          {!isMobile && (
-            <>
-              <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'center' }}>
-                <NavigationTabs />
-              </Box>
-
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                {/* 放在工具列而不是使用者下拉選單裡：那個選單只在登入後出現，
-                    未登入的訪客也必須能切換語言 */}
-                <LanguageSwitcher size="small" />
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<GoogleIcon size={16} />}
-                  onClick={() => window.open(GOOGLE_SPACE_URL, '_blank')}
-                  sx={{
-                    display: { xs: 'none', lg: 'inline-flex' },
-                    borderRadius: 999,
-                    px: 1.75,
-                    py: 0.5,
-                    fontWeight: 500,
-                    color: 'text.primary',
-                    borderColor: 'rgba(15, 23, 42, 0.12)',
-                    bgcolor: '#ffffff',
-                    transition:
-                      'background-color 180ms ease, border-color 180ms ease, transform 180ms cubic-bezier(0.2,0.7,0.2,1), box-shadow 180ms ease',
-                    '&:hover': {
-                      bgcolor: '#ffffff',
-                      borderColor: 'rgba(15, 23, 42, 0.24)',
-                      transform: 'translateY(-1px)',
-                      boxShadow: '0 4px 10px rgba(15, 23, 42, 0.08)',
-                    },
-                  }}
-                >
-                  {t('nav.joinWorkspace')}
-                </Button>
-
-                {isAuthenticated ? (
-                  <IconButton onClick={handleUserMenuOpen} sx={{ p: 0.5 }}>
-                    <Avatar sx={{ width: 34, height: 34, bgcolor: 'primary.main', fontSize: '0.9rem' }}>
-                      {user?.username?.charAt(0).toUpperCase()}
-                    </Avatar>
-                  </IconButton>
-                ) : (
-                  <Button
-                    variant="contained"
-                    size="small"
-                    startIcon={<LoginIcon />}
-                    onClick={() => navigate('/login')}
-                  >
-                    {t('nav.login')}
-                  </Button>
+                {isAdmin && (
+                    <>
+                        <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{
+                                px: 1.5,
+                                mt: 2,
+                                mb: 0.5,
+                                display: 'block',
+                                fontWeight: 600,
+                                letterSpacing: '0.04em',
+                            }}
+                        >
+                            {t('nav.adminSection')}
+                        </Typography>
+                        {adminNavItems.map((item) => {
+                            const IconComponent = item.icon;
+                            const isActive = location.pathname === item.path;
+                            return (
+                                <ListItem key={item.id} disablePadding sx={{ mb: 0.5 }}>
+                                    <ListItemButton
+                                        onClick={() => handleMobileNavigation(item.path)}
+                                        selected={isActive}
+                                        sx={{
+                                            borderRadius: 1.5,
+                                            py: 1,
+                                            '&.Mui-selected': {
+                                                backgroundColor: 'grey.100',
+                                                '&:hover': { backgroundColor: 'grey.200' },
+                                            },
+                                        }}
+                                    >
+                                        <ListItemIcon sx={{ minWidth: 36 }}>
+                                            <IconComponent
+                                                sx={{
+                                                    fontSize: 20,
+                                                    color: isActive
+                                                        ? 'secondary.main'
+                                                        : 'text.secondary',
+                                                }}
+                                            />
+                                        </ListItemIcon>
+                                        <ListItemText
+                                            primary={t(item.labelKey)}
+                                            primaryTypographyProps={{
+                                                fontWeight: isActive ? 600 : 500,
+                                                fontSize: '0.875rem',
+                                                color: isActive ? 'secondary.main' : 'text.primary',
+                                            }}
+                                        />
+                                    </ListItemButton>
+                                </ListItem>
+                            );
+                        })}
+                    </>
                 )}
-              </Box>
-            </>
-          )}
+            </List>
 
-          {isMobile && !isAuthenticated && (
-            <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <LanguageSwitcher size="small" />
-              <Button
-                variant="contained"
-                size="small"
-                startIcon={<LoginIcon />}
-                onClick={() => navigate('/login')}
-              >
-                {t('nav.login')}
-              </Button>
+            <Divider />
+            <Box sx={{ p: 2 }}>
+                {isAuthenticated ? (
+                    <Stack spacing={1}>
+                        {/* User card 內含登出 icon，省一個按鈕 */}
+                        <Box
+                            sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1.25,
+                                p: 1.25,
+                                bgcolor: 'grey.50',
+                                border: '1px solid',
+                                borderColor: 'divider',
+                                borderRadius: 1.5,
+                            }}
+                        >
+                            <Avatar
+                                sx={{
+                                    width: 32,
+                                    height: 32,
+                                    bgcolor: 'primary.main',
+                                    fontSize: '0.85rem',
+                                }}
+                            >
+                                {user?.username?.charAt(0).toUpperCase()}
+                            </Avatar>
+                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                                <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
+                                    {user?.fullName || user?.username}
+                                </Typography>
+                                <Chip
+                                    size="small"
+                                    label={t(user?.hasPaidFee ? 'nav.feePaid' : 'nav.feeUnpaid')}
+                                    color={user?.hasPaidFee ? 'success' : 'default'}
+                                    variant="outlined"
+                                    sx={{ height: 18, fontSize: '0.7rem' }}
+                                />
+                            </Box>
+                            <IconButton
+                                size="small"
+                                aria-label={t('nav.logout')}
+                                onClick={() => {
+                                    handleLogout();
+                                    setMobileOpen(false);
+                                }}
+                                sx={{ color: 'text.secondary' }}
+                            >
+                                <LogoutIcon fontSize="small" />
+                            </IconButton>
+                        </Box>
+
+                        {/* Primary action：上傳考古題 */}
+                        <Button
+                            variant="contained"
+                            fullWidth
+                            size="small"
+                            startIcon={<UploadIcon />}
+                            onClick={() => handleMobileNavigation('/upload-exam')}
+                        >
+                            {t('nav.uploadExam')}
+                        </Button>
+                    </Stack>
+                ) : (
+                    <Button
+                        variant="contained"
+                        fullWidth
+                        startIcon={<LoginIcon />}
+                        onClick={() => {
+                            navigate('/login');
+                            setMobileOpen(false);
+                        }}
+                    >
+                        {t('nav.loginOrRegister')}
+                    </Button>
+                )}
+
+                {/* Secondary action：Google Workspace（縮短字數避免換行） */}
+                <Button
+                    fullWidth
+                    size="small"
+                    startIcon={<GoogleIcon size={16} />}
+                    endIcon={<OpenInNewIcon sx={{ fontSize: 13 }} />}
+                    onClick={() => {
+                        window.open(GOOGLE_SPACE_URL, '_blank');
+                        setMobileOpen(false);
+                    }}
+                    sx={{
+                        mt: 1.25,
+                        py: 0.85,
+                        borderRadius: 1.5,
+                        fontWeight: 500,
+                        color: 'text.primary',
+                        bgcolor: '#ffffff',
+                        border: '1px solid rgba(15, 23, 42, 0.12)',
+                        justifyContent: 'space-between',
+                        textAlign: 'left',
+                        fontSize: '0.8rem',
+                        whiteSpace: 'nowrap',
+                        transition: 'background-color 180ms ease, border-color 180ms ease',
+                        '&:hover': {
+                            bgcolor: '#ffffff',
+                            borderColor: 'rgba(15, 23, 42, 0.24)',
+                        },
+                        '& .MuiButton-startIcon': { mr: 0.75 },
+                    }}
+                >
+                    {t('nav.joinWorkspaceShort')}
+                </Button>
             </Box>
-          )}
-          {isMobile && isAuthenticated && (
-            <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <LanguageSwitcher size="small" />
-            </Box>
-          )}
-          {isMobile && isAuthenticated && (
-            <IconButton onClick={handleUserMenuOpen} sx={{ p: 0.5 }}>
-              <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: '0.85rem' }}>
-                {user?.username?.charAt(0).toUpperCase()}
-              </Avatar>
-            </IconButton>
-          )}
-        </Toolbar>
-      </AppBar>
+        </Box>
+    );
 
-      {/* User dropdown menu — 桌面/手機共用 */}
-      {isAuthenticated && (
-        <Menu
-          anchorEl={anchorEl}
-          open={Boolean(anchorEl)}
-          onClose={handleUserMenuClose}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-          MenuListProps={{ sx: { py: 0.5 } }}
-          PaperProps={{
-            elevation: 0,
-            sx: {
-              mt: 1,
-              minWidth: 240,
-              border: '1px solid',
-              borderColor: 'divider',
-              borderRadius: 1.5,
-              boxShadow: '0 12px 24px rgba(15, 23, 42, 0.08)',
-              overflow: 'hidden',
-            },
-          }}
-        >
-          <Box sx={{ px: 2, pt: 1.5, pb: 1.25 }}>
-            <Stack
-              direction="row"
-              alignItems="center"
-              justifyContent="space-between"
-              spacing={1}
-            >
-              <Typography
-                variant="body2"
-                sx={{ fontWeight: 600, minWidth: 0 }}
-                noWrap
-              >
-                {user?.fullName || user?.username}
-              </Typography>
-              <Chip
-                size="small"
-                label={t(user?.hasPaidFee ? 'nav.feePaid' : 'nav.feeUnpaid')}
-                color={user?.hasPaidFee ? 'success' : 'default'}
-                variant="outlined"
-                sx={{ height: 20, fontSize: '0.7rem', flexShrink: 0 }}
-              />
-            </Stack>
-          </Box>
-          <Divider />
-          <MenuItem
-            onClick={() => {
-              navigate('/upload-exam');
-              handleUserMenuClose();
-            }}
-            sx={{ py: 1, mt: 0.5 }}
-          >
-            <ListItemIcon sx={{ minWidth: 32 }}>
-              <UploadIcon fontSize="small" sx={{ color: 'primary.main' }} />
-            </ListItemIcon>
-            <Typography variant="body2" sx={{ fontWeight: 500 }}>
-              {t('nav.uploadExam')}
-            </Typography>
-          </MenuItem>
-          <MenuItem onClick={handleLogout} sx={{ py: 1 }}>
-            <ListItemIcon sx={{ minWidth: 32 }}>
-              <LogoutIcon fontSize="small" />
-            </ListItemIcon>
-            <Typography variant="body2">{t('nav.logout')}</Typography>
-          </MenuItem>
-        </Menu>
-      )}
+    return (
+        <>
+            <AppBar position="sticky">
+                <Toolbar
+                    sx={{
+                        maxWidth: 1200,
+                        mx: 'auto',
+                        width: '100%',
+                        px: { xs: 2, sm: 3, md: 4 },
+                        minHeight: { xs: 60, md: 64 },
+                        gap: 2,
+                    }}
+                >
+                    {isMobile && (
+                        <IconButton
+                            edge="start"
+                            aria-label={t('nav.openMenu')}
+                            onClick={handleDrawerToggle}
+                            sx={{ color: 'text.primary' }}
+                        >
+                            <MenuIcon />
+                        </IconButton>
+                    )}
 
-      {isMobile && (
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{ keepMounted: true }}
-          sx={{
-            '& .MuiDrawer-paper': {
-              boxSizing: 'border-box',
-              width: 280,
-              border: 'none',
-            },
-          }}
-        >
-          {drawer}
-        </Drawer>
-      )}
-    </>
-  );
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: { xs: 1, md: 1.25 },
+                            cursor: 'pointer',
+                            minWidth: 0,
+                            mr: { md: 2 },
+                        }}
+                        onClick={() => navigate('/')}
+                    >
+                        {/* IMSA 標誌 — 找不到圖片就只顯示文字（fallback 到原版） */}
+                        <Box
+                            component="img"
+                            src="/images/branding/imsa-logo.png"
+                            alt=""
+                            onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                            }}
+                            sx={{
+                                width: { xs: 30, md: 36 },
+                                height: { xs: 30, md: 36 },
+                                borderRadius: 1,
+                                objectFit: 'contain',
+                                flexShrink: 0,
+                            }}
+                        />
+                        <Box sx={{ minWidth: 0 }}>
+                            <Typography
+                                variant="subtitle1"
+                                sx={{ fontWeight: 700, color: 'primary.main', lineHeight: 1.2 }}
+                                noWrap
+                            >
+                                {t('app.name')}
+                            </Typography>
+                            <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{ display: { xs: 'none', sm: 'block' }, lineHeight: 1.2 }}
+                                noWrap
+                            >
+                                {t('app.englishName')}
+                            </Typography>
+                        </Box>
+                    </Box>
+
+                    {!isMobile && (
+                        <>
+                            <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'center' }}>
+                                <NavigationTabs />
+                            </Box>
+
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                {/* 放在工具列而不是使用者下拉選單裡：那個選單只在登入後出現，
+                    未登入的訪客也必須能切換語言 */}
+                                <LanguageSwitcher size="small" />
+                                <Button
+                                    variant="outlined"
+                                    size="small"
+                                    startIcon={<GoogleIcon size={16} />}
+                                    onClick={() => window.open(GOOGLE_SPACE_URL, '_blank')}
+                                    sx={{
+                                        display: { xs: 'none', lg: 'inline-flex' },
+                                        borderRadius: 999,
+                                        px: 1.75,
+                                        py: 0.5,
+                                        fontWeight: 500,
+                                        color: 'text.primary',
+                                        borderColor: 'rgba(15, 23, 42, 0.12)',
+                                        bgcolor: '#ffffff',
+                                        transition:
+                                            'background-color 180ms ease, border-color 180ms ease, transform 180ms cubic-bezier(0.2,0.7,0.2,1), box-shadow 180ms ease',
+                                        '&:hover': {
+                                            bgcolor: '#ffffff',
+                                            borderColor: 'rgba(15, 23, 42, 0.24)',
+                                            transform: 'translateY(-1px)',
+                                            boxShadow: '0 4px 10px rgba(15, 23, 42, 0.08)',
+                                        },
+                                    }}
+                                >
+                                    {t('nav.joinWorkspace')}
+                                </Button>
+
+                                {isAuthenticated ? (
+                                    <IconButton onClick={handleUserMenuOpen} sx={{ p: 0.5 }}>
+                                        <Avatar
+                                            sx={{
+                                                width: 34,
+                                                height: 34,
+                                                bgcolor: 'primary.main',
+                                                fontSize: '0.9rem',
+                                            }}
+                                        >
+                                            {user?.username?.charAt(0).toUpperCase()}
+                                        </Avatar>
+                                    </IconButton>
+                                ) : (
+                                    <Button
+                                        variant="contained"
+                                        size="small"
+                                        startIcon={<LoginIcon />}
+                                        onClick={() => navigate('/login')}
+                                    >
+                                        {t('nav.login')}
+                                    </Button>
+                                )}
+                            </Box>
+                        </>
+                    )}
+
+                    {isMobile && !isAuthenticated && (
+                        <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <LanguageSwitcher size="small" />
+                            <Button
+                                variant="contained"
+                                size="small"
+                                startIcon={<LoginIcon />}
+                                onClick={() => navigate('/login')}
+                            >
+                                {t('nav.login')}
+                            </Button>
+                        </Box>
+                    )}
+                    {isMobile && isAuthenticated && (
+                        <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <LanguageSwitcher size="small" />
+                        </Box>
+                    )}
+                    {isMobile && isAuthenticated && (
+                        <IconButton onClick={handleUserMenuOpen} sx={{ p: 0.5 }}>
+                            <Avatar
+                                sx={{
+                                    width: 32,
+                                    height: 32,
+                                    bgcolor: 'primary.main',
+                                    fontSize: '0.85rem',
+                                }}
+                            >
+                                {user?.username?.charAt(0).toUpperCase()}
+                            </Avatar>
+                        </IconButton>
+                    )}
+                </Toolbar>
+            </AppBar>
+
+            {/* User dropdown menu — 桌面/手機共用 */}
+            {isAuthenticated && (
+                <Menu
+                    anchorEl={anchorEl}
+                    open={Boolean(anchorEl)}
+                    onClose={handleUserMenuClose}
+                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                    transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                    MenuListProps={{ sx: { py: 0.5 } }}
+                    PaperProps={{
+                        elevation: 0,
+                        sx: {
+                            mt: 1,
+                            minWidth: 240,
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            borderRadius: 1.5,
+                            boxShadow: '0 12px 24px rgba(15, 23, 42, 0.08)',
+                            overflow: 'hidden',
+                        },
+                    }}
+                >
+                    <Box sx={{ px: 2, pt: 1.5, pb: 1.25 }}>
+                        <Stack
+                            direction="row"
+                            alignItems="center"
+                            justifyContent="space-between"
+                            spacing={1}
+                        >
+                            <Typography
+                                variant="body2"
+                                sx={{ fontWeight: 600, minWidth: 0 }}
+                                noWrap
+                            >
+                                {user?.fullName || user?.username}
+                            </Typography>
+                            <Chip
+                                size="small"
+                                label={t(user?.hasPaidFee ? 'nav.feePaid' : 'nav.feeUnpaid')}
+                                color={user?.hasPaidFee ? 'success' : 'default'}
+                                variant="outlined"
+                                sx={{ height: 20, fontSize: '0.7rem', flexShrink: 0 }}
+                            />
+                        </Stack>
+                    </Box>
+                    <Divider />
+                    <MenuItem
+                        onClick={() => {
+                            navigate('/upload-exam');
+                            handleUserMenuClose();
+                        }}
+                        sx={{ py: 1, mt: 0.5 }}
+                    >
+                        <ListItemIcon sx={{ minWidth: 32 }}>
+                            <UploadIcon fontSize="small" sx={{ color: 'primary.main' }} />
+                        </ListItemIcon>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {t('nav.uploadExam')}
+                        </Typography>
+                    </MenuItem>
+                    <MenuItem onClick={handleLogout} sx={{ py: 1 }}>
+                        <ListItemIcon sx={{ minWidth: 32 }}>
+                            <LogoutIcon fontSize="small" />
+                        </ListItemIcon>
+                        <Typography variant="body2">{t('nav.logout')}</Typography>
+                    </MenuItem>
+                </Menu>
+            )}
+
+            {isMobile && (
+                <Drawer
+                    variant="temporary"
+                    open={mobileOpen}
+                    onClose={handleDrawerToggle}
+                    ModalProps={{ keepMounted: true }}
+                    sx={{
+                        '& .MuiDrawer-paper': {
+                            boxSizing: 'border-box',
+                            width: 280,
+                            border: 'none',
+                        },
+                    }}
+                >
+                    {drawer}
+                </Drawer>
+            )}
+        </>
+    );
 };
 
 export default Header;

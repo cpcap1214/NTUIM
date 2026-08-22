@@ -18,15 +18,20 @@ const STATUSES = ['new', 'read', 'resolved'];
 // 要求登入是為了擋掉沒有帳號的洪水、並以帳號為單位限流；
 // req.user 只被限流器用來當計數的 key，「從不」寫進資料庫。
 // 見 migrations/010_create_feedback.sql 的說明。
-router.post('/',
+router.post(
+    '/',
     authenticateToken,
     // 必須在 authenticateToken 之後，否則 req.user 還不存在，限流會退化成 IP 模式
     feedbackLimiter,
     [
-        body('body').trim().isLength({ min: 10, max: 2000 })
-            .withMessage({ code: 'FEEDBACK_BODY_REQUIRED', message: '回饋內容為必填，請填寫 10-2000 字' }),
-        body('category').optional().isIn(CATEGORIES)
-            .withMessage({ code: 'FEEDBACK_CATEGORY_INVALID', message: '回饋分類無效' })
+        body('body').trim().isLength({ min: 10, max: 2000 }).withMessage({
+            code: 'FEEDBACK_BODY_REQUIRED',
+            message: '回饋內容為必填，請填寫 10-2000 字',
+        }),
+        body('category')
+            .optional()
+            .isIn(CATEGORIES)
+            .withMessage({ code: 'FEEDBACK_CATEGORY_INVALID', message: '回饋分類無效' }),
     ],
     async (req, res) => {
         const errors = validationResult(req);
@@ -38,7 +43,7 @@ router.post('/',
             const category = req.body.category || 'other';
             await Feedback.create({
                 body: req.body.body.trim(),
-                category
+                category,
                 // 這裡沒有 userId，也不該有
             });
 
@@ -48,13 +53,14 @@ router.post('/',
 
             // 通知只帶分類，不帶內文——內文可能包含足以辨識送出者的細節。
             // 注意這則通知本身會洩漏「剛剛有人送了回饋」的時間，詳見 notificationService。
-            notificationService.notifyFeedbackReceived(category)
+            notificationService
+                .notifyFeedbackReceived(category)
                 .catch((e) => console.error('LINE 通知失敗（新回饋）:', e.message));
         } catch (error) {
             console.error('建立回饋錯誤:', error);
             res.status(500).json(errorResponse('CREATE_FEEDBACK_FAILED', '送出回饋失敗'));
         }
-    }
+    },
 );
 
 // ---------------------------------------------------------------------------
@@ -76,7 +82,7 @@ router.get('/', ...manageOnly, async (req, res) => {
         const feedback = await Feedback.findAll({
             where,
             order: [['created_at', 'DESC']],
-            limit: 500
+            limit: 500,
         });
 
         // 這張表沒有任何使用者欄位可以外洩，所以整列直接回傳是安全的
@@ -88,34 +94,41 @@ router.get('/', ...manageOnly, async (req, res) => {
 });
 
 // 更新狀態或管理員備註
-router.patch('/:id', ...manageOnly, [
-    body('status').optional().isIn(STATUSES)
-        .withMessage({ code: 'FEEDBACK_STATUS_INVALID', message: '回饋狀態無效' }),
-    body('adminNote').optional({ nullable: true }).isLength({ max: 2000 })
-], async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
-
-    try {
-        const feedback = await Feedback.findByPk(req.params.id);
-        if (!feedback) {
-            return res.status(404).json(errorResponse('FEEDBACK_NOT_FOUND', '找不到這筆回饋'));
+router.patch(
+    '/:id',
+    ...manageOnly,
+    [
+        body('status')
+            .optional()
+            .isIn(STATUSES)
+            .withMessage({ code: 'FEEDBACK_STATUS_INVALID', message: '回饋狀態無效' }),
+        body('adminNote').optional({ nullable: true }).isLength({ max: 2000 }),
+    ],
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
         }
 
-        // 只允許改這兩個欄位，body 與 category 是使用者送出的原文，不該被後台竄改
-        const updates = {};
-        if (req.body.status !== undefined) updates.status = req.body.status;
-        if (req.body.adminNote !== undefined) updates.adminNote = req.body.adminNote;
+        try {
+            const feedback = await Feedback.findByPk(req.params.id);
+            if (!feedback) {
+                return res.status(404).json(errorResponse('FEEDBACK_NOT_FOUND', '找不到這筆回饋'));
+            }
 
-        await feedback.update(updates);
-        res.json({ message: '回饋已更新', data: feedback });
-    } catch (error) {
-        console.error('更新回饋錯誤:', error);
-        res.status(500).json(errorResponse('UPDATE_FEEDBACK_FAILED', '更新回饋失敗'));
-    }
-});
+            // 只允許改這兩個欄位，body 與 category 是使用者送出的原文，不該被後台竄改
+            const updates = {};
+            if (req.body.status !== undefined) updates.status = req.body.status;
+            if (req.body.adminNote !== undefined) updates.adminNote = req.body.adminNote;
+
+            await feedback.update(updates);
+            res.json({ message: '回饋已更新', data: feedback });
+        } catch (error) {
+            console.error('更新回饋錯誤:', error);
+            res.status(500).json(errorResponse('UPDATE_FEEDBACK_FAILED', '更新回饋失敗'));
+        }
+    },
+);
 
 router.delete('/:id', ...manageOnly, async (req, res) => {
     try {

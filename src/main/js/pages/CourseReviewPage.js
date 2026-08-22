@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Box, Typography, Stack, ToggleButton, ToggleButtonGroup, Alert } from '@mui/material';
-import {
-    DynamicFeed as FeedIcon,
-    Person as PersonIcon,
-} from '@mui/icons-material';
+import { DynamicFeed as FeedIcon, Person as PersonIcon } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import courseReviewService from '../services/courseReviewService';
 import { translateApiError } from '../utils';
@@ -12,10 +9,14 @@ import ReviewFeedView from '../components/courseReview/ReviewFeedView';
 import WriteReviewDialog from '../components/courseReview/WriteReviewDialog';
 
 const FEED_PAGE_SIZE = 12;
-const SEMESTER_RANK = { '1': 1, '2': 2, summer: 3 };
+const SEMESTER_RANK = { 1: 1, 2: 2, summer: 3 };
 
 const reviewAvg = (review) =>
-    (Number(review.quality) + Number(review.difficulty) + Number(review.sweetness) + Number(review.usefulness)) / 4;
+    (Number(review.quality) +
+        Number(review.difficulty) +
+        Number(review.sweetness) +
+        Number(review.usefulness)) /
+    4;
 
 const buildAcademicTermOptions = (terms) =>
     terms
@@ -47,7 +48,10 @@ const CourseReviewPage = () => {
     const [feedTermFilter, setFeedTermFilter] = useState('all');
     const [feedProfessorFilter, setFeedProfessorFilter] = useState('all');
     const [feedSortBy, setFeedSortBy] = useState('latest');
-    const [feedFilterOptions, setFeedFilterOptions] = useState({ academicTerms: [], professors: [] });
+    const [feedFilterOptions, setFeedFilterOptions] = useState({
+        academicTerms: [],
+        professors: [],
+    });
 
     // 「我的評價」分頁：單一使用者的評價數量本來就不多，不需要後端分頁，維持前端就地篩選
     const [myReviews, setMyReviews] = useState([]);
@@ -151,7 +155,7 @@ const CourseReviewPage = () => {
 
     const mineProfessorOptions = useMemo(
         () => [...new Set(enrichedMyReviews.map((r) => r.professor))].sort(),
-        [enrichedMyReviews]
+        [enrichedMyReviews],
     );
 
     const mineFilteredReviews = useMemo(() => {
@@ -162,8 +166,10 @@ const CourseReviewPage = () => {
                 review.courseName.toLowerCase().includes(keyword) ||
                 review.courseCode.toLowerCase().includes(keyword) ||
                 review.professor.toLowerCase().includes(keyword);
-            const matchesTerm = mineTermFilter === 'all' || `${review.year}-${review.semester}` === mineTermFilter;
-            const matchesProfessor = mineProfessorFilter === 'all' || review.professor === mineProfessorFilter;
+            const matchesTerm =
+                mineTermFilter === 'all' || `${review.year}-${review.semester}` === mineTermFilter;
+            const matchesProfessor =
+                mineProfessorFilter === 'all' || review.professor === mineProfessorFilter;
             return matchesKeyword && matchesTerm && matchesProfessor;
         });
 
@@ -182,7 +188,7 @@ const CourseReviewPage = () => {
 
     const feedAcademicTermOptions = useMemo(
         () => buildAcademicTermOptions(feedFilterOptions.academicTerms),
-        [feedFilterOptions]
+        [feedFilterOptions],
     );
 
     const canWrite = !!user;
@@ -217,15 +223,29 @@ const CourseReviewPage = () => {
     };
 
     const viewOptions = [
-        { value: 'feed', label: t('courseReview.viewMode.feed'), icon: <FeedIcon fontSize="small" sx={{ mr: 0.5 }} /> },
+        {
+            value: 'feed',
+            label: t('courseReview.viewMode.feed'),
+            icon: <FeedIcon fontSize="small" sx={{ mr: 0.5 }} />,
+        },
     ];
     if (user) {
-        viewOptions.push({ value: 'mine', label: t('courseReview.viewMode.mine'), icon: <PersonIcon fontSize="small" sx={{ mr: 0.5 }} /> });
+        viewOptions.push({
+            value: 'mine',
+            label: t('courseReview.viewMode.mine'),
+            icon: <PersonIcon fontSize="small" sx={{ mr: 0.5 }} />,
+        });
     }
 
     return (
         <Box>
-            <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ md: 'center' }} spacing={2} sx={{ mb: 0.5 }}>
+            <Stack
+                direction={{ xs: 'column', md: 'row' }}
+                justifyContent="space-between"
+                alignItems={{ md: 'center' }}
+                spacing={2}
+                sx={{ mb: 0.5 }}
+            >
                 <Box>
                     <Typography variant="h2" component="h1" sx={{ fontWeight: 700, mb: 0.5 }}>
                         {t('courseReview.pageTitle')}
@@ -263,8 +283,8 @@ const CourseReviewPage = () => {
                 </Alert>
             )}
 
-            {viewMode === 'feed' && (
-                !feedInitialized ? (
+            {viewMode === 'feed' &&
+                (!feedInitialized ? (
                     <Box sx={{ textAlign: 'center', py: 8 }}>
                         <Typography variant="body2" color="text.secondary">
                             {t('courseReview.loadingReviews')}
@@ -296,11 +316,11 @@ const CourseReviewPage = () => {
                         loading={feedLoading}
                         variant="all"
                     />
-                )
-            )}
+                ))}
 
-            {viewMode === 'mine' && user && (
-                !mineInitialized ? (
+            {viewMode === 'mine' &&
+                user &&
+                (!mineInitialized ? (
                     <Box sx={{ textAlign: 'center', py: 8 }}>
                         <Typography variant="body2" color="text.secondary">
                             {t('courseReview.loadingReviews')}
@@ -332,8 +352,7 @@ const CourseReviewPage = () => {
                         loading={mineLoading}
                         variant="mine"
                     />
-                )
-            )}
+                ))}
 
             <WriteReviewDialog
                 open={writeDialogOpen}

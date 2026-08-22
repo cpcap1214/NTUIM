@@ -9,7 +9,12 @@
 //   2. 型別一致（字串對字串、陣列對陣列、巢狀物件對巢狀物件）
 //   3. 沒有空字串值（代表翻譯漏填）
 
-import { LOCALES, REFERENCE_LANGUAGE, SUPPORTED_LANGUAGES, resolveLanguage } from '../../main/js/i18n/locales';
+import {
+    LOCALES,
+    REFERENCE_LANGUAGE,
+    SUPPORTED_LANGUAGES,
+    resolveLanguage,
+} from '../../main/js/i18n/locales';
 import template from '../../main/js/i18n/locales/template';
 
 // 把巢狀物件攤平成 'a.b.c' 形式的 key 清單。
@@ -81,15 +86,15 @@ describe('i18n 語系檔結構', () => {
     test('模板的結構與參考語系一致，值全為空', () => {
         // template 是從參考語系衍生的，理論上不可能不一致——
         // 這條是防止有人日後把它改成手動維護的檔案
-        expect(Object.keys(flatten(template)).sort()).toEqual(
-            Object.keys(reference).sort()
-        );
+        expect(Object.keys(flatten(template)).sort()).toEqual(Object.keys(reference).sort());
         const nonEmpty = [];
         const walk = (node, prefix = '') => {
             Object.entries(node).forEach(([key, value]) => {
                 const path = prefix ? `${prefix}.${key}` : key;
                 if (Array.isArray(value)) {
-                    value.forEach((item, i) => { if (item !== '') nonEmpty.push(`${path}[${i}]`); });
+                    value.forEach((item, i) => {
+                        if (item !== '') nonEmpty.push(`${path}[${i}]`);
+                    });
                 } else if (value && typeof value === 'object') {
                     walk(value, path);
                 } else if (value !== '') {
@@ -123,7 +128,10 @@ describe('resolveLanguage', () => {
         expect(resolveLanguage(input)).toBe(expected);
     });
 
-    test.each([[null], [undefined], [''], ['ja'], ['de-DE']])('不支援的 %s 回 null，由呼叫端決定預設值', (input) => {
-        expect(resolveLanguage(input)).toBeNull();
-    });
+    test.each([[null], [undefined], [''], ['ja'], ['de-DE']])(
+        '不支援的 %s 回 null，由呼叫端決定預設值',
+        (input) => {
+            expect(resolveLanguage(input)).toBeNull();
+        },
+    );
 });

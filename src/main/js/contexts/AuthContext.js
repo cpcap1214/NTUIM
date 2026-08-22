@@ -209,7 +209,7 @@ export const AuthProvider = ({ children }) => {
     // （唯一的寫入點是註冊時的 'user'），所以新指派的管理員用它判斷會是 false。
     // 保留 role 當退路，是為了涵蓋 isAdmin 還沒到手的兩個時間點：
     // localStorage 的舊快取、以及登入 API 的回應（它只回基本欄位，權限要另外抓）。
-    const isAdminUser = user?.isAdmin ?? (user?.role === 'admin');
+    const isAdminUser = user?.isAdmin ?? user?.role === 'admin';
 
     // 後端解析好的權限清單（GET /users/profile 回傳）。前端只做顯示層的判斷，
     // 真正的授權一律由後端強制執行——這裡放行不代表 API 會放行。
@@ -290,7 +290,7 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated: !!user,
         isAdmin: isAdminUser,
         isMember: user?.role === 'member' || isAdminUser,
-        hasPaidFee: user?.hasPaidFee || isAdminUser
+        hasPaidFee: user?.hasPaidFee || isAdminUser,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

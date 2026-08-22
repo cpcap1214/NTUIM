@@ -34,7 +34,10 @@ const get = (db, sql, params = []) =>
     });
 
 async function listAdmins(db) {
-    const rows = await all(db, "SELECT id, username, full_name, role FROM users WHERE role = 'admin' ORDER BY id");
+    const rows = await all(
+        db,
+        "SELECT id, username, full_name, role FROM users WHERE role = 'admin' ORDER BY id",
+    );
     if (rows.length === 0) {
         console.log('⚠️ 目前沒有任何帳號擁有管理員權限。');
         console.log('   請執行：node database/grant-admin.js <username>');
@@ -45,7 +48,11 @@ async function listAdmins(db) {
 }
 
 async function grant(db, username) {
-    const user = await get(db, 'SELECT id, username, full_name, role FROM users WHERE username = ?', [username]);
+    const user = await get(
+        db,
+        'SELECT id, username, full_name, role FROM users WHERE username = ?',
+        [username],
+    );
 
     if (!user) {
         console.error(`找不到使用者「${username}」。`);
@@ -61,7 +68,9 @@ async function grant(db, username) {
     }
 
     await run(db, "UPDATE users SET role = 'admin' WHERE id = ?", [user.id]);
-    console.log(`✅ 已授予「${user.username}」（${user.full_name}）管理員權限（原本是 ${user.role}）。`);
+    console.log(
+        `✅ 已授予「${user.username}」（${user.full_name}）管理員權限（原本是 ${user.role}）。`,
+    );
     await listAdmins(db);
 }
 

@@ -89,41 +89,48 @@ describe('isCommonCore', () => {
 
 describe('resolveTier', () => {
     test('資管系 + 必修 → 系上必修', () => {
-        expect(resolveTier({ courseCode: 'IM2008', requirement: 'required', isImTarget: true }))
-            .toBe('imRequired');
+        expect(
+            resolveTier({ courseCode: 'IM2008', requirement: 'required', isImTarget: true }),
+        ).toBe('imRequired');
     });
 
     test('資管系 + 選修 → 系上選修', () => {
-        expect(resolveTier({ courseCode: 'IM5061', requirement: 'elective', isImTarget: true }))
-            .toBe('imElective');
+        expect(
+            resolveTier({ courseCode: 'IM5061', requirement: 'elective', isImTarget: true }),
+        ).toBe('imElective');
     });
 
     test('外系開給資管的系訂必修仍算系上必修', () => {
         // 微積分、會計學原理、統計學這類課，學生是真的非修不可。
-        expect(resolveTier({ courseCode: 'MATH4008', requirement: 'required', isImTarget: true }))
-            .toBe('imRequired');
+        expect(
+            resolveTier({ courseCode: 'MATH4008', requirement: 'required', isImTarget: true }),
+        ).toBe('imRequired');
     });
 
     test('校訂必修即使被列為資管必修，也降到其他', () => {
         // 國文、外文、體育這些全校都在修，不該吃掉系學會的名額。
-        expect(resolveTier({ courseCode: 'Common1012', requirement: 'required', isImTarget: true }))
-            .toBe('other');
+        expect(
+            resolveTier({ courseCode: 'Common1012', requirement: 'required', isImTarget: true }),
+        ).toBe('other');
     });
 
     // 下面三條共同守著同一個不變式：未知絕不能被當成系上必修。
     test('修別未知（爬蟲還沒抓過）→ 其他', () => {
-        expect(resolveTier({ courseCode: 'IM2008', requirement: null, isImTarget: true }))
-            .toBe('other');
+        expect(resolveTier({ courseCode: 'IM2008', requirement: null, isImTarget: true })).toBe(
+            'other',
+        );
     });
 
     test('非資管的課即使是必修 → 其他', () => {
-        expect(resolveTier({ courseCode: 'EE1001', requirement: 'required', isImTarget: false }))
-            .toBe('other');
+        expect(
+            resolveTier({ courseCode: 'EE1001', requirement: 'required', isImTarget: false }),
+        ).toBe('other');
     });
 
     test('完全沒有資料 → 其他', () => {
-        expect(resolveTier({ courseCode: 'IM2008', requirement: null, isImTarget: null }))
-            .toBe('other');
+        expect(resolveTier({ courseCode: 'IM2008', requirement: null, isImTarget: null })).toBe(
+            'other',
+        );
         expect(resolveTier({})).toBe('other');
         expect(resolveTier()).toBe('other');
     });
@@ -182,43 +189,61 @@ describe('computeUsage', () => {
 
 describe('rankEligible', () => {
     const day = (n) => new Date(`2026-01-${String(n).padStart(2, '0')}T00:00:00Z`);
-    const review = (props) => ({ status: 'pending', isPaid: false, quotaExempt: false, requeuedAt: null, ...props });
+    const review = (props) => ({
+        status: 'pending',
+        isPaid: false,
+        quotaExempt: false,
+        requeuedAt: null,
+        ...props,
+    });
 
     test('先到先得，超出名額的沒有資格', () => {
-        const eligible = rankEligible([
-            review({ id: 3, createdAt: day(3) }),
-            review({ id: 1, createdAt: day(1) }),
-            review({ id: 2, createdAt: day(2) }),
-        ], 2);
+        const eligible = rankEligible(
+            [
+                review({ id: 3, createdAt: day(3) }),
+                review({ id: 1, createdAt: day(1) }),
+                review({ id: 2, createdAt: day(2) }),
+            ],
+            2,
+        );
 
         expect([...eligible].sort()).toEqual([1, 2]);
     });
 
     test('已發放的評價即使超出名額仍具資格——發出去的錢不追溯作廢', () => {
-        const eligible = rankEligible([
-            review({ id: 1, createdAt: day(1) }),
-            review({ id: 2, createdAt: day(2) }),
-            review({ id: 3, createdAt: day(3), isPaid: true, status: 'approved' }),
-        ], 1);
+        const eligible = rankEligible(
+            [
+                review({ id: 1, createdAt: day(1) }),
+                review({ id: 2, createdAt: day(2) }),
+                review({ id: 3, createdAt: day(3), isPaid: true, status: 'approved' }),
+            ],
+            1,
+        );
 
         expect(eligible.has(3)).toBe(true);
     });
 
     test('規則生效前的評價（quota_exempt）即使超出名額仍具資格', () => {
-        const eligible = rankEligible([
-            review({ id: 1, createdAt: day(5), quotaExempt: true }),
-            review({ id: 2, createdAt: day(6), quotaExempt: true }),
-            review({ id: 3, createdAt: day(7), quotaExempt: true }),
-        ], 1);
+        const eligible = rankEligible(
+            [
+                review({ id: 1, createdAt: day(5), quotaExempt: true }),
+                review({ id: 2, createdAt: day(6), quotaExempt: true }),
+                review({ id: 3, createdAt: day(7), quotaExempt: true }),
+            ],
+            1,
+        );
 
         expect([...eligible].sort()).toEqual([1, 2, 3]);
     });
 
     test('已拒絕的評價不佔名額', () => {
-        const eligible = rankEligible([
-            review({ id: 1, createdAt: day(1), status: 'rejected' }),
-            review({ id: 2, createdAt: day(2) }),
-        ], 1);
+        const eligible = rankEligible(
+            [
+                review({ id: 1, createdAt: day(1), status: 'rejected' }),
+                review({ id: 2, createdAt: day(2) }),
+            ],
+            1,
+        );
 
         expect(eligible.has(1)).toBe(false);
         expect(eligible.has(2)).toBe(true);
@@ -227,10 +252,13 @@ describe('rankEligible', () => {
     test('「已拒絕卻仍標記為已發放」的殘留列也不佔名額', () => {
         // PATCH /:id/status 拒絕評價時不會清 is_paid（既有的舊 bug），
         // 資料庫裡可能留著這種列。它不該永久佔住一門課的名額。
-        const eligible = rankEligible([
-            review({ id: 1, createdAt: day(1), status: 'rejected', isPaid: true }),
-            review({ id: 2, createdAt: day(2) }),
-        ], 1);
+        const eligible = rankEligible(
+            [
+                review({ id: 1, createdAt: day(1), status: 'rejected', isPaid: true }),
+                review({ id: 2, createdAt: day(2) }),
+            ],
+            1,
+        );
 
         expect(eligible.has(1)).toBe(false);
         expect(eligible.has(2)).toBe(true);
@@ -239,20 +267,23 @@ describe('rankEligible', () => {
     test('被拒後重送的評價排到隊伍後面，不會擠掉已核准的人', () => {
         // 1/1 A 投稿 → 1/3 A 被拒 → 1/6 B 投稿並核准 → 1/10 A 改好重送。
         // 沒有 requeued_at 的話 A 會用 1/1 的時間插到最前面，把 B 擠出名額。
-        const eligible = rankEligible([
-            review({ id: 1, createdAt: day(1), requeuedAt: day(10) }),
-            review({ id: 2, createdAt: day(6), status: 'approved' }),
-        ], 1);
+        const eligible = rankEligible(
+            [
+                review({ id: 1, createdAt: day(1), requeuedAt: day(10) }),
+                review({ id: 2, createdAt: day(6), status: 'approved' }),
+            ],
+            1,
+        );
 
         expect(eligible.has(2)).toBe(true);
         expect(eligible.has(1)).toBe(false);
     });
 
     test('created_at 相同時用 id 決定先後', () => {
-        const eligible = rankEligible([
-            review({ id: 9, createdAt: day(1) }),
-            review({ id: 4, createdAt: day(1) }),
-        ], 1);
+        const eligible = rankEligible(
+            [review({ id: 9, createdAt: day(1) }), review({ id: 4, createdAt: day(1) })],
+            1,
+        );
 
         expect([...eligible]).toEqual([4]);
     });

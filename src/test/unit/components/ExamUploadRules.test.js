@@ -35,7 +35,7 @@ const renderKey = (lng, key, values) =>
     render(
         <I18nextProvider i18n={makeI18n(lng)}>
             <Trans i18nKey={key} components={inlineMarks} values={values} />
-        </I18nextProvider>
+        </I18nextProvider>,
     );
 
 describe('上傳規範的 <Trans> 行內標記', () => {
@@ -60,22 +60,25 @@ describe('上傳規範的 <Trans> 行內標記', () => {
         expect(container.textContent).not.toContain('<redBold>');
     });
 
-    test.each([['zh-TW'], ['en']])('%s：帶 {{pattern}} 插值的 step2Body 會代入而不是留下佔位符', (lng) => {
-        const i18n = makeI18n(lng);
-        const pattern = i18n.t('examUpload.namingPattern');
-        const { container } = render(
-            <I18nextProvider i18n={i18n}>
-                <Trans
-                    i18nKey="examUpload.rules.s6.step2Body"
-                    components={{ ...inlineMarks, code: <code data-testid="code" /> }}
-                    values={{ pattern }}
-                />
-            </I18nextProvider>
-        );
-        expect(screen.getByTestId('code')).toHaveTextContent(pattern);
-        expect(container.textContent).not.toContain('{{pattern}}');
-        expect(container.textContent).not.toContain('<code>');
-    });
+    test.each([['zh-TW'], ['en']])(
+        '%s：帶 {{pattern}} 插值的 step2Body 會代入而不是留下佔位符',
+        (lng) => {
+            const i18n = makeI18n(lng);
+            const pattern = i18n.t('examUpload.namingPattern');
+            const { container } = render(
+                <I18nextProvider i18n={i18n}>
+                    <Trans
+                        i18nKey="examUpload.rules.s6.step2Body"
+                        components={{ ...inlineMarks, code: <code data-testid="code" /> }}
+                        values={{ pattern }}
+                    />
+                </I18nextProvider>,
+            );
+            expect(screen.getByTestId('code')).toHaveTextContent(pattern);
+            expect(container.textContent).not.toContain('{{pattern}}');
+            expect(container.textContent).not.toContain('<code>');
+        },
+    );
 
     test('zh-TW 與 en 的規範條文都不是空的', () => {
         const keys = [

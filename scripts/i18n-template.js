@@ -42,10 +42,10 @@ const out = source
     .join('\n');
 
 process.stdout.write(
-    '// <語言名稱> translations.\n'
-    + '//\n'
-    + '// 每個空字串都要填。key 結構必須與參考語系 zh-TW 完全一致——\n'
-    + '// src/test/unit/i18n.test.js 會擋下任何缺少、多餘或空白的 key。\n'
-    + '// 填完後到 locales/index.js 的 LOCALES 與 SUPPORTED_LANGUAGES 各加一筆。\n'
-    + out
+    '// <語言名稱> translations.\n' +
+        '//\n' +
+        '// 每個空字串都要填。key 結構必須與參考語系 zh-TW 完全一致——\n' +
+        '// src/test/unit/i18n.test.js 會擋下任何缺少、多餘或空白的 key。\n' +
+        '// 填完後到 locales/index.js 的 LOCALES 與 SUPPORTED_LANGUAGES 各加一筆。\n' +
+        out,
 );

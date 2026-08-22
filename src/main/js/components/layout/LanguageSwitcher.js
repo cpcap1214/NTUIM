@@ -14,47 +14,49 @@ import { changeLanguage } from '../../i18n';
 // 選項一律顯示該語言自己的寫法（繁體中文 / English）。不小心切到看不懂的語言時，
 // 使用者還是找得到路切回來。
 const LanguageSwitcher = ({ size = 'medium' }) => {
-  const { i18n, t } = useTranslation();
-  const [anchorEl, setAnchorEl] = useState(null);
+    const { i18n, t } = useTranslation();
+    const [anchorEl, setAnchorEl] = useState(null);
 
-  const handleSelect = (code) => {
-    changeLanguage(code);
-    setAnchorEl(null);
-  };
+    const handleSelect = (code) => {
+        changeLanguage(code);
+        setAnchorEl(null);
+    };
 
-  return (
-    <>
-      <Tooltip title={t('common.language')}>
-        <IconButton
-          size={size}
-          onClick={(e) => setAnchorEl(e.currentTarget)}
-          aria-label={t('common.language')}
-          sx={{ color: 'text.primary' }}
-        >
-          <TranslateIcon fontSize={size === 'small' ? 'small' : 'medium'} />
-        </IconButton>
-      </Tooltip>
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={() => setAnchorEl(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        {SUPPORTED_LANGUAGES.map((lang) => (
-          <MenuItem
-            key={lang.code}
-            selected={i18n.language === lang.code}
-            onClick={() => handleSelect(lang.code)}
-            sx={{ minWidth: 180 }}
-          >
-            <ListItemText primary={lang.nativeName} />
-            {i18n.language === lang.code && <CheckIcon fontSize="small" color="primary" />}
-          </MenuItem>
-        ))}
-      </Menu>
-    </>
-  );
+    return (
+        <>
+            <Tooltip title={t('common.language')}>
+                <IconButton
+                    size={size}
+                    onClick={(e) => setAnchorEl(e.currentTarget)}
+                    aria-label={t('common.language')}
+                    sx={{ color: 'text.primary' }}
+                >
+                    <TranslateIcon fontSize={size === 'small' ? 'small' : 'medium'} />
+                </IconButton>
+            </Tooltip>
+            <Menu
+                anchorEl={anchorEl}
+                open={Boolean(anchorEl)}
+                onClose={() => setAnchorEl(null)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+                {SUPPORTED_LANGUAGES.map((lang) => (
+                    <MenuItem
+                        key={lang.code}
+                        selected={i18n.language === lang.code}
+                        onClick={() => handleSelect(lang.code)}
+                        sx={{ minWidth: 180 }}
+                    >
+                        <ListItemText primary={lang.nativeName} />
+                        {i18n.language === lang.code && (
+                            <CheckIcon fontSize="small" color="primary" />
+                        )}
+                    </MenuItem>
+                ))}
+            </Menu>
+        </>
+    );
 };
 
 export default LanguageSwitcher;

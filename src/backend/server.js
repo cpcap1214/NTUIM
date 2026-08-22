@@ -9,9 +9,13 @@ require('dotenv').config();
 // 必要的安全設定檢查：缺少強密鑰、或忘記替換 .env.production 佔位字串時，直接拒絕啟動
 const isPlaceholderSecret = /^CHANGE_ME/i.test(process.env.JWT_SECRET || '');
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32 || isPlaceholderSecret) {
-    console.error('啟動失敗：環境變數 JWT_SECRET 未設定、長度不足（至少需 32 字元），或仍是 .env.production 裡的佔位字串');
+    console.error(
+        '啟動失敗：環境變數 JWT_SECRET 未設定、長度不足（至少需 32 字元），或仍是 .env.production 裡的佔位字串',
+    );
     console.error('請在 .env 中設定一組隨機產生的高強度密鑰後再啟動伺服器');
-    console.error('可用指令產生：node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'hex\'))"');
+    console.error(
+        "可用指令產生：node -e \"console.log(require('crypto').randomBytes(48).toString('hex'))\"",
+    );
     process.exit(1);
 }
 
@@ -30,7 +34,12 @@ const feedbackRoutes = require('./routes/feedback');
 const lineRoutes = require('./routes/line');
 
 // 引入中間件
-const { authenticateToken, optionalAuth, tokenFromQuery, requireModuleAccess } = require('./middleware/auth');
+const {
+    authenticateToken,
+    optionalAuth,
+    tokenFromQuery,
+    requireModuleAccess,
+} = require('./middleware/auth');
 const { errorHandler } = require('./middleware/errorHandler');
 
 // 初始化 Express
@@ -51,21 +60,27 @@ app.set('trust proxy', 1);
 // 安全標頭。helmet 與 express-rate-limit 一直都在 package.json 裡卻從未被套用。
 // 關閉 CSP 與 CORP：前端是由 nginx 另外服務的獨立來源，而 /uploads 的 PDF 需要被
 // 前端以 <iframe>/window.open 內嵌，預設的 CSP 與跨來源資源政策會把這些擋掉。
-app.use(helmet({
-    contentSecurityPolicy: false,
-    crossOriginResourcePolicy: false
-}));
+app.use(
+    helmet({
+        contentSecurityPolicy: false,
+        crossOriginResourcePolicy: false,
+    }),
+);
 
 // 最寬鬆的 CORS - 允許所有來源和方法
 app.use(cors());
-app.use(express.json({
-    limit: '10mb',
-    // LINE webhook 的簽章是對「原始位元組」算 HMAC 的。解析成物件後再 JSON.stringify
-    // 回去不保證與原文逐位元組相同（鍵順序、空白、Unicode 逸出都可能不同），
-    // 拿它驗簽會永遠失敗——而失敗的樣子是「webhook 完全沒反應」，從外面看不出原因。
-    // 這裡把原始 buffer 留一份給 routes/line.js 用，不必調整中介層順序。
-    verify: (req, res, buf) => { req.rawBody = buf; },
-}));
+app.use(
+    express.json({
+        limit: '10mb',
+        // LINE webhook 的簽章是對「原始位元組」算 HMAC 的。解析成物件後再 JSON.stringify
+        // 回去不保證與原文逐位元組相同（鍵順序、空白、Unicode 逸出都可能不同），
+        // 拿它驗簽會永遠失敗——而失敗的樣子是「webhook 完全沒反應」，從外面看不出原因。
+        // 這裡把原始 buffer 留一份給 routes/line.js 用，不必調整中介層順序。
+        verify: (req, res, buf) => {
+            req.rawBody = buf;
+        },
+    }),
+);
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // 認證相關端點的速率限制：登入/註冊/改密碼都是猜密碼與帳號枚舉的目標，
@@ -78,7 +93,7 @@ const authLimiter = rateLimit({
     max: 100,
     standardHeaders: true,
     legacyHeaders: false,
-    message: { error: '嘗試次數過多，請稍後再試' }
+    message: { error: '嘗試次數過多，請稍後再試' },
 });
 
 // 設定字符編碼
@@ -103,10 +118,10 @@ app.use((req, res, next) => {
 const uploadDirs = [
     path.join(__dirname, '../../uploads/exams'),
     path.join(__dirname, '../../uploads/cheat_sheets'),
-    path.join(__dirname, '../../uploads/temp')
+    path.join(__dirname, '../../uploads/temp'),
 ];
 
-uploadDirs.forEach(dir => {
+uploadDirs.forEach((dir) => {
     if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
         console.log(`建立目錄: ${dir}`);
@@ -123,10 +138,26 @@ app.use('/api/users', authenticateToken, userRoutes);
 //   optionalAuth   → 認出身分但不強制登入（公開端點也要知道你是誰，管理員才能在模組未公開時測試）
 //   requireModuleAccess → 模組未開放就 403
 app.use('/api/exams', tokenFromQuery, optionalAuth, requireModuleAccess('exams'), examRoutes);
-app.use('/api/cheat-sheets', tokenFromQuery, optionalAuth, requireModuleAccess('cheatSheets'), cheatSheetRoutes);
-app.use('/api/course-reviews', optionalAuth, requireModuleAccess('courseReviews'), courseReviewRoutes);
+app.use(
+    '/api/cheat-sheets',
+    tokenFromQuery,
+    optionalAuth,
+    requireModuleAccess('cheatSheets'),
+    cheatSheetRoutes,
+);
+app.use(
+    '/api/course-reviews',
+    optionalAuth,
+    requireModuleAccess('courseReviews'),
+    courseReviewRoutes,
+);
 // 課程目錄只服務「寫課程評價」表單的課程搜尋，歸屬於 courseReviews 模組
-app.use('/api/course-catalog', optionalAuth, requireModuleAccess('courseReviews'), courseCatalogRoutes);
+app.use(
+    '/api/course-catalog',
+    optionalAuth,
+    requireModuleAccess('courseReviews'),
+    courseCatalogRoutes,
+);
 // 模組清單本身是公開端點（內部用 optionalAuth）：登出的訪客也需要知道
 // 導覽列該顯示哪些項目，不能要求認證
 app.use('/api/modules', moduleRoutes);
@@ -147,11 +178,11 @@ app.use('/api/admin', authenticateToken, adminRoutes);
 
 // 健康檢查端點
 app.get('/api/health', (req, res) => {
-    res.json({ 
-        status: 'OK', 
+    res.json({
+        status: 'OK',
         cors: 'ALLOW_ALL',
         timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development'
+        environment: process.env.NODE_ENV || 'development',
     });
 });
 

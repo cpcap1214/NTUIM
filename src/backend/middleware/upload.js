@@ -7,13 +7,16 @@ const crypto = require('crypto');
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         let uploadPath = path.join(__dirname, '../../../uploads/temp');
-        
+
         // 根據上傳類型決定目錄
         if (req.baseUrl.includes('exams')) {
             const year = req.body.year || new Date().getFullYear();
             const semester = req.body.semester || '1';
             const courseCode = req.body.courseCode || 'unknown';
-            uploadPath = path.join(__dirname, `../../../uploads/exams/${year}/${semester}/${courseCode}`);
+            uploadPath = path.join(
+                __dirname,
+                `../../../uploads/exams/${year}/${semester}/${courseCode}`,
+            );
         } else if (req.baseUrl.includes('cheat-sheets')) {
             const courseCode = req.body.courseCode || 'unknown';
             uploadPath = path.join(__dirname, `../../../uploads/cheat_sheets/${courseCode}`);
@@ -34,17 +37,17 @@ const storage = multer.diskStorage({
             const char = file.originalname[i];
             console.log(`  ${i}: '${char}' (0x${char.charCodeAt(0).toString(16)})`);
         }
-        
+
         let originalName = file.originalname;
         let encodingMethod = 'original';
-        
+
         // 嘗試多種編碼方式修正檔名
         try {
             // 方法1: 檢測如果是 Latin1 編碼的 UTF-8 資料
             const buffer = Buffer.from(originalName, 'latin1');
             const utf8String = buffer.toString('utf8');
             console.log('Latin1->UTF8 轉換結果:', utf8String);
-            
+
             if (/[\u4e00-\u9fff]/.test(utf8String)) {
                 originalName = utf8String;
                 encodingMethod = 'latin1-to-utf8';
@@ -54,7 +57,7 @@ const storage = multer.diskStorage({
                 try {
                     const decoded = decodeURIComponent(escape(originalName));
                     console.log('ISO-8859-1->UTF8 轉換結果:', decoded);
-                    
+
                     if (/[\u4e00-\u9fff]/.test(decoded)) {
                         originalName = decoded;
                         encodingMethod = 'iso-to-utf8';
@@ -71,7 +74,7 @@ const storage = multer.diskStorage({
             console.log('❌ 檔名編碼轉換失敗:', e.message);
             console.log('⚠️ 使用原始名稱:', originalName);
         }
-        
+
         // 產生唯一檔名
         const uniqueSuffix = crypto.randomBytes(6).toString('hex');
         const ext = path.extname(originalName);
@@ -79,37 +82,37 @@ const storage = multer.diskStorage({
         // 保留中文字元，只移除檔案系統不允許的特殊字元
         const safeName = basename.replace(/[<>:"/\\|?*]/g, '_');
         const finalName = `${safeName}_${uniqueSuffix}${ext}`;
-        
+
         // 儲存詳細資訊供後續使用
         if (!req.fileInfo) req.fileInfo = {};
         req.fileInfo[file.fieldname] = {
             originalName: originalName,
             safeName: finalName,
             encodingMethod: encodingMethod,
-            rawOriginalName: file.originalname
+            rawOriginalName: file.originalname,
         };
-        
+
         console.log('最終檔名資訊:', {
             原始: file.originalname,
             修正後: originalName,
             安全檔名: finalName,
-            編碼方法: encodingMethod
+            編碼方法: encodingMethod,
         });
         console.log('=== 檔案上傳除錯結束 ===');
-        
+
         cb(null, finalName);
-    }
+    },
 });
 
 // 檔案過濾器
 const fileFilter = (req, file, cb) => {
     // 允許的檔案類型
-    const allowedTypes = process.env.ALLOWED_FILE_TYPES 
+    const allowedTypes = process.env.ALLOWED_FILE_TYPES
         ? process.env.ALLOWED_FILE_TYPES.split(',')
         : ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png'];
-    
+
     const ext = path.extname(file.originalname).toLowerCase().substring(1);
-    
+
     if (allowedTypes.includes(ext)) {
         cb(null, true);
     } else {
@@ -131,8 +134,8 @@ const upload = multer({
     storage: storage,
     fileFilter: fileFilter,
     limits: {
-        fileSize: parseInt(process.env.UPLOAD_MAX_SIZE) || 10 * 1024 * 1024 // 預設 10MB
-    }
+        fileSize: parseInt(process.env.UPLOAD_MAX_SIZE) || 10 * 1024 * 1024, // 預設 10MB
+    },
 });
 
 // 建立專門用於管理員上傳的 multer 實例（只接受 PDF）
@@ -140,8 +143,8 @@ const adminUpload = multer({
     storage: storage,
     fileFilter: pdfFileFilter,
     limits: {
-        fileSize: 10 * 1024 * 1024 // 10MB
-    }
+        fileSize: 10 * 1024 * 1024, // 10MB
+    },
 });
 
 // 處理上傳錯誤的中間件
@@ -153,7 +156,7 @@ const handleUploadError = (error, req, res, next) => {
         return res.status(400).json({
             error: `上傳錯誤: ${error.message}`,
             errorCode: 'UPLOAD_ERROR',
-            params: { message: error.message }
+            params: { message: error.message },
         });
     } else if (error) {
         return res.status(400).json({ error: error.message });
@@ -175,14 +178,14 @@ const cleanupTempFiles = () => {
         const now = Date.now();
         const maxAge = 24 * 60 * 60 * 1000; // 24小時
 
-        files.forEach(file => {
+        files.forEach((file) => {
             const filePath = path.join(tempDir, file);
             fs.stat(filePath, (err, stats) => {
                 if (err) return;
-                
+
                 // 刪除超過24小時的暫存檔案
                 if (now - stats.mtimeMs > maxAge) {
-                    fs.unlink(filePath, err => {
+                    fs.unlink(filePath, (err) => {
                         if (err) console.error('刪除暫存檔案失敗:', err);
                         else console.log('已刪除暫存檔案:', file);
                     });
@@ -199,5 +202,5 @@ module.exports = {
     upload,
     adminUpload,
     handleUploadError,
-    cleanupTempFiles
+    cleanupTempFiles,
 };

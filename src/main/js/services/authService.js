@@ -76,7 +76,7 @@ const authService = {
         try {
             const response = await api.post('/auth/change-password', {
                 oldPassword,
-                newPassword
+                newPassword,
             });
             return response.data;
         } catch (error) {
@@ -115,7 +115,7 @@ const authService = {
     // 因為它不會隨身分組更新（理由見 AuthContext 的說明）。
     isAdmin() {
         const user = this.getCurrentUser();
-        return user?.isAdmin ?? (user?.role === 'admin');
+        return user?.isAdmin ?? user?.role === 'admin';
     },
 
     // 檢查是否已繳費
@@ -129,7 +129,7 @@ const authService = {
         const currentUser = this.getCurrentUser() || {};
         const updatedUser = { ...currentUser, ...userData };
         this.setCurrentUser(updatedUser);
-    }
+    },
 };
 
 export default authService;

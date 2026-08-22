@@ -11,7 +11,10 @@ import path from 'path';
 
 const { CONTENT_LIMITS } = require('../../../backend/config/reviewContent');
 const { PAYOUT_AMOUNT } = require('../../../backend/config/reviewQuota');
-const { REVIEW_CONTENT_LIMITS, REVIEW_PAYOUT_AMOUNT } = require('../../../main/resources/config/constants');
+const {
+    REVIEW_CONTENT_LIMITS,
+    REVIEW_PAYOUT_AMOUNT,
+} = require('../../../main/resources/config/constants');
 
 const read = (rel) => fs.readFileSync(path.resolve(process.cwd(), rel), 'utf8');
 
@@ -36,10 +39,7 @@ describe('評價政策常數的前後端一致性', () => {
 describe('門檻數字不可寫死在譯文裡', () => {
     // 譯文若寫死「至少 50 字」，改門檻時就得同步改四份文案（中英 × 提示與錯誤），
     // 漏一份的症狀是「訊息說 50、伺服器要 100」。一律改用 {{min}} / {{max}} 插值。
-    const LOCALES = [
-        'src/main/js/i18n/locales/zh-TW.js',
-        'src/main/js/i18n/locales/en.js',
-    ];
+    const LOCALES = ['src/main/js/i18n/locales/zh-TW.js', 'src/main/js/i18n/locales/en.js'];
 
     const CONTENT_KEYS = [
         'courseContentHelper',

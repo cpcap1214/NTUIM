@@ -89,16 +89,16 @@ const userService = {
         return [
             { value: 'user', label: '一般使用者' },
             { value: 'member', label: '系學會成員' },
-            { value: 'admin', label: '管理員' }
+            { value: 'admin', label: '管理員' },
         ];
     },
 
     // 取得角色顯示名稱
     getRoleDisplayName(role) {
         const roleMap = {
-            'user': '一般使用者',
-            'member': '系學會成員',
-            'admin': '管理員'
+            user: '一般使用者',
+            member: '系學會成員',
+            admin: '管理員',
         };
         return roleMap[role] || '未知';
     },
@@ -106,9 +106,9 @@ const userService = {
     // 取得角色顏色
     getRoleColor(role) {
         const colorMap = {
-            'admin': '#f44336',    // 紅色
-            'member': '#2196f3',   // 藍色
-            'user': '#9e9e9e'      // 灰色
+            admin: '#f44336', // 紅色
+            member: '#2196f3', // 藍色
+            user: '#9e9e9e', // 灰色
         };
         return colorMap[role] || '#9e9e9e';
     },
@@ -124,7 +124,7 @@ const userService = {
             month: '2-digit',
             day: '2-digit',
             hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
         });
     },
 
@@ -139,7 +139,7 @@ const userService = {
     validateEmail(email) {
         const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return pattern.test(email);
-    }
+    },
 };
 
 export default userService;

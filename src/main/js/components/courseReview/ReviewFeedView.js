@@ -53,7 +53,12 @@ const ReviewFeedView = ({
 
     return (
         <Box>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+            <Stack
+                direction="row"
+                justifyContent="space-between"
+                alignItems="center"
+                sx={{ mb: 3 }}
+            >
                 <Typography variant="body2" color="text.secondary">
                     {t('courseReview.totalReviewCount', { count: totalCount })}
                 </Typography>
@@ -105,7 +110,11 @@ const ReviewFeedView = ({
                     <Grid item xs={6} md={2}>
                         <FormControl fullWidth size="small">
                             <InputLabel>{t('courseReview.professorFilterLabel')}</InputLabel>
-                            <Select value={professorFilter} label={t('courseReview.professorFilterLabel')} onChange={(e) => onProfessorFilterChange(e.target.value)}>
+                            <Select
+                                value={professorFilter}
+                                label={t('courseReview.professorFilterLabel')}
+                                onChange={(e) => onProfessorFilterChange(e.target.value)}
+                            >
                                 <MenuItem value="all">{t('common.all')}</MenuItem>
                                 {professorOptions.map((professor) => (
                                     <MenuItem key={professor} value={professor}>
@@ -118,10 +127,20 @@ const ReviewFeedView = ({
                     <Grid item xs={12} md={3}>
                         <FormControl fullWidth size="small">
                             <InputLabel>{t('common.sort')}</InputLabel>
-                            <Select value={sortBy} label={t('common.sort')} onChange={(e) => onSortChange(e.target.value)}>
-                                <MenuItem value="latest">{t('courseReview.sort.latestPost')}</MenuItem>
-                                <MenuItem value="highest">{t('courseReview.sort.ratingHighest')}</MenuItem>
-                                <MenuItem value="lowest">{t('courseReview.sort.ratingLowest')}</MenuItem>
+                            <Select
+                                value={sortBy}
+                                label={t('common.sort')}
+                                onChange={(e) => onSortChange(e.target.value)}
+                            >
+                                <MenuItem value="latest">
+                                    {t('courseReview.sort.latestPost')}
+                                </MenuItem>
+                                <MenuItem value="highest">
+                                    {t('courseReview.sort.ratingHighest')}
+                                </MenuItem>
+                                <MenuItem value="lowest">
+                                    {t('courseReview.sort.ratingLowest')}
+                                </MenuItem>
                             </Select>
                         </FormControl>
                     </Grid>
@@ -136,12 +155,24 @@ const ReviewFeedView = ({
                     <RateReviewIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 1.5 }} />
                     <Typography variant="subtitle1" color="text.secondary" gutterBottom>
                         {!hasAnyReviews
-                            ? t(isMine ? 'courseReview.emptyState.noReviewsMine' : 'courseReview.emptyState.noReviewsYet')
+                            ? t(
+                                  isMine
+                                      ? 'courseReview.emptyState.noReviewsMine'
+                                      : 'courseReview.emptyState.noReviewsYet',
+                              )
                             : t('courseReview.emptyState.noMatchingReviews')}
                     </Typography>
-                    <Typography variant="body2" color="text.disabled" sx={{ mb: !hasAnyReviews && isMine && canWrite ? 2 : 0 }}>
+                    <Typography
+                        variant="body2"
+                        color="text.disabled"
+                        sx={{ mb: !hasAnyReviews && isMine && canWrite ? 2 : 0 }}
+                    >
                         {!hasAnyReviews
-                            ? t(isMine ? 'courseReview.emptyState.shareYourExperience' : 'courseReview.emptyState.beFirst')
+                            ? t(
+                                  isMine
+                                      ? 'courseReview.emptyState.shareYourExperience'
+                                      : 'courseReview.emptyState.beFirst',
+                              )
                             : t('courseReview.emptyState.adjustSearchOrFilter')}
                     </Typography>
                     {!hasAnyReviews && isMine && canWrite && (
@@ -168,7 +199,12 @@ const ReviewFeedView = ({
 
             {pageCount > 1 && (
                 <Stack direction="row" justifyContent="center" sx={{ mt: 3 }}>
-                    <Pagination count={pageCount} page={page} onChange={(_, p) => onPageChange(p)} color="primary" />
+                    <Pagination
+                        count={pageCount}
+                        page={page}
+                        onChange={(_, p) => onPageChange(p)}
+                        color="primary"
+                    />
                 </Stack>
             )}
         </Box>

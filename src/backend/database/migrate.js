@@ -39,10 +39,7 @@ const MIGRATIONS_DIR = path.join(__dirname, 'migrations');
 // users.can_manage_payouts 不存在，連帶讓 007 回填失敗。
 //
 // 新增遷移時不要加進這裡，除非它同樣不可重跑。
-const LEGACY_MIGRATIONS = [
-    '001_update_exams_table.sql',
-    '002_update_course_reviews_table.sql',
-];
+const LEGACY_MIGRATIONS = ['001_update_exams_table.sql', '002_update_course_reviews_table.sql'];
 
 const openDb = () => new sqlite3.Database(DB_PATH);
 
@@ -64,8 +61,7 @@ const exec = (db, sql) =>
         db.exec(sql, (err) => (err ? reject(err) : resolve()));
     });
 
-const close = (db) =>
-    new Promise((resolve) => db.close(() => resolve()));
+const close = (db) => new Promise((resolve) => db.close(() => resolve()));
 
 const ensureLedger = (db) =>
     run(
@@ -73,7 +69,7 @@ const ensureLedger = (db) =>
         `CREATE TABLE IF NOT EXISTS schema_migrations (
             filename TEXT PRIMARY KEY,
             applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )`
+        )`,
     );
 
 // 支援 .sql 與 .js 兩種遷移。
@@ -123,7 +119,11 @@ async function baseline(db) {
     let marked = 0;
     for (const file of LEGACY_MIGRATIONS) {
         if (!files.includes(file)) continue;
-        const result = await run(db, 'INSERT OR IGNORE INTO schema_migrations (filename) VALUES (?)', [file]);
+        const result = await run(
+            db,
+            'INSERT OR IGNORE INTO schema_migrations (filename) VALUES (?)',
+            [file],
+        );
         if (result.changes > 0) marked += 1;
     }
 
@@ -151,7 +151,7 @@ async function assertBaselineDone(db) {
 
     const existing = await all(
         db,
-        "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('users','course_reviews','exams')"
+        "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('users','course_reviews','exams')",
     );
     if (existing.length === 0) return; // 全新空資料庫，正常往下跑
 
@@ -209,7 +209,9 @@ async function migrate(db) {
             console.error(`\n遷移 ${file} 失敗，已回滾該檔案的所有變更：`);
             console.error(`  ${error.message}`);
             console.error('\n後續遷移不會執行。修正後重新執行 npm run migrate。');
-            console.error('若這個遷移其實早就人工套用過，請改用 npm run migrate -- --baseline 建立基準。');
+            console.error(
+                '若這個遷移其實早就人工套用過，請改用 npm run migrate -- --baseline 建立基準。',
+            );
             throw error;
         }
     }

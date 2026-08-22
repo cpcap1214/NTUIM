@@ -39,6 +39,8 @@ export const resolveLanguage = (raw) => {
     if (lower.startsWith('zh')) return 'zh-TW';
 
     const primary = lower.split('-')[0];
-    const byPrimary = SUPPORTED_LANGUAGES.find((l) => l.code.toLowerCase().split('-')[0] === primary);
+    const byPrimary = SUPPORTED_LANGUAGES.find(
+        (l) => l.code.toLowerCase().split('-')[0] === primary,
+    );
     return byPrimary ? byPrimary.code : null;
 };

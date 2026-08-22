@@ -11,7 +11,10 @@ const RatingDisplay = ({ value, size = 'small', showNumber = true, precision = 0
             {showNumber && (
                 <Typography
                     variant="caption"
-                    sx={{ color: courseReviewService.getRatingColor(numericValue), fontWeight: 600 }}
+                    sx={{
+                        color: courseReviewService.getRatingColor(numericValue),
+                        fontWeight: 600,
+                    }}
                 >
                     {courseReviewService.formatRating(numericValue)}
                 </Typography>

@@ -298,7 +298,16 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
             clearTimeout(timer);
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [formData.courseCode, formData.professor, formData.year, formData.semester, termSelection, open, isEditing, autoFilled]);
+    }, [
+        formData.courseCode,
+        formData.professor,
+        formData.year,
+        formData.semester,
+        termSelection,
+        open,
+        isEditing,
+        autoFilled,
+    ]);
 
     const handleChange = (field, value) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
@@ -319,7 +328,9 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
             courseCode: '',
             professor: '',
             // 「全部」本身不是學年期，等使用者從選單挑課程時才會有值
-            ...(value === ALL_TERMS ? {} : { year: parseInt(value.split('-')[0], 10), semester: value.split('-')[1] }),
+            ...(value === ALL_TERMS
+                ? {}
+                : { year: parseInt(value.split('-')[0], 10), semester: value.split('-')[1] }),
         }));
         setError('');
     };
@@ -364,7 +375,11 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                 setError(t('courseReview.form.termRequiredForManualEntry'));
                 return;
             }
-            if (!formData.courseCode.trim() || !formData.courseName.trim() || !formData.professor.trim()) {
+            if (
+                !formData.courseCode.trim() ||
+                !formData.courseName.trim() ||
+                !formData.professor.trim()
+            ) {
                 setError(t('courseReview.form.basicInfoRequired'));
                 return;
             }
@@ -437,9 +452,12 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
         ? [
               {
                   value: editingTermValue,
-                  label: `${formData.year - 1911}-${t(`courseReview.academicTermSuffix.${formData.semester}`, {
-                      defaultValue: formData.semester,
-                  })}`,
+                  label: `${formData.year - 1911}-${t(
+                      `courseReview.academicTermSuffix.${formData.semester}`,
+                      {
+                          defaultValue: formData.semester,
+                      },
+                  )}`,
                   adYear: formData.year,
                   semester: formData.semester,
               },
@@ -459,7 +477,9 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-            <DialogTitle>{isEditing ? t('courseReview.editReview') : t('courseReview.newReviewTitle')}</DialogTitle>
+            <DialogTitle>
+                {isEditing ? t('courseReview.editReview') : t('courseReview.newReviewTitle')}
+            </DialogTitle>
             <DialogContent>
                 {isResubmit && review.rejectReason && (
                     <Alert severity="warning" sx={{ mb: 2 }}>
@@ -479,7 +499,11 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                         sx={{ mb: 2 }}
                         action={
                             <>
-                                <Button color="inherit" size="small" onClick={() => setDraftRestored(false)}>
+                                <Button
+                                    color="inherit"
+                                    size="small"
+                                    onClick={() => setDraftRestored(false)}
+                                >
                                     {t('courseReview.form.dismissDraftNotice')}
                                 </Button>
                                 <Button color="inherit" size="small" onClick={handleDiscardDraft}>
@@ -511,7 +535,9 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                                     disabled={isEditing}
                                 >
                                     {!isEditing && (
-                                        <MenuItem value={ALL_TERMS}>{t('courseReview.form.allTerms')}</MenuItem>
+                                        <MenuItem value={ALL_TERMS}>
+                                            {t('courseReview.form.allTerms')}
+                                        </MenuItem>
                                     )}
                                     {academicTermOptions.map((option) => (
                                         <MenuItem key={option.value} value={option.value}>
@@ -521,74 +547,103 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                                 </TextField>
                             </Grid>
                             <Grid item xs={12} sm={8}>
-                        <Autocomplete
-                            freeSolo
-                            fullWidth
-                            disabled={isEditing}
-                            options={courseOptions}
-                            filterOptions={(options) => options}
-                            loading={courseSearchLoading}
-                            inputValue={formData.courseName}
-                            onInputChange={(e, newValue, reason) => {
-                                handleChange('courseName', newValue);
-                                // 使用者自己動手改課程名稱（而不是從選單挑）就解除鎖定，讓他能手動填課號與教授
-                                if (reason === 'input') {
-                                    setAutoFilled(false);
-                                    // 名額屬於剛才選的那門課，課名一改就不再適用
-                                    setSelectedQuota(null);
-                                }
-                            }}
-                            onChange={(e, selectedOption) => handleCourseSelect(selectedOption)}
-                            getOptionLabel={(option) => (typeof option === 'string' ? option : option.courseName)}
-                            isOptionEqualToValue={(option, val) => option.courseCode === val.courseCode && option.professor === val.professor && option.year === val.year && option.semester === val.semester}
-                            renderOption={(props, option) => (
-                                <li
-                                    {...props}
-                                    key={`${option.courseCode}-${option.professor}-${option.year}-${option.semester}`}
-                                    style={{ ...props.style, display: 'flex', justifyContent: 'space-between', gap: 8 }}
-                                >
-                                    <Box sx={{ minWidth: 0 }}>
-                                        <Typography variant="body2">{option.courseName}</Typography>
-                                        <Typography variant="caption" color="text.secondary">
-                                            {/* 限定單一學期時所有選項的學年期都一樣，顯示它只是雜訊；
+                                <Autocomplete
+                                    freeSolo
+                                    fullWidth
+                                    disabled={isEditing}
+                                    options={courseOptions}
+                                    filterOptions={(options) => options}
+                                    loading={courseSearchLoading}
+                                    inputValue={formData.courseName}
+                                    onInputChange={(e, newValue, reason) => {
+                                        handleChange('courseName', newValue);
+                                        // 使用者自己動手改課程名稱（而不是從選單挑）就解除鎖定，讓他能手動填課號與教授
+                                        if (reason === 'input') {
+                                            setAutoFilled(false);
+                                            // 名額屬於剛才選的那門課，課名一改就不再適用
+                                            setSelectedQuota(null);
+                                        }
+                                    }}
+                                    onChange={(e, selectedOption) =>
+                                        handleCourseSelect(selectedOption)
+                                    }
+                                    getOptionLabel={(option) =>
+                                        typeof option === 'string' ? option : option.courseName
+                                    }
+                                    isOptionEqualToValue={(option, val) =>
+                                        option.courseCode === val.courseCode &&
+                                        option.professor === val.professor &&
+                                        option.year === val.year &&
+                                        option.semester === val.semester
+                                    }
+                                    renderOption={(props, option) => (
+                                        <li
+                                            {...props}
+                                            key={`${option.courseCode}-${option.professor}-${option.year}-${option.semester}`}
+                                            style={{
+                                                ...props.style,
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                gap: 8,
+                                            }}
+                                        >
+                                            <Box sx={{ minWidth: 0 }}>
+                                                <Typography variant="body2">
+                                                    {option.courseName}
+                                                </Typography>
+                                                <Typography
+                                                    variant="caption"
+                                                    color="text.secondary"
+                                                >
+                                                    {/* 限定單一學期時所有選項的學年期都一樣，顯示它只是雜訊；
                                                 「全部」模式才需要，因為同一門課會有多個學期並列 */}
-                                            {option.professor || t('common.unknown')} · {option.courseCode}
-                                            {!isScopedTerm && ` · ${courseReviewService.getAcademicTermLabel(option.year, option.semester)}`}
-                                        </Typography>
-                                    </Box>
-                                    {/* 回饋金名額。用 typeof 檢查而不是 truthy：quotaLimit 是數字，
+                                                    {option.professor || t('common.unknown')} ·{' '}
+                                                    {option.courseCode}
+                                                    {!isScopedTerm &&
+                                                        ` · ${courseReviewService.getAcademicTermLabel(option.year, option.semester)}`}
+                                                </Typography>
+                                            </Box>
+                                            {/* 回饋金名額。用 typeof 檢查而不是 truthy：quotaLimit 是數字，
                                         而且後端若還沒部署到帶名額的版本，這裡要安靜地不顯示，
                                         而不是渲染出 undefined/undefined */}
-                                    {typeof option.quotaLimit === 'number' && (
-                                        <Chip
-                                            size="small"
-                                            variant="outlined"
-                                            color={option.quotaRemaining > 0 ? 'success' : 'default'}
-                                            label={t('courseReview.quota.chip', {
-                                                tier: t(`courseReview.quota.tier.${option.quotaTier}`),
-                                                used: option.quotaUsed,
-                                                limit: option.quotaLimit,
-                                            })}
+                                            {typeof option.quotaLimit === 'number' && (
+                                                <Chip
+                                                    size="small"
+                                                    variant="outlined"
+                                                    color={
+                                                        option.quotaRemaining > 0
+                                                            ? 'success'
+                                                            : 'default'
+                                                    }
+                                                    label={t('courseReview.quota.chip', {
+                                                        tier: t(
+                                                            `courseReview.quota.tier.${option.quotaTier}`,
+                                                        ),
+                                                        used: option.quotaUsed,
+                                                        limit: option.quotaLimit,
+                                                    })}
+                                                />
+                                            )}
+                                        </li>
+                                    )}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label={t('courseReview.form.courseName')}
+                                            required
+                                            InputProps={{
+                                                ...params.InputProps,
+                                                endAdornment: (
+                                                    <>
+                                                        {courseSearchLoading ? (
+                                                            <CircularProgress size={16} />
+                                                        ) : null}
+                                                        {params.InputProps.endAdornment}
+                                                    </>
+                                                ),
+                                            }}
                                         />
                                     )}
-                                </li>
-                            )}
-                            renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label={t('courseReview.form.courseName')}
-                                    required
-                                    InputProps={{
-                                        ...params.InputProps,
-                                        endAdornment: (
-                                            <>
-                                                {courseSearchLoading ? <CircularProgress size={16} /> : null}
-                                                {params.InputProps.endAdornment}
-                                            </>
-                                        ),
-                                    }}
-                                />
-                            )}
                                 />
                             </Grid>
                         </Grid>
@@ -614,7 +669,9 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                             而熱門必修的第 10 篇評價對讀者仍然有價值 */}
                         {!isEditing && selectedQuota && selectedQuota.quotaRemaining <= 0 && (
                             <Alert severity="warning" sx={{ mt: 1 }}>
-                                {t('courseReview.quota.fullWarning', { limit: selectedQuota.quotaLimit })}
+                                {t('courseReview.quota.fullWarning', {
+                                    limit: selectedQuota.quotaLimit,
+                                })}
                             </Alert>
                         )}
                     </Grid>
@@ -652,7 +709,9 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                                     onChange={(e, value) => handleChange(key, value)}
                                 />
                                 <Typography variant="caption" color="text.secondary">
-                                    {formData[key] === null ? t('courseReview.form.notRatedYet') : METRIC_TEXT_FN[key](formData[key])}
+                                    {formData[key] === null
+                                        ? t('courseReview.form.notRatedYet')
+                                        : METRIC_TEXT_FN[key](formData[key])}
                                 </Typography>
                             </Stack>
                         </Grid>
@@ -668,7 +727,10 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                             value={formData.courseContent}
                             onChange={(e) => handleChange('courseContent', e.target.value)}
                             inputProps={{ maxLength: 1000 }}
-                            helperText={t('courseReview.form.courseContentHelper', { count: formData.courseContent.trim().length, ...REVIEW_CONTENT_LIMITS.courseContent })}
+                            helperText={t('courseReview.form.courseContentHelper', {
+                                count: formData.courseContent.trim().length,
+                                ...REVIEW_CONTENT_LIMITS.courseContent,
+                            })}
                         />
                     </Grid>
 
@@ -681,7 +743,10 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                             value={formData.teachingMethod}
                             onChange={(e) => handleChange('teachingMethod', e.target.value)}
                             inputProps={{ maxLength: 1000 }}
-                            helperText={t('courseReview.form.requiredFieldHelper', { count: formData.teachingMethod.trim().length, ...REVIEW_CONTENT_LIMITS.teachingMethod })}
+                            helperText={t('courseReview.form.requiredFieldHelper', {
+                                count: formData.teachingMethod.trim().length,
+                                ...REVIEW_CONTENT_LIMITS.teachingMethod,
+                            })}
                         />
                     </Grid>
 
@@ -694,7 +759,10 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                             value={formData.assignmentExamFormat}
                             onChange={(e) => handleChange('assignmentExamFormat', e.target.value)}
                             inputProps={{ maxLength: 1000 }}
-                            helperText={t('courseReview.form.requiredFieldHelper', { count: formData.assignmentExamFormat.trim().length, ...REVIEW_CONTENT_LIMITS.assignmentExamFormat })}
+                            helperText={t('courseReview.form.requiredFieldHelper', {
+                                count: formData.assignmentExamFormat.trim().length,
+                                ...REVIEW_CONTENT_LIMITS.assignmentExamFormat,
+                            })}
                         />
                     </Grid>
 
@@ -707,7 +775,10 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                             value={formData.gradingBreakdown}
                             onChange={(e) => handleChange('gradingBreakdown', e.target.value)}
                             inputProps={{ maxLength: 1000 }}
-                            helperText={t('courseReview.form.requiredFieldHelper', { count: formData.gradingBreakdown.trim().length, ...REVIEW_CONTENT_LIMITS.gradingBreakdown })}
+                            helperText={t('courseReview.form.requiredFieldHelper', {
+                                count: formData.gradingBreakdown.trim().length,
+                                ...REVIEW_CONTENT_LIMITS.gradingBreakdown,
+                            })}
                         />
                     </Grid>
 
@@ -721,7 +792,10 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                             value={formData.comment}
                             onChange={(e) => handleChange('comment', e.target.value)}
                             inputProps={{ maxLength: 1000 }}
-                            helperText={t('courseReview.form.commentHelper', { count: formData.comment.trim().length, ...REVIEW_CONTENT_LIMITS.comment })}
+                            helperText={t('courseReview.form.commentHelper', {
+                                count: formData.comment.trim().length,
+                                ...REVIEW_CONTENT_LIMITS.comment,
+                            })}
                         />
                     </Grid>
 
@@ -752,8 +826,8 @@ const WriteReviewDialog = ({ open, onClose, review, onSaved }) => {
                     {isResubmit
                         ? t('courseReview.form.resubmit')
                         : isEditing
-                            ? t('courseReview.form.saveChanges')
-                            : t('courseReview.form.submitReview')}
+                          ? t('courseReview.form.saveChanges')
+                          : t('courseReview.form.submitReview')}
                 </Button>
             </DialogActions>
         </Dialog>

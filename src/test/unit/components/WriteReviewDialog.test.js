@@ -66,18 +66,39 @@ const REVIEWABLE_TERMS = [
 const CATALOG = {
     '2025-1': [
         {
-            courseCode: 'LibEdu1021', courseName: '邏輯', professor: '傅皓政', year: 2025, semester: '1',
-            quotaTier: 'other', quotaLimit: 1, quotaUsed: 0, quotaRemaining: 1,
+            courseCode: 'LibEdu1021',
+            courseName: '邏輯',
+            professor: '傅皓政',
+            year: 2025,
+            semester: '1',
+            quotaTier: 'other',
+            quotaLimit: 1,
+            quotaUsed: 0,
+            quotaRemaining: 1,
         },
     ],
     '2025-2': [
         {
-            courseCode: 'Phl1511', courseName: '邏輯', professor: '曾漢塘', year: 2025, semester: '2',
-            quotaTier: 'imRequired', quotaLimit: 3, quotaUsed: 3, quotaRemaining: 0,
+            courseCode: 'Phl1511',
+            courseName: '邏輯',
+            professor: '曾漢塘',
+            year: 2025,
+            semester: '2',
+            quotaTier: 'imRequired',
+            quotaLimit: 3,
+            quotaUsed: 3,
+            quotaRemaining: 0,
         },
         {
-            courseCode: 'IM2008', courseName: '邏輯', professor: '孫嘉明', year: 2025, semester: '2',
-            quotaTier: 'imRequired', quotaLimit: 3, quotaUsed: 1, quotaRemaining: 2,
+            courseCode: 'IM2008',
+            courseName: '邏輯',
+            professor: '孫嘉明',
+            year: 2025,
+            semester: '2',
+            quotaTier: 'imRequired',
+            quotaLimit: 3,
+            quotaUsed: 1,
+            quotaRemaining: 2,
         },
     ],
 };
@@ -90,7 +111,7 @@ beforeEach(() => {
     // 讓既有測試（都走下拉選單）的行為完全不受影響。
     courseReviewService.getCourseQuota.mockResolvedValue(null);
     courseReviewService.getAcademicTermLabel.mockImplementation(
-        (year, semester) => `${year - 1911}-${semester}`
+        (year, semester) => `${year - 1911}-${semester}`,
     );
     courseReviewService.searchCourseCatalog.mockImplementation((keyword, opts = {}) => {
         if (opts.year && opts.semester) {
@@ -98,9 +119,11 @@ beforeEach(() => {
         }
         return Promise.resolve([...CATALOG['2025-1'], ...CATALOG['2025-2']]);
     });
-    ['getQualityText', 'getDifficultyText', 'getSweetnessText', 'getUsefulnessText'].forEach((fn) => {
-        courseReviewService[fn] = jest.fn(() => 'x');
-    });
+    ['getQualityText', 'getDifficultyText', 'getSweetnessText', 'getUsefulnessText'].forEach(
+        (fn) => {
+            courseReviewService[fn] = jest.fn(() => 'x');
+        },
+    );
 });
 
 const renderDialog = () =>
@@ -130,10 +153,10 @@ describe('WriteReviewDialog 學期與課程搜尋', () => {
             () => {
                 expect(courseReviewService.searchCourseCatalog).toHaveBeenCalledWith(
                     '邏輯',
-                    expect.objectContaining({ year: '2025', semester: '2', limit: 150 })
+                    expect.objectContaining({ year: '2025', semester: '2', limit: 150 }),
                 );
             },
-            { timeout: 3000 }
+            { timeout: 3000 },
         );
     });
 
@@ -176,10 +199,10 @@ describe('WriteReviewDialog 學期與課程搜尋', () => {
             () => {
                 expect(courseReviewService.searchCourseCatalog).toHaveBeenCalledWith(
                     '邏輯',
-                    expect.objectContaining({ year: undefined, semester: undefined, limit: 200 })
+                    expect.objectContaining({ year: undefined, semester: undefined, limit: 200 }),
                 );
             },
-            { timeout: 3000 }
+            { timeout: 3000 },
         );
 
         // 兩個學期的選項都在，而且此時才顯示學年期
@@ -195,7 +218,9 @@ describe('WriteReviewDialog 學期與課程搜尋', () => {
         fireEvent.click(await screen.findByRole('option', { name: 'courseReview.form.allTerms' }));
         fireEvent.change(nameInput(), { target: { value: '邏輯' } });
 
-        const option = await screen.findByText('傅皓政 · LibEdu1021 · 114-1', undefined, { timeout: 3000 });
+        const option = await screen.findByText('傅皓政 · LibEdu1021 · 114-1', undefined, {
+            timeout: 3000,
+        });
         fireEvent.click(option);
 
         await waitFor(() => expect(termField()).toHaveTextContent('114-1'));
@@ -212,7 +237,7 @@ describe('WriteReviewDialog 學期與課程搜尋', () => {
                 professor: `教授${i}`,
                 year: 2025,
                 semester: '2',
-            }))
+            })),
         );
 
         renderDialog();
@@ -220,7 +245,9 @@ describe('WriteReviewDialog 學期與課程搜尋', () => {
         fireEvent.change(nameInput(), { target: { value: '英文' } });
 
         expect(
-            await screen.findByText('courseReview.form.searchTruncatedHint', undefined, { timeout: 3000 })
+            await screen.findByText('courseReview.form.searchTruncatedHint', undefined, {
+                timeout: 3000,
+            }),
         ).toBeInTheDocument();
     });
 
@@ -229,7 +256,9 @@ describe('WriteReviewDialog 學期與課程搜尋', () => {
         await waitFor(() => expect(termField()).toHaveTextContent('114-2'));
         fireEvent.change(nameInput(), { target: { value: '邏輯' } });
 
-        await waitFor(() => expect(courseReviewService.searchCourseCatalog).toHaveBeenCalled(), { timeout: 3000 });
+        await waitFor(() => expect(courseReviewService.searchCourseCatalog).toHaveBeenCalled(), {
+            timeout: 3000,
+        });
         expect(screen.queryByText('courseReview.form.searchTruncatedHint')).not.toBeInTheDocument();
     });
 
@@ -243,7 +272,9 @@ describe('WriteReviewDialog 學期與課程搜尋', () => {
 
         fireEvent.click(screen.getByText('courseReview.form.submitReview'));
 
-        expect(await screen.findByText('courseReview.form.termRequiredForManualEntry')).toBeInTheDocument();
+        expect(
+            await screen.findByText('courseReview.form.termRequiredForManualEntry'),
+        ).toBeInTheDocument();
         expect(courseReviewService.createReview).not.toHaveBeenCalled();
     });
 });
@@ -266,14 +297,20 @@ describe('WriteReviewDialog 回饋金名額', () => {
 
         await waitFor(
             () => expect(screen.getAllByText('courseReview.quota.chip')).toHaveLength(2),
-            { timeout: 3000 }
+            { timeout: 3000 },
         );
     });
 
     test('後端沒回名額欄位時安靜地不顯示標籤，不會渲染 undefined', async () => {
         // 前端先部署、後端還是舊版的情況。這時什麼都不顯示才對。
         courseReviewService.searchCourseCatalog.mockResolvedValueOnce([
-            { courseCode: 'Phl1511', courseName: '邏輯', professor: '曾漢塘', year: 2025, semester: '2' },
+            {
+                courseCode: 'Phl1511',
+                courseName: '邏輯',
+                professor: '曾漢塘',
+                year: 2025,
+                semester: '2',
+            },
         ]);
 
         renderDialog();
@@ -303,7 +340,7 @@ describe('WriteReviewDialog 回饋金名額', () => {
         fireEvent.click(await screen.findByRole('option', { name: '114-1' }));
 
         await waitFor(() =>
-            expect(screen.queryByText('courseReview.quota.fullWarning')).not.toBeInTheDocument()
+            expect(screen.queryByText('courseReview.quota.fullWarning')).not.toBeInTheDocument(),
         );
     });
 

@@ -37,13 +37,22 @@ const clampSx = (lines) => ({
 
 // 課程評價以「課程」為主體：卡片標題是課程名稱＋代碼，評論者只是次要資訊，
 // 跟以往「先看到是誰寫的」的排法相反。
-const ReviewCard = ({ review, showStatus = false, hideReviewedBy = false, currentUserId, onEdit, onDelete }) => {
+const ReviewCard = ({
+    review,
+    showStatus = false,
+    hideReviewedBy = false,
+    currentUserId,
+    onEdit,
+    onDelete,
+}) => {
     const { t } = useTranslation();
     const [detailOpen, setDetailOpen] = useState(false);
     const isOwner = currentUserId && review.userId === currentUserId;
     const reviewerName = review.reviewer ? review.reviewer.fullName : t('common.unknown');
 
-    const filledOptionalSections = OPTIONAL_SECTIONS.filter((key) => review[key] && review[key].trim());
+    const filledOptionalSections = OPTIONAL_SECTIONS.filter(
+        (key) => review[key] && review[key].trim(),
+    );
 
     const handleDelete = (e) => {
         e.stopPropagation();
@@ -56,27 +65,67 @@ const ReviewCard = ({ review, showStatus = false, hideReviewedBy = false, curren
         <>
             <Card
                 variant="outlined"
-                sx={{ borderColor: 'divider', height: '100%', cursor: 'pointer', display: 'flex', flexDirection: 'column' }}
+                sx={{
+                    borderColor: 'divider',
+                    height: '100%',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                }}
                 onClick={() => setDetailOpen(true)}
             >
                 <CardContent sx={{ p: 2.5, flex: 1, display: 'flex', flexDirection: 'column' }}>
-                    <Stack direction="row" spacing={1} justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1 }}>
+                    <Stack
+                        direction="row"
+                        spacing={1}
+                        justifyContent="space-between"
+                        alignItems="flex-start"
+                        sx={{ mb: 1 }}
+                    >
                         <Box sx={{ minWidth: 0, flex: 1 }}>
                             <Typography variant="subtitle1" sx={{ fontWeight: 700 }} noWrap>
                                 {review.courseName}
                             </Typography>
-                            <Stack direction="row" spacing={0.75} alignItems="center" sx={{ minWidth: 0 }}>
-                                <Typography variant="body2" color="text.secondary" noWrap sx={{ minWidth: 0 }}>
+                            <Stack
+                                direction="row"
+                                spacing={0.75}
+                                alignItems="center"
+                                sx={{ minWidth: 0 }}
+                            >
+                                <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    noWrap
+                                    sx={{ minWidth: 0 }}
+                                >
                                     {review.professor}
                                 </Typography>
-                                <Box component="span" sx={{ width: 4, height: 4, bgcolor: 'text.disabled', flexShrink: 0 }} />
-                                <Typography variant="body2" color="text.secondary" noWrap sx={{ flexShrink: 0 }}>
+                                <Box
+                                    component="span"
+                                    sx={{
+                                        width: 4,
+                                        height: 4,
+                                        bgcolor: 'text.disabled',
+                                        flexShrink: 0,
+                                    }}
+                                />
+                                <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    noWrap
+                                    sx={{ flexShrink: 0 }}
+                                >
                                     {review.courseCode}
                                 </Typography>
                             </Stack>
                         </Box>
                         {isOwner && (
-                            <Stack direction="row" spacing={0.75} alignItems="center" onClick={(e) => e.stopPropagation()}>
+                            <Stack
+                                direction="row"
+                                spacing={0.75}
+                                alignItems="center"
+                                onClick={(e) => e.stopPropagation()}
+                            >
                                 {review.status === 'rejected' ? (
                                     <Button
                                         variant="contained"
@@ -100,14 +149,35 @@ const ReviewCard = ({ review, showStatus = false, hideReviewedBy = false, curren
                         )}
                     </Stack>
 
-                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ mb: 1.5, rowGap: 0.5 }}>
-                        <Avatar sx={{ width: 22, height: 22, fontSize: '0.7rem', bgcolor: 'grey.300', color: 'text.primary' }}>
+                    <Stack
+                        direction="row"
+                        spacing={1}
+                        alignItems="center"
+                        flexWrap="wrap"
+                        sx={{ mb: 1.5, rowGap: 0.5 }}
+                    >
+                        <Avatar
+                            sx={{
+                                width: 22,
+                                height: 22,
+                                fontSize: '0.7rem',
+                                bgcolor: 'grey.300',
+                                color: 'text.primary',
+                            }}
+                        >
                             {reviewerName.charAt(0)}
                         </Avatar>
                         <Typography variant="caption" color="text.secondary">
                             {reviewerName}
                         </Typography>
-                        <Chip label={courseReviewService.getAcademicTermLabel(review.year, review.semester)} size="small" variant="outlined" />
+                        <Chip
+                            label={courseReviewService.getAcademicTermLabel(
+                                review.year,
+                                review.semester,
+                            )}
+                            size="small"
+                            variant="outlined"
+                        />
                         {showStatus && review.status && review.status !== 'approved' && (
                             <Chip
                                 label={courseReviewService.getStatusLabel(review.status)}
@@ -118,16 +188,28 @@ const ReviewCard = ({ review, showStatus = false, hideReviewedBy = false, curren
                     </Stack>
 
                     {showStatus && !hideReviewedBy && review.reviewedByUser && (
-                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                        <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            display="block"
+                            sx={{ mb: 1 }}
+                        >
                             {t('courseReview.reviewedBy', { name: review.reviewedByUser.fullName })}
                         </Typography>
                     )}
 
                     {showStatus && review.status === 'rejected' && review.rejectReason && (
-                        <Stack direction="row" spacing={0.75} alignItems="flex-start" sx={{ mb: 1.5 }}>
+                        <Stack
+                            direction="row"
+                            spacing={0.75}
+                            alignItems="flex-start"
+                            sx={{ mb: 1.5 }}
+                        >
                             <WarningIcon sx={{ fontSize: 16, color: 'error.main', mt: 0.25 }} />
                             <Typography variant="caption" color="error.main">
-                                {t('courseReview.rejectReasonLabel', { reason: review.rejectReason })}
+                                {t('courseReview.rejectReasonLabel', {
+                                    reason: review.rejectReason,
+                                })}
                             </Typography>
                         </Stack>
                     )}
@@ -143,8 +225,18 @@ const ReviewCard = ({ review, showStatus = false, hideReviewedBy = false, curren
                                             {t(`courseReview.metrics.${key}`)}
                                         </Typography>
                                         <Tooltip title={t(`courseReview.metricHints.${key}`)} arrow>
-                                            <Box component="span" onClick={(e) => e.stopPropagation()} sx={{ display: 'inline-flex' }}>
-                                                <HelpOutlineIcon sx={{ fontSize: 13, color: 'text.disabled', cursor: 'help' }} />
+                                            <Box
+                                                component="span"
+                                                onClick={(e) => e.stopPropagation()}
+                                                sx={{ display: 'inline-flex' }}
+                                            >
+                                                <HelpOutlineIcon
+                                                    sx={{
+                                                        fontSize: 13,
+                                                        color: 'text.disabled',
+                                                        cursor: 'help',
+                                                    }}
+                                                />
                                             </Box>
                                         </Tooltip>
                                     </Stack>
@@ -156,7 +248,11 @@ const ReviewCard = ({ review, showStatus = false, hideReviewedBy = false, curren
 
                     {review.courseContent && (
                         <Box sx={{ mb: 1 }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                            <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{ fontWeight: 600 }}
+                            >
                                 {t('courseReview.form.courseContent')}
                             </Typography>
                             <Typography variant="body2" sx={clampSx(2)}>
@@ -167,7 +263,11 @@ const ReviewCard = ({ review, showStatus = false, hideReviewedBy = false, curren
 
                     {review.comment && (
                         <Box sx={{ mb: filledOptionalSections.length > 0 ? 1 : 0 }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                            <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{ fontWeight: 600 }}
+                            >
                                 {t('courseReview.form.comment')}
                             </Typography>
                             <Typography variant="body2" color="text.secondary" sx={clampSx(3)}>
@@ -179,7 +279,13 @@ const ReviewCard = ({ review, showStatus = false, hideReviewedBy = false, curren
                     {filledOptionalSections.length > 0 && (
                         <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ rowGap: 0.5 }}>
                             {filledOptionalSections.map((key) => (
-                                <Chip key={key} label={t(`courseReview.form.${key}`)} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.65rem' }} />
+                                <Chip
+                                    key={key}
+                                    label={t(`courseReview.form.${key}`)}
+                                    size="small"
+                                    variant="outlined"
+                                    sx={{ height: 20, fontSize: '0.65rem' }}
+                                />
                             ))}
                         </Stack>
                     )}
@@ -192,7 +298,11 @@ const ReviewCard = ({ review, showStatus = false, hideReviewedBy = false, curren
                 </CardContent>
             </Card>
 
-            <ReviewDetailDialog open={detailOpen} review={review} onClose={() => setDetailOpen(false)} />
+            <ReviewDetailDialog
+                open={detailOpen}
+                review={review}
+                onClose={() => setDetailOpen(false)}
+            />
         </>
     );
 };

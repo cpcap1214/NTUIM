@@ -4,86 +4,111 @@ const path = require('path');
 const fs = require('fs');
 const { body, validationResult, query } = require('express-validator');
 const { CheatSheet, User } = require('../models');
-const { authenticateToken, requirePermission, isOwnerOrHasPermission } = require('../middleware/auth');
+const {
+    authenticateToken,
+    requirePermission,
+    isOwnerOrHasPermission,
+} = require('../middleware/auth');
 const { adminUpload, handleUploadError } = require('../middleware/upload');
 const { Op } = require('sequelize');
 
 // 取得大抄列表（公開）
-router.get('/', [
-    query('courseCode').optional().isString(),
-    query('keyword').optional().isString(),
-    query('page').optional().isInt({ min: 1 }),
-    query('limit').optional().isInt({ min: 1, max: 10000 })
-], async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
-
-    try {
-        const {
-            courseCode,
-            keyword,
-            page = 1,
-            limit = 20
-        } = req.query;
-
-        // 建立查詢條件
-        const where = {};
-        if (courseCode) where.courseCode = { [Op.like]: `%${courseCode}%` };
-        if (keyword) {
-            where[Op.or] = [
-                { title: { [Op.like]: `%${keyword}%` } },
-                { description: { [Op.like]: `%${keyword}%` } },
-                { courseName: { [Op.like]: `%${keyword}%` } }
-            ];
+router.get(
+    '/',
+    [
+        query('courseCode').optional().isString(),
+        query('keyword').optional().isString(),
+        query('page').optional().isInt({ min: 1 }),
+        query('limit').optional().isInt({ min: 1, max: 10000 }),
+    ],
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
         }
 
-        // 查詢大抄。欄位白名單的理由同 exams.js：這是公開端點，
-        // file_path 不該離開伺服器，取檔一律走有認證的 preview / download 端點。
-        const { count, rows } = await CheatSheet.findAndCountAll({
-            where,
-            attributes: [
-                'id', 'courseCode', 'courseName', 'title', 'description', 'tags',
-                'fileName', 'fileSize', 'uploadedBy', 'downloadCount', 'created_at'
-            ],
-            include: [{
-                model: User,
-                as: 'uploader',
-                attributes: ['username', 'fullName']
-            }],
-            order: [['created_at', 'DESC']],
-            limit: parseInt(limit),
-            offset: (parseInt(page) - 1) * parseInt(limit)
-        });
+        try {
+            const { courseCode, keyword, page = 1, limit = 20 } = req.query;
 
-        res.json({
-            data: rows,
-            pagination: {
-                total: count,
-                page: parseInt(page),
-                pages: Math.ceil(count / limit)
+            // 建立查詢條件
+            const where = {};
+            if (courseCode) where.courseCode = { [Op.like]: `%${courseCode}%` };
+            if (keyword) {
+                where[Op.or] = [
+                    { title: { [Op.like]: `%${keyword}%` } },
+                    { description: { [Op.like]: `%${keyword}%` } },
+                    { courseName: { [Op.like]: `%${keyword}%` } },
+                ];
             }
-        });
-    } catch (error) {
-        console.error('取得大抄列表錯誤:', error);
-        res.status(500).json({ error: '取得大抄失敗', errorCode: 'FETCH_CHEATSHEETS_FAILED' });
-    }
-});
+
+            // 查詢大抄。欄位白名單的理由同 exams.js：這是公開端點，
+            // file_path 不該離開伺服器，取檔一律走有認證的 preview / download 端點。
+            const { count, rows } = await CheatSheet.findAndCountAll({
+                where,
+                attributes: [
+                    'id',
+                    'courseCode',
+                    'courseName',
+                    'title',
+                    'description',
+                    'tags',
+                    'fileName',
+                    'fileSize',
+                    'uploadedBy',
+                    'downloadCount',
+                    'created_at',
+                ],
+                include: [
+                    {
+                        model: User,
+                        as: 'uploader',
+                        attributes: ['username', 'fullName'],
+                    },
+                ],
+                order: [['created_at', 'DESC']],
+                limit: parseInt(limit),
+                offset: (parseInt(page) - 1) * parseInt(limit),
+            });
+
+            res.json({
+                data: rows,
+                pagination: {
+                    total: count,
+                    page: parseInt(page),
+                    pages: Math.ceil(count / limit),
+                },
+            });
+        } catch (error) {
+            console.error('取得大抄列表錯誤:', error);
+            res.status(500).json({ error: '取得大抄失敗', errorCode: 'FETCH_CHEATSHEETS_FAILED' });
+        }
+    },
+);
 
 // 取得單一大抄詳情
 router.get('/:id', async (req, res) => {
     try {
         const cheatSheet = await CheatSheet.findByPk(req.params.id, {
             attributes: [
-                'id', 'courseCode', 'courseName', 'title', 'description', 'tags',
-                'fileName', 'fileSize', 'uploadedBy', 'downloadCount', 'created_at'
+                'id',
+                'courseCode',
+                'courseName',
+                'title',
+                'description',
+                'tags',
+                'fileName',
+                'fileSize',
+                'uploadedBy',
+                'downloadCount',
+                'created_at',
             ],
-            include: [{
-                model: User,
-                as: 'uploader',
-                attributes: ['username', 'fullName']
-            }]
+            include: [
+                {
+                    model: User,
+                    as: 'uploader',
+                    attributes: ['username', 'fullName'],
+                },
+            ],
         });
 
         if (!cheatSheet) {
@@ -98,16 +123,21 @@ router.get('/:id', async (req, res) => {
 });
 
 // 上傳大抄（只有管理員可以上傳）
-router.post('/upload',
+router.post(
+    '/upload',
     authenticateToken,
     requirePermission('cheatSheets.upload'),
     adminUpload.single('file'),
     handleUploadError,
     [
-        body('courseCode').notEmpty().withMessage({ code: 'COURSE_CODE_REQUIRED', message: '課號為必填' }),
-        body('courseName').notEmpty().withMessage({ code: 'COURSE_NAME_REQUIRED', message: '課程名稱為必填' }),
+        body('courseCode')
+            .notEmpty()
+            .withMessage({ code: 'COURSE_CODE_REQUIRED', message: '課號為必填' }),
+        body('courseName')
+            .notEmpty()
+            .withMessage({ code: 'COURSE_NAME_REQUIRED', message: '課程名稱為必填' }),
         body('title').notEmpty().withMessage({ code: 'TITLE_REQUIRED', message: '標題為必填' }),
-        body('description').optional().isString()
+        body('description').optional().isString(),
     ],
     async (req, res) => {
         const errors = validationResult(req);
@@ -120,17 +150,13 @@ router.post('/upload',
         }
 
         if (!req.file) {
-            return res.status(400).json({ error: '請選擇要上傳的檔案', errorCode: 'FILE_REQUIRED' });
+            return res
+                .status(400)
+                .json({ error: '請選擇要上傳的檔案', errorCode: 'FILE_REQUIRED' });
         }
 
         try {
-            const {
-                courseCode,
-                courseName,
-                title,
-                description,
-                tags
-            } = req.body;
+            const { courseCode, courseName, title, description, tags } = req.body;
 
             // 解析 tags（前端傳送的是 JSON 字串）
             let parsedTags = [];
@@ -142,7 +168,7 @@ router.post('/upload',
 
             // 建立大抄記錄 - 使用修正編碼後的檔名
             const fileName = req.fileInfo?.file?.originalName || req.file.originalname;
-            
+
             const cheatSheet = await CheatSheet.create({
                 courseCode,
                 courseName,
@@ -152,12 +178,12 @@ router.post('/upload',
                 filePath: req.file.path,
                 fileName: fileName, // 使用修正編碼的檔名
                 fileSize: req.file.size,
-                uploadedBy: req.user.id
+                uploadedBy: req.user.id,
             });
 
             res.status(201).json({
                 message: '大抄上傳成功',
-                data: cheatSheet
+                data: cheatSheet,
             });
         } catch (error) {
             // 刪除已上傳的檔案
@@ -167,36 +193,40 @@ router.post('/upload',
             console.error('上傳大抄錯誤:', error);
             res.status(500).json({ error: '上傳失敗', errorCode: 'UPLOAD_FAILED' });
         }
-    }
+    },
 );
 
 // 預覽大抄（只需登入）
 router.get('/:id/preview', authenticateToken, async (req, res) => {
     try {
         const cheatSheet = await CheatSheet.findByPk(req.params.id);
-        
+
         if (!cheatSheet) {
             return res.status(404).json({ error: '大抄不存在', errorCode: 'CHEATSHEET_NOT_FOUND' });
         }
 
         const filePath = path.resolve(cheatSheet.filePath);
-        
+
         // 檢查檔案是否存在
         if (!fs.existsSync(filePath)) {
             console.error('大抄檔案不存在:', filePath);
-            return res.status(404).json({ error: '大抄檔案不存在', errorCode: 'CHEATSHEET_FILE_NOT_FOUND' });
+            return res
+                .status(404)
+                .json({ error: '大抄檔案不存在', errorCode: 'CHEATSHEET_FILE_NOT_FOUND' });
         }
 
         // 設定為在線預覽（而非下載）
         res.setHeader('Content-Type', 'application/pdf');
         // 使用 RFC 5987 標準處理中文檔名
         const encodedFilename = encodeURIComponent(cheatSheet.fileName);
-        res.setHeader('Content-Disposition', `inline; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`);
-        
+        res.setHeader(
+            'Content-Disposition',
+            `inline; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`,
+        );
+
         // 傳送檔案
         const fileStream = fs.createReadStream(filePath);
         fileStream.pipe(res);
-        
     } catch (error) {
         console.error('預覽大抄錯誤:', error);
         res.status(500).json({ error: '預覽失敗，請稍後再試', errorCode: 'PREVIEW_FAILED' });
@@ -225,7 +255,10 @@ router.get('/:id/download', authenticateToken, async (req, res) => {
         res.setHeader('Content-Type', 'application/octet-stream');
         // 使用 RFC 5987 標準處理中文檔名
         const encodedFilename = encodeURIComponent(cheatSheet.fileName);
-        res.setHeader('Content-Disposition', `attachment; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`);
+        res.setHeader(
+            'Content-Disposition',
+            `attachment; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`,
+        );
 
         // 傳送檔案
         res.sendFile(path.resolve(cheatSheet.filePath));
@@ -236,14 +269,24 @@ router.get('/:id/download', authenticateToken, async (req, res) => {
 });
 
 // 更新大抄資訊（只有上傳者或管理員）
-router.put('/:id',
+router.put(
+    '/:id',
     authenticateToken,
     [
-        body('courseCode').optional().notEmpty().withMessage({ code: 'COURSE_CODE_EMPTY', message: '課號不能為空' }),
-        body('courseName').optional().notEmpty().withMessage({ code: 'COURSE_NAME_EMPTY', message: '課程名稱不能為空' }),
-        body('title').optional().notEmpty().withMessage({ code: 'TITLE_EMPTY', message: '標題不能為空' }),
+        body('courseCode')
+            .optional()
+            .notEmpty()
+            .withMessage({ code: 'COURSE_CODE_EMPTY', message: '課號不能為空' }),
+        body('courseName')
+            .optional()
+            .notEmpty()
+            .withMessage({ code: 'COURSE_NAME_EMPTY', message: '課程名稱不能為空' }),
+        body('title')
+            .optional()
+            .notEmpty()
+            .withMessage({ code: 'TITLE_EMPTY', message: '標題不能為空' }),
         body('description').optional().isString(),
-        body('tags').optional().isArray()
+        body('tags').optional().isArray(),
     ],
     async (req, res) => {
         const errors = validationResult(req);
@@ -255,12 +298,16 @@ router.put('/:id',
             const cheatSheet = await CheatSheet.findByPk(req.params.id);
 
             if (!cheatSheet) {
-                return res.status(404).json({ error: '大抄不存在', errorCode: 'CHEATSHEET_NOT_FOUND' });
+                return res
+                    .status(404)
+                    .json({ error: '大抄不存在', errorCode: 'CHEATSHEET_NOT_FOUND' });
             }
 
             // 檢查權限
             if (!isOwnerOrHasPermission(req, cheatSheet.uploadedBy, 'cheatSheets.manage')) {
-                return res.status(403).json({ error: '無權修改此大抄', errorCode: 'NO_PERMISSION_EDIT_CHEATSHEET' });
+                return res
+                    .status(403)
+                    .json({ error: '無權修改此大抄', errorCode: 'NO_PERMISSION_EDIT_CHEATSHEET' });
             }
 
             // 更新資訊
@@ -275,17 +322,18 @@ router.put('/:id',
 
             res.json({
                 message: '大抄資訊更新成功',
-                data: cheatSheet
+                data: cheatSheet,
             });
         } catch (error) {
             console.error('更新大抄錯誤:', error);
             res.status(500).json({ error: '更新失敗', errorCode: 'UPDATE_FAILED_GENERIC' });
         }
-    }
+    },
 );
 
 // 更新大抄檔案（只有上傳者或管理員可以更新）
-router.put('/:id/file',
+router.put(
+    '/:id/file',
     authenticateToken,
     adminUpload.single('file'),
     handleUploadError,
@@ -298,7 +346,9 @@ router.put('/:id/file',
                 if (req.file && fs.existsSync(req.file.path)) {
                     fs.unlinkSync(req.file.path);
                 }
-                return res.status(404).json({ error: '大抄不存在', errorCode: 'CHEATSHEET_NOT_FOUND' });
+                return res
+                    .status(404)
+                    .json({ error: '大抄不存在', errorCode: 'CHEATSHEET_NOT_FOUND' });
             }
 
             // 檢查權限
@@ -307,11 +357,15 @@ router.put('/:id/file',
                 if (req.file && fs.existsSync(req.file.path)) {
                     fs.unlinkSync(req.file.path);
                 }
-                return res.status(403).json({ error: '無權修改此大抄', errorCode: 'NO_PERMISSION_EDIT_CHEATSHEET' });
+                return res
+                    .status(403)
+                    .json({ error: '無權修改此大抄', errorCode: 'NO_PERMISSION_EDIT_CHEATSHEET' });
             }
 
             if (!req.file) {
-                return res.status(400).json({ error: '請選擇要上傳的檔案', errorCode: 'FILE_REQUIRED' });
+                return res
+                    .status(400)
+                    .json({ error: '請選擇要上傳的檔案', errorCode: 'FILE_REQUIRED' });
             }
 
             // 刪除舊檔案
@@ -329,7 +383,7 @@ router.put('/:id/file',
 
             res.json({
                 message: '大抄檔案更新成功',
-                data: cheatSheet
+                data: cheatSheet,
             });
         } catch (error) {
             // 清理上傳的檔案
@@ -339,7 +393,7 @@ router.put('/:id/file',
             console.error('更新大抄檔案錯誤:', error);
             res.status(500).json({ error: '檔案更新失敗', errorCode: 'FILE_UPDATE_FAILED' });
         }
-    }
+    },
 );
 
 // 刪除大抄（只有上傳者或管理員）
@@ -353,7 +407,9 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
         // 檢查權限
         if (!isOwnerOrHasPermission(req, cheatSheet.uploadedBy, 'cheatSheets.manage')) {
-            return res.status(403).json({ error: '無權刪除此大抄', errorCode: 'NO_PERMISSION_DELETE_CHEATSHEET' });
+            return res
+                .status(403)
+                .json({ error: '無權刪除此大抄', errorCode: 'NO_PERMISSION_DELETE_CHEATSHEET' });
         }
 
         // 刪除檔案

@@ -6,7 +6,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 
 let feeStatusCache = {
     expiresAt: 0,
-    paidStudentIds: new Set()
+    paidStudentIds: new Set(),
 };
 
 function getFeeSheetCsvUrl() {
@@ -17,37 +17,39 @@ function getFeeSheetCsvUrl() {
 
 function fetchText(url, redirectCount = 0) {
     return new Promise((resolve, reject) => {
-        https.get(url, (response) => {
-            if (
-                response.statusCode >= 300
-                && response.statusCode < 400
-                && response.headers.location
-            ) {
-                if (redirectCount >= 5) {
-                    reject(new Error('繳費表轉址次數過多'));
+        https
+            .get(url, (response) => {
+                if (
+                    response.statusCode >= 300 &&
+                    response.statusCode < 400 &&
+                    response.headers.location
+                ) {
+                    if (redirectCount >= 5) {
+                        reject(new Error('繳費表轉址次數過多'));
+                        response.resume();
+                        return;
+                    }
+
+                    const redirectUrl = new URL(response.headers.location, url).toString();
+                    response.resume();
+                    resolve(fetchText(redirectUrl, redirectCount + 1));
+                    return;
+                }
+
+                if (response.statusCode !== 200) {
+                    reject(new Error(`無法讀取繳費表，HTTP ${response.statusCode}`));
                     response.resume();
                     return;
                 }
 
-                const redirectUrl = new URL(response.headers.location, url).toString();
-                response.resume();
-                resolve(fetchText(redirectUrl, redirectCount + 1));
-                return;
-            }
-
-            if (response.statusCode !== 200) {
-                reject(new Error(`無法讀取繳費表，HTTP ${response.statusCode}`));
-                response.resume();
-                return;
-            }
-
-            let data = '';
-            response.setEncoding('utf8');
-            response.on('data', (chunk) => {
-                data += chunk;
-            });
-            response.on('end', () => resolve(data));
-        }).on('error', reject);
+                let data = '';
+                response.setEncoding('utf8');
+                response.on('data', (chunk) => {
+                    data += chunk;
+                });
+                response.on('end', () => resolve(data));
+            })
+            .on('error', reject);
     });
 }
 
@@ -101,7 +103,9 @@ function parseCsv(text) {
 }
 
 function normalizeStudentId(studentId) {
-    return String(studentId || '').trim().toUpperCase();
+    return String(studentId || '')
+        .trim()
+        .toUpperCase();
 }
 
 function isPaidMarker(value) {
@@ -150,7 +154,7 @@ async function getPaidStudentIds() {
 
     feeStatusCache = {
         expiresAt: now + CACHE_TTL_MS,
-        paidStudentIds
+        paidStudentIds,
     };
 
     return paidStudentIds;
@@ -175,5 +179,5 @@ module.exports = {
     checkStudentPaidFee,
     buildPaidStudentSet,
     parseCsv,
-    normalizeStudentId
+    normalizeStudentId,
 };

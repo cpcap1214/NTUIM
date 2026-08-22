@@ -9,7 +9,7 @@ const sequelize = new Sequelize({
     define: {
         timestamps: true,
         underscored: true, // 使用底線命名（created_at 而非 createdAt）
-    }
+    },
 });
 
 // 在連接後執行 PRAGMA 設定
@@ -26,580 +26,677 @@ sequelize.addHook('afterConnect', async (connection) => {
 });
 
 // 定義 User 模型
-const User = sequelize.define('User', {
-    id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
+const User = sequelize.define(
+    'User',
+    {
+        id: {
+            type: DataTypes.INTEGER,
+            primaryKey: true,
+            autoIncrement: true,
+        },
+        studentId: {
+            type: DataTypes.STRING(20),
+            unique: true,
+            allowNull: false,
+            field: 'student_id',
+        },
+        username: {
+            type: DataTypes.STRING(50),
+            unique: true,
+            allowNull: false,
+        },
+        email: {
+            type: DataTypes.STRING(100),
+            unique: true,
+            allowNull: false,
+        },
+        passwordHash: {
+            type: DataTypes.STRING(255),
+            allowNull: false,
+            field: 'password_hash',
+        },
+        fullName: {
+            type: DataTypes.STRING(100),
+            allowNull: false,
+            field: 'full_name',
+        },
+        role: {
+            type: DataTypes.ENUM('admin', 'member', 'user'),
+            defaultValue: 'user',
+        },
+        // 總務權限：可管理課程評價回饋金的發放狀態。刻意獨立於 role 之外（role 有 CHECK 約束，
+        // SQLite 改不動；而且一個人可以同時是管理員與總務，用布林旗標比較合適）
+        canManagePayouts: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+            field: 'can_manage_payouts',
+        },
+        hasPaidFee: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false,
+            field: 'has_paid_fee',
+        },
+        // LINE 通知的收件位址。NULL = 尚未綁定。
+        // 這是「通知位址」而不是身分憑證——不要拿它來授權任何操作，
+        // 詳見 routes/line.js 的說明。
+        lineUserId: {
+            type: DataTypes.STRING(64),
+            field: 'line_user_id',
+        },
+        // 一次性綁定碼與到期時間，綁定成功後一併清空
+        lineBindingCode: {
+            type: DataTypes.STRING(16),
+            field: 'line_binding_code',
+        },
+        lineBindingExpiresAt: {
+            type: DataTypes.DATE,
+            field: 'line_binding_expires_at',
+        },
+        // 綁定建立的時間，供交接時分辨新舊。既有綁定為 NULL（無從得知，不捏造）
+        lineBoundAt: {
+            type: DataTypes.DATE,
+            field: 'line_bound_at',
+        },
     },
-    studentId: {
-        type: DataTypes.STRING(20),
-        unique: true,
-        allowNull: false,
-        field: 'student_id'
+    {
+        tableName: 'users',
+        createdAt: 'created_at',
+        updatedAt: 'updated_at',
     },
-    username: {
-        type: DataTypes.STRING(50),
-        unique: true,
-        allowNull: false
-    },
-    email: {
-        type: DataTypes.STRING(100),
-        unique: true,
-        allowNull: false
-    },
-    passwordHash: {
-        type: DataTypes.STRING(255),
-        allowNull: false,
-        field: 'password_hash'
-    },
-    fullName: {
-        type: DataTypes.STRING(100),
-        allowNull: false,
-        field: 'full_name'
-    },
-    role: {
-        type: DataTypes.ENUM('admin', 'member', 'user'),
-        defaultValue: 'user'
-    },
-    // 總務權限：可管理課程評價回饋金的發放狀態。刻意獨立於 role 之外（role 有 CHECK 約束，
-    // SQLite 改不動；而且一個人可以同時是管理員與總務，用布林旗標比較合適）
-    canManagePayouts: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: false,
-        field: 'can_manage_payouts'
-    },
-    hasPaidFee: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: false,
-        field: 'has_paid_fee'
-    },
-    // LINE 通知的收件位址。NULL = 尚未綁定。
-    // 這是「通知位址」而不是身分憑證——不要拿它來授權任何操作，
-    // 詳見 routes/line.js 的說明。
-    lineUserId: {
-        type: DataTypes.STRING(64),
-        field: 'line_user_id'
-    },
-    // 一次性綁定碼與到期時間，綁定成功後一併清空
-    lineBindingCode: {
-        type: DataTypes.STRING(16),
-        field: 'line_binding_code'
-    },
-    lineBindingExpiresAt: {
-        type: DataTypes.DATE,
-        field: 'line_binding_expires_at'
-    },
-    // 綁定建立的時間，供交接時分辨新舊。既有綁定為 NULL（無從得知，不捏造）
-    lineBoundAt: {
-        type: DataTypes.DATE,
-        field: 'line_bound_at'
-    }
-}, {
-    tableName: 'users',
-    createdAt: 'created_at',
-    updatedAt: 'updated_at'
-});
+);
 
 // 定義 Exam 模型
-const Exam = sequelize.define('Exam', {
-    id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
+const Exam = sequelize.define(
+    'Exam',
+    {
+        id: {
+            type: DataTypes.INTEGER,
+            primaryKey: true,
+            autoIncrement: true,
+        },
+        courseCode: {
+            type: DataTypes.STRING(20),
+            allowNull: false,
+            field: 'course_code',
+        },
+        courseName: {
+            type: DataTypes.STRING(100),
+            allowNull: false,
+            field: 'course_name',
+        },
+        professor: {
+            type: DataTypes.STRING(50),
+        },
+        year: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+        },
+        semester: {
+            type: DataTypes.ENUM('1', '2', 'summer'),
+            allowNull: false,
+        },
+        examType: {
+            type: DataTypes.ENUM('midterm', 'final', 'quiz'),
+            allowNull: false,
+            field: 'exam_type',
+        },
+        examAttempt: {
+            type: DataTypes.INTEGER,
+            defaultValue: 1,
+            field: 'exam_attempt',
+            validate: {
+                min: 1,
+                max: 3,
+            },
+        },
+        // 題目檔案（必要）
+        questionFilePath: {
+            type: DataTypes.STRING(500),
+            allowNull: false,
+            field: 'question_file_path',
+        },
+        questionFileName: {
+            type: DataTypes.STRING(255),
+            allowNull: false,
+            field: 'question_file_name',
+        },
+        questionFileSize: {
+            type: DataTypes.INTEGER,
+            field: 'question_file_size',
+        },
+        // 答案檔案（可選）
+        answerFilePath: {
+            type: DataTypes.STRING(500),
+            allowNull: true,
+            field: 'answer_file_path',
+        },
+        answerFileName: {
+            type: DataTypes.STRING(255),
+            allowNull: true,
+            field: 'answer_file_name',
+        },
+        answerFileSize: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            field: 'answer_file_size',
+        },
+        uploadedBy: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            field: 'uploaded_by',
+        },
+        downloadCount: {
+            type: DataTypes.INTEGER,
+            defaultValue: 0,
+            field: 'download_count',
+        },
     },
-    courseCode: {
-        type: DataTypes.STRING(20),
-        allowNull: false,
-        field: 'course_code'
+    {
+        tableName: 'exams',
+        createdAt: 'created_at',
+        updatedAt: false,
     },
-    courseName: {
-        type: DataTypes.STRING(100),
-        allowNull: false,
-        field: 'course_name'
-    },
-    professor: {
-        type: DataTypes.STRING(50)
-    },
-    year: {
-        type: DataTypes.INTEGER,
-        allowNull: false
-    },
-    semester: {
-        type: DataTypes.ENUM('1', '2', 'summer'),
-        allowNull: false
-    },
-    examType: {
-        type: DataTypes.ENUM('midterm', 'final', 'quiz'),
-        allowNull: false,
-        field: 'exam_type'
-    },
-    examAttempt: {
-        type: DataTypes.INTEGER,
-        defaultValue: 1,
-        field: 'exam_attempt',
-        validate: {
-            min: 1,
-            max: 3
-        }
-    },
-    // 題目檔案（必要）
-    questionFilePath: {
-        type: DataTypes.STRING(500),
-        allowNull: false,
-        field: 'question_file_path'
-    },
-    questionFileName: {
-        type: DataTypes.STRING(255),
-        allowNull: false,
-        field: 'question_file_name'
-    },
-    questionFileSize: {
-        type: DataTypes.INTEGER,
-        field: 'question_file_size'
-    },
-    // 答案檔案（可選）
-    answerFilePath: {
-        type: DataTypes.STRING(500),
-        allowNull: true,
-        field: 'answer_file_path'
-    },
-    answerFileName: {
-        type: DataTypes.STRING(255),
-        allowNull: true,
-        field: 'answer_file_name'
-    },
-    answerFileSize: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
-        field: 'answer_file_size'
-    },
-    uploadedBy: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        field: 'uploaded_by'
-    },
-    downloadCount: {
-        type: DataTypes.INTEGER,
-        defaultValue: 0,
-        field: 'download_count'
-    }
-}, {
-    tableName: 'exams',
-    createdAt: 'created_at',
-    updatedAt: false
-});
+);
 
 // 定義 CheatSheet 模型
-const CheatSheet = sequelize.define('CheatSheet', {
-    id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
-    },
-    courseCode: {
-        type: DataTypes.STRING(20),
-        allowNull: false,
-        field: 'course_code'
-    },
-    courseName: {
-        type: DataTypes.STRING(100),
-        allowNull: false,
-        field: 'course_name'
-    },
-    title: {
-        type: DataTypes.STRING(200),
-        allowNull: false
-    },
-    description: {
-        type: DataTypes.TEXT
-    },
-    tags: {
-        type: DataTypes.TEXT,
-        get() {
-            const rawValue = this.getDataValue('tags');
-            return rawValue ? JSON.parse(rawValue) : [];
+const CheatSheet = sequelize.define(
+    'CheatSheet',
+    {
+        id: {
+            type: DataTypes.INTEGER,
+            primaryKey: true,
+            autoIncrement: true,
         },
-        set(value) {
-            this.setDataValue('tags', JSON.stringify(value || []));
-        }
+        courseCode: {
+            type: DataTypes.STRING(20),
+            allowNull: false,
+            field: 'course_code',
+        },
+        courseName: {
+            type: DataTypes.STRING(100),
+            allowNull: false,
+            field: 'course_name',
+        },
+        title: {
+            type: DataTypes.STRING(200),
+            allowNull: false,
+        },
+        description: {
+            type: DataTypes.TEXT,
+        },
+        tags: {
+            type: DataTypes.TEXT,
+            get() {
+                const rawValue = this.getDataValue('tags');
+                return rawValue ? JSON.parse(rawValue) : [];
+            },
+            set(value) {
+                this.setDataValue('tags', JSON.stringify(value || []));
+            },
+        },
+        filePath: {
+            type: DataTypes.STRING(500),
+            allowNull: false,
+            field: 'file_path',
+        },
+        fileName: {
+            type: DataTypes.STRING(255),
+            allowNull: false,
+            field: 'file_name',
+        },
+        fileSize: {
+            type: DataTypes.INTEGER,
+            field: 'file_size',
+        },
+        uploadedBy: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            field: 'uploaded_by',
+        },
+        downloadCount: {
+            type: DataTypes.INTEGER,
+            defaultValue: 0,
+            field: 'download_count',
+        },
     },
-    filePath: {
-        type: DataTypes.STRING(500),
-        allowNull: false,
-        field: 'file_path'
+    {
+        tableName: 'cheat_sheets',
+        createdAt: 'created_at',
+        updatedAt: false,
     },
-    fileName: {
-        type: DataTypes.STRING(255),
-        allowNull: false,
-        field: 'file_name'
-    },
-    fileSize: {
-        type: DataTypes.INTEGER,
-        field: 'file_size'
-    },
-    uploadedBy: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        field: 'uploaded_by'
-    },
-    downloadCount: {
-        type: DataTypes.INTEGER,
-        defaultValue: 0,
-        field: 'download_count'
-    }
-}, {
-    tableName: 'cheat_sheets',
-    createdAt: 'created_at',
-    updatedAt: false
-});
+);
 
 // 定義 CourseReview 模型
-const CourseReview = sequelize.define('CourseReview', {
-    id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
+const CourseReview = sequelize.define(
+    'CourseReview',
+    {
+        id: {
+            type: DataTypes.INTEGER,
+            primaryKey: true,
+            autoIncrement: true,
+        },
+        courseCode: {
+            type: DataTypes.STRING(20),
+            allowNull: false,
+            field: 'course_code',
+        },
+        courseName: {
+            type: DataTypes.STRING(100),
+            allowNull: false,
+            field: 'course_name',
+        },
+        professor: {
+            type: DataTypes.STRING(50),
+        },
+        year: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+        },
+        semester: {
+            type: DataTypes.ENUM('1', '2', 'summer'),
+            allowNull: false,
+        },
+        quality: {
+            type: DataTypes.DECIMAL(2, 1),
+            allowNull: false,
+            validate: {
+                min: 0.5,
+                max: 5,
+            },
+        },
+        difficulty: {
+            type: DataTypes.DECIMAL(2, 1),
+            allowNull: false,
+            validate: {
+                min: 0.5,
+                max: 5,
+            },
+        },
+        sweetness: {
+            type: DataTypes.DECIMAL(2, 1),
+            allowNull: false,
+            validate: {
+                min: 0.5,
+                max: 5,
+            },
+        },
+        usefulness: {
+            type: DataTypes.DECIMAL(2, 1),
+            allowNull: false,
+            validate: {
+                min: 0.5,
+                max: 5,
+            },
+        },
+        courseContent: {
+            type: DataTypes.TEXT,
+            allowNull: false,
+            field: 'course_content',
+            validate: {
+                len: [5, 1000],
+            },
+        },
+        teachingMethod: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+            field: 'teaching_method',
+            validate: {
+                len: [0, 1000],
+            },
+        },
+        assignmentExamFormat: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+            field: 'assignment_exam_format',
+            validate: {
+                len: [0, 1000],
+            },
+        },
+        gradingBreakdown: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+            field: 'grading_breakdown',
+            validate: {
+                len: [0, 1000],
+            },
+        },
+        comment: {
+            type: DataTypes.TEXT,
+            allowNull: false,
+            validate: {
+                len: [50, 1000],
+            },
+        },
+        userId: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            field: 'user_id',
+        },
+        isAnonymous: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false,
+            field: 'is_anonymous',
+        },
+        status: {
+            type: DataTypes.ENUM('pending', 'approved', 'rejected'),
+            allowNull: false,
+            defaultValue: 'pending',
+        },
+        rejectReason: {
+            type: DataTypes.TEXT,
+            field: 'reject_reason',
+        },
+        reviewedBy: {
+            type: DataTypes.INTEGER,
+            field: 'reviewed_by',
+        },
+        // 回饋金發放狀態（只有已核准的評價才有發放意義），由總務部管理
+        isPaid: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+            field: 'is_paid',
+        },
+        paidAt: {
+            type: DataTypes.DATE,
+            field: 'paid_at',
+        },
+        paidBy: {
+            type: DataTypes.INTEGER,
+            field: 'paid_by',
+        },
+        // 發放狀態的唯一真相來源：pending（未處理）/ paid（已發放）/ declined（不發放）。
+        // isPaid 是它的鏡像，只為了讓舊版程式碼在回滾後仍能運作；兩者一律由
+        // routes/courseReviews.js 的 applyPayoutStatus() 一起寫入，不要單獨改其中一個。
+        payoutStatus: {
+            type: DataTypes.STRING(10),
+            allowNull: false,
+            defaultValue: 'pending',
+            field: 'payout_status',
+        },
+        // 回饋金名額（見 config/reviewQuota.js）。以下兩欄都是「寫一次就不再改的輸入」，
+        // 不是推導狀態——名額資格本身是每次查詢即時算出來的，沒有存在資料庫裡。
+        //
+        // 名額規則生效前就存在的評價一律豁免，避免溯及既往。只由 migration 010 寫入，
+        // 應用程式碼永遠不碰它。
+        quotaExempt: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+            field: 'quota_exempt',
+        },
+        // 被拒絕後修改重送的時間。排名用 COALESCE(requeued_at, created_at)，
+        // 讓重送的評價排到隊伍後面，不會用原本的 created_at 插隊擠掉已核准的人。
+        // 只有 rejected → pending 這條路徑會寫；保持 NULL 時等同於用 created_at。
+        requeuedAt: {
+            type: DataTypes.DATE,
+            field: 'requeued_at',
+        },
     },
-    courseCode: {
-        type: DataTypes.STRING(20),
-        allowNull: false,
-        field: 'course_code'
+    {
+        tableName: 'course_reviews',
+        createdAt: 'created_at',
+        updatedAt: 'updated_at',
     },
-    courseName: {
-        type: DataTypes.STRING(100),
-        allowNull: false,
-        field: 'course_name'
-    },
-    professor: {
-        type: DataTypes.STRING(50)
-    },
-    year: {
-        type: DataTypes.INTEGER,
-        allowNull: false
-    },
-    semester: {
-        type: DataTypes.ENUM('1', '2', 'summer'),
-        allowNull: false
-    },
-    quality: {
-        type: DataTypes.DECIMAL(2, 1),
-        allowNull: false,
-        validate: {
-            min: 0.5,
-            max: 5
-        }
-    },
-    difficulty: {
-        type: DataTypes.DECIMAL(2, 1),
-        allowNull: false,
-        validate: {
-            min: 0.5,
-            max: 5
-        }
-    },
-    sweetness: {
-        type: DataTypes.DECIMAL(2, 1),
-        allowNull: false,
-        validate: {
-            min: 0.5,
-            max: 5
-        }
-    },
-    usefulness: {
-        type: DataTypes.DECIMAL(2, 1),
-        allowNull: false,
-        validate: {
-            min: 0.5,
-            max: 5
-        }
-    },
-    courseContent: {
-        type: DataTypes.TEXT,
-        allowNull: false,
-        field: 'course_content',
-        validate: {
-            len: [5, 1000]
-        }
-    },
-    teachingMethod: {
-        type: DataTypes.TEXT,
-        allowNull: true,
-        field: 'teaching_method',
-        validate: {
-            len: [0, 1000]
-        }
-    },
-    assignmentExamFormat: {
-        type: DataTypes.TEXT,
-        allowNull: true,
-        field: 'assignment_exam_format',
-        validate: {
-            len: [0, 1000]
-        }
-    },
-    gradingBreakdown: {
-        type: DataTypes.TEXT,
-        allowNull: true,
-        field: 'grading_breakdown',
-        validate: {
-            len: [0, 1000]
-        }
-    },
-    comment: {
-        type: DataTypes.TEXT,
-        allowNull: false,
-        validate: {
-            len: [50, 1000]
-        }
-    },
-    userId: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        field: 'user_id'
-    },
-    isAnonymous: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: false,
-        field: 'is_anonymous'
-    },
-    status: {
-        type: DataTypes.ENUM('pending', 'approved', 'rejected'),
-        allowNull: false,
-        defaultValue: 'pending'
-    },
-    rejectReason: {
-        type: DataTypes.TEXT,
-        field: 'reject_reason'
-    },
-    reviewedBy: {
-        type: DataTypes.INTEGER,
-        field: 'reviewed_by'
-    },
-    // 回饋金發放狀態（只有已核准的評價才有發放意義），由總務部管理
-    isPaid: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: false,
-        field: 'is_paid'
-    },
-    paidAt: {
-        type: DataTypes.DATE,
-        field: 'paid_at'
-    },
-    paidBy: {
-        type: DataTypes.INTEGER,
-        field: 'paid_by'
-    },
-    // 發放狀態的唯一真相來源：pending（未處理）/ paid（已發放）/ declined（不發放）。
-    // isPaid 是它的鏡像，只為了讓舊版程式碼在回滾後仍能運作；兩者一律由
-    // routes/courseReviews.js 的 applyPayoutStatus() 一起寫入，不要單獨改其中一個。
-    payoutStatus: {
-        type: DataTypes.STRING(10),
-        allowNull: false,
-        defaultValue: 'pending',
-        field: 'payout_status'
-    },
-    // 回饋金名額（見 config/reviewQuota.js）。以下兩欄都是「寫一次就不再改的輸入」，
-    // 不是推導狀態——名額資格本身是每次查詢即時算出來的，沒有存在資料庫裡。
-    //
-    // 名額規則生效前就存在的評價一律豁免，避免溯及既往。只由 migration 010 寫入，
-    // 應用程式碼永遠不碰它。
-    quotaExempt: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: false,
-        field: 'quota_exempt'
-    },
-    // 被拒絕後修改重送的時間。排名用 COALESCE(requeued_at, created_at)，
-    // 讓重送的評價排到隊伍後面，不會用原本的 created_at 插隊擠掉已核准的人。
-    // 只有 rejected → pending 這條路徑會寫；保持 NULL 時等同於用 created_at。
-    requeuedAt: {
-        type: DataTypes.DATE,
-        field: 'requeued_at'
-    }
-}, {
-    tableName: 'course_reviews',
-    createdAt: 'created_at',
-    updatedAt: 'updated_at'
-});
+);
 
 // 定義 Course 模型
-const Course = sequelize.define('Course', {
-    id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
+const Course = sequelize.define(
+    'Course',
+    {
+        id: {
+            type: DataTypes.INTEGER,
+            primaryKey: true,
+            autoIncrement: true,
+        },
+        courseCode: {
+            type: DataTypes.STRING(20),
+            unique: true,
+            allowNull: false,
+            field: 'course_code',
+        },
+        courseName: {
+            type: DataTypes.STRING(100),
+            allowNull: false,
+            field: 'course_name',
+        },
+        credits: {
+            type: DataTypes.INTEGER,
+        },
+        type: {
+            type: DataTypes.ENUM('required', 'elective'),
+        },
+        department: {
+            type: DataTypes.STRING(50),
+        },
     },
-    courseCode: {
-        type: DataTypes.STRING(20),
-        unique: true,
-        allowNull: false,
-        field: 'course_code'
+    {
+        tableName: 'courses',
+        createdAt: 'created_at',
+        updatedAt: false,
     },
-    courseName: {
-        type: DataTypes.STRING(100),
-        allowNull: false,
-        field: 'course_name'
-    },
-    credits: {
-        type: DataTypes.INTEGER
-    },
-    type: {
-        type: DataTypes.ENUM('required', 'elective')
-    },
-    department: {
-        type: DataTypes.STRING(50)
-    }
-}, {
-    tableName: 'courses',
-    createdAt: 'created_at',
-    updatedAt: false
-});
+);
 
 // 定義 CourseCatalog 模型：台大課程目錄（從 NOL 抓來的課程名稱/代碼/教授/學期），
 // 純唯讀查詢用，供「寫課程評價」表單的課程名稱自動完成下拉選單使用，不跟其他表建立關聯
-const CourseCatalog = sequelize.define('CourseCatalog', {
-    id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
+const CourseCatalog = sequelize.define(
+    'CourseCatalog',
+    {
+        id: {
+            type: DataTypes.INTEGER,
+            primaryKey: true,
+            autoIncrement: true,
+        },
+        courseCode: {
+            type: DataTypes.STRING(20),
+            allowNull: false,
+            field: 'course_code',
+        },
+        courseName: {
+            type: DataTypes.STRING(100),
+            allowNull: false,
+            field: 'course_name',
+        },
+        professor: {
+            type: DataTypes.STRING(50),
+        },
+        year: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+        },
+        semester: {
+            type: DataTypes.ENUM('1', '2', 'summer'),
+            allowNull: false,
+        },
+        departmentCode: {
+            type: DataTypes.STRING(10),
+            field: 'department_code',
+        },
+        departmentName: {
+            type: DataTypes.STRING(50),
+            field: 'department_name',
+        },
+        // 修別，由爬蟲從 NOL 結果表第 9 欄（必/選修）正規化而來。
+        // NULL = 還沒被新版爬蟲抓過，一律當「其他」處理（見 config/reviewQuota.js）。
+        // 刻意不用 ENUM：SQLite 上 Sequelize 的 ENUM 只是加 CHECK，
+        // 而這個欄位的值域可能隨 NOL 頁面改變，用字串比較不會卡住遷移。
+        requirement: {
+            type: DataTypes.STRING(10),
+        },
+        // 授課對象是否為資管系／資管所。必選修在 NOL 上是相對於授課對象的屬性，
+        // 所以「是不是資管的課」必須跟修別一起存，只有其中一個沒有意義。
+        isImTarget: {
+            type: DataTypes.BOOLEAN,
+            field: 'is_im_target',
+        },
     },
-    courseCode: {
-        type: DataTypes.STRING(20),
-        allowNull: false,
-        field: 'course_code'
+    {
+        tableName: 'course_catalog',
+        createdAt: 'created_at',
+        updatedAt: 'updated_at',
+        indexes: [
+            // 對應資料庫層的 UNIQUE(course_code, professor, year, semester)，
+            // 讓 CourseCatalog.upsert() 在 SQLite 上能正確找到衝突目標（ON CONFLICT）
+            { unique: true, fields: ['course_code', 'professor', 'year', 'semester'] },
+        ],
     },
-    courseName: {
-        type: DataTypes.STRING(100),
-        allowNull: false,
-        field: 'course_name'
-    },
-    professor: {
-        type: DataTypes.STRING(50)
-    },
-    year: {
-        type: DataTypes.INTEGER,
-        allowNull: false
-    },
-    semester: {
-        type: DataTypes.ENUM('1', '2', 'summer'),
-        allowNull: false
-    },
-    departmentCode: {
-        type: DataTypes.STRING(10),
-        field: 'department_code'
-    },
-    departmentName: {
-        type: DataTypes.STRING(50),
-        field: 'department_name'
-    },
-    // 修別，由爬蟲從 NOL 結果表第 9 欄（必/選修）正規化而來。
-    // NULL = 還沒被新版爬蟲抓過，一律當「其他」處理（見 config/reviewQuota.js）。
-    // 刻意不用 ENUM：SQLite 上 Sequelize 的 ENUM 只是加 CHECK，
-    // 而這個欄位的值域可能隨 NOL 頁面改變，用字串比較不會卡住遷移。
-    requirement: {
-        type: DataTypes.STRING(10)
-    },
-    // 授課對象是否為資管系／資管所。必選修在 NOL 上是相對於授課對象的屬性，
-    // 所以「是不是資管的課」必須跟修別一起存，只有其中一個沒有意義。
-    isImTarget: {
-        type: DataTypes.BOOLEAN,
-        field: 'is_im_target'
-    }
-}, {
-    tableName: 'course_catalog',
-    createdAt: 'created_at',
-    updatedAt: 'updated_at',
-    indexes: [
-        // 對應資料庫層的 UNIQUE(course_code, professor, year, semester)，
-        // 讓 CourseCatalog.upsert() 在 SQLite 上能正確找到衝突目標（ON CONFLICT）
-        { unique: true, fields: ['course_code', 'professor', 'year', 'semester'] }
-    ]
-});
+);
 
 // ---------------------------------------------------------------------------
 // 身分組與模組存取控制
 // 權限「種類」定義在 config/permissions.js，這裡只存「哪個身分組持有哪些權限字串」
 // ---------------------------------------------------------------------------
-const Role = sequelize.define('Role', {
-    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    key: { type: DataTypes.STRING(50), allowNull: false, unique: true },
-    name: { type: DataTypes.STRING(50), allowNull: false },
-    description: { type: DataTypes.TEXT },
-    color: { type: DataTypes.STRING(20) },
-    priority: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
-    // 內建身分組，不允許刪除或改 key
-    isSystem: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false, field: 'is_system' },
-    // 成員資格由系統自動推導，不可手動指派（目前只有「會員」＝已繳費）
-    isAuto: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false, field: 'is_auto' }
-}, { tableName: 'roles', createdAt: 'created_at', updatedAt: 'updated_at' });
+const Role = sequelize.define(
+    'Role',
+    {
+        id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+        key: { type: DataTypes.STRING(50), allowNull: false, unique: true },
+        name: { type: DataTypes.STRING(50), allowNull: false },
+        description: { type: DataTypes.TEXT },
+        color: { type: DataTypes.STRING(20) },
+        priority: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+        // 內建身分組，不允許刪除或改 key
+        isSystem: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+            field: 'is_system',
+        },
+        // 成員資格由系統自動推導，不可手動指派（目前只有「會員」＝已繳費）
+        isAuto: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+            field: 'is_auto',
+        },
+    },
+    { tableName: 'roles', createdAt: 'created_at', updatedAt: 'updated_at' },
+);
 
-const RolePermission = sequelize.define('RolePermission', {
-    roleId: { type: DataTypes.INTEGER, primaryKey: true, field: 'role_id' },
-    permission: { type: DataTypes.STRING(50), primaryKey: true }
-}, { tableName: 'role_permissions', timestamps: false });
+const RolePermission = sequelize.define(
+    'RolePermission',
+    {
+        roleId: { type: DataTypes.INTEGER, primaryKey: true, field: 'role_id' },
+        permission: { type: DataTypes.STRING(50), primaryKey: true },
+    },
+    { tableName: 'role_permissions', timestamps: false },
+);
 
-const UserRole = sequelize.define('UserRole', {
-    userId: { type: DataTypes.INTEGER, primaryKey: true, field: 'user_id' },
-    roleId: { type: DataTypes.INTEGER, primaryKey: true, field: 'role_id' },
-    grantedBy: { type: DataTypes.INTEGER, field: 'granted_by' }
-}, { tableName: 'user_roles', createdAt: 'granted_at', updatedAt: false });
+const UserRole = sequelize.define(
+    'UserRole',
+    {
+        userId: { type: DataTypes.INTEGER, primaryKey: true, field: 'user_id' },
+        roleId: { type: DataTypes.INTEGER, primaryKey: true, field: 'role_id' },
+        grantedBy: { type: DataTypes.INTEGER, field: 'granted_by' },
+    },
+    { tableName: 'user_roles', createdAt: 'granted_at', updatedAt: false },
+);
 
-const Module = sequelize.define('Module', {
-    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    key: { type: DataTypes.STRING(50), allowNull: false, unique: true },
-    name: { type: DataTypes.STRING(50), allowNull: false },
-    description: { type: DataTypes.TEXT },
-    visibility: { type: DataTypes.ENUM('public', 'restricted'), allowNull: false, defaultValue: 'public' },
-    // 受限時，無權限者是否仍在選單看得到入口（標示「即將推出」）
-    showWhenRestricted: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true, field: 'show_when_restricted' }
-}, { tableName: 'modules', createdAt: 'created_at', updatedAt: 'updated_at' });
+const Module = sequelize.define(
+    'Module',
+    {
+        id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+        key: { type: DataTypes.STRING(50), allowNull: false, unique: true },
+        name: { type: DataTypes.STRING(50), allowNull: false },
+        description: { type: DataTypes.TEXT },
+        visibility: {
+            type: DataTypes.ENUM('public', 'restricted'),
+            allowNull: false,
+            defaultValue: 'public',
+        },
+        // 受限時，無權限者是否仍在選單看得到入口（標示「即將推出」）
+        showWhenRestricted: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: true,
+            field: 'show_when_restricted',
+        },
+    },
+    { tableName: 'modules', createdAt: 'created_at', updatedAt: 'updated_at' },
+);
 
-const ModuleAccess = sequelize.define('ModuleAccess', {
-    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    moduleId: { type: DataTypes.INTEGER, allowNull: false, field: 'module_id' },
-    roleId: { type: DataTypes.INTEGER, field: 'role_id' },
-    userId: { type: DataTypes.INTEGER, field: 'user_id' }
-}, { tableName: 'module_access', createdAt: 'created_at', updatedAt: false });
+const ModuleAccess = sequelize.define(
+    'ModuleAccess',
+    {
+        id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+        moduleId: { type: DataTypes.INTEGER, allowNull: false, field: 'module_id' },
+        roleId: { type: DataTypes.INTEGER, field: 'role_id' },
+        userId: { type: DataTypes.INTEGER, field: 'user_id' },
+    },
+    { tableName: 'module_access', createdAt: 'created_at', updatedAt: false },
+);
 
 // 站上公告
-const Announcement = sequelize.define('Announcement', {
-    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    title: { type: DataTypes.STRING(200), allowNull: false },
-    body: { type: DataTypes.TEXT, allowNull: false },
-    level: { type: DataTypes.ENUM('info', 'important'), allowNull: false, defaultValue: 'info' },
-    enabled: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
-    // 一律存 UTC。NULL 代表該側不限制。
-    publishAt: { type: DataTypes.DATE, field: 'publish_at' },
-    expireAt: { type: DataTypes.DATE, field: 'expire_at' },
-    createdBy: { type: DataTypes.INTEGER, field: 'created_by' }
-}, { tableName: 'announcements', createdAt: 'created_at', updatedAt: 'updated_at' });
+const Announcement = sequelize.define(
+    'Announcement',
+    {
+        id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+        title: { type: DataTypes.STRING(200), allowNull: false },
+        body: { type: DataTypes.TEXT, allowNull: false },
+        level: {
+            type: DataTypes.ENUM('info', 'important'),
+            allowNull: false,
+            defaultValue: 'info',
+        },
+        enabled: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+        // 一律存 UTC。NULL 代表該側不限制。
+        publishAt: { type: DataTypes.DATE, field: 'publish_at' },
+        expireAt: { type: DataTypes.DATE, field: 'expire_at' },
+        createdBy: { type: DataTypes.INTEGER, field: 'created_by' },
+    },
+    { tableName: 'announcements', createdAt: 'created_at', updatedAt: 'updated_at' },
+);
 
 // 「不要再提醒」：沒有記錄就代表沒關過，所以不需要為新公告預先建列
-const AnnouncementDismissal = sequelize.define('AnnouncementDismissal', {
-    announcementId: { type: DataTypes.INTEGER, primaryKey: true, field: 'announcement_id' },
-    userId: { type: DataTypes.INTEGER, primaryKey: true, field: 'user_id' },
-    dismissedAt: { type: DataTypes.DATE, field: 'dismissed_at', defaultValue: DataTypes.NOW }
-}, { tableName: 'announcement_dismissals', timestamps: false });
+const AnnouncementDismissal = sequelize.define(
+    'AnnouncementDismissal',
+    {
+        announcementId: { type: DataTypes.INTEGER, primaryKey: true, field: 'announcement_id' },
+        userId: { type: DataTypes.INTEGER, primaryKey: true, field: 'user_id' },
+        dismissedAt: { type: DataTypes.DATE, field: 'dismissed_at', defaultValue: DataTypes.NOW },
+    },
+    { tableName: 'announcement_dismissals', timestamps: false },
+);
 
 // 匿名意見回饋。
 //
 // ⚠️ 這個模型刻意沒有 userId，也沒有任何指向 User 的關聯——不要加。
 // 匿名若只是介面上的承諾，遲早會有人為了追查而去讀那個欄位。
 // 唯一可靠的保證是資料庫裡根本沒有它。詳見 migrations/010_create_feedback.sql。
-const Feedback = sequelize.define('Feedback', {
-    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    category: { type: DataTypes.ENUM('bug', 'suggestion', 'other'), allowNull: false, defaultValue: 'other' },
-    body: { type: DataTypes.TEXT, allowNull: false },
-    status: { type: DataTypes.ENUM('new', 'read', 'resolved'), allowNull: false, defaultValue: 'new' },
-    adminNote: { type: DataTypes.TEXT, field: 'admin_note' }
-}, { tableName: 'feedback', createdAt: 'created_at', updatedAt: 'updated_at' });
+const Feedback = sequelize.define(
+    'Feedback',
+    {
+        id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+        category: {
+            type: DataTypes.ENUM('bug', 'suggestion', 'other'),
+            allowNull: false,
+            defaultValue: 'other',
+        },
+        body: { type: DataTypes.TEXT, allowNull: false },
+        status: {
+            type: DataTypes.ENUM('new', 'read', 'resolved'),
+            allowNull: false,
+            defaultValue: 'new',
+        },
+        adminNote: { type: DataTypes.TEXT, field: 'admin_note' },
+    },
+    { tableName: 'feedback', createdAt: 'created_at', updatedAt: 'updated_at' },
+);
 
 // 定義關聯
-User.belongsToMany(Role, { through: UserRole, foreignKey: 'user_id', otherKey: 'role_id', as: 'roles' });
-Role.belongsToMany(User, { through: UserRole, foreignKey: 'role_id', otherKey: 'user_id', as: 'users' });
+User.belongsToMany(Role, {
+    through: UserRole,
+    foreignKey: 'user_id',
+    otherKey: 'role_id',
+    as: 'roles',
+});
+Role.belongsToMany(User, {
+    through: UserRole,
+    foreignKey: 'role_id',
+    otherKey: 'user_id',
+    as: 'users',
+});
 Role.hasMany(RolePermission, { foreignKey: 'role_id', as: 'permissions' });
 RolePermission.belongsTo(Role, { foreignKey: 'role_id', as: 'role' });
 Module.hasMany(ModuleAccess, { foreignKey: 'module_id', as: 'accessRules' });
@@ -607,7 +704,10 @@ ModuleAccess.belongsTo(Module, { foreignKey: 'module_id', as: 'module' });
 
 Announcement.belongsTo(User, { foreignKey: 'created_by', as: 'author' });
 Announcement.hasMany(AnnouncementDismissal, { foreignKey: 'announcement_id', as: 'dismissals' });
-AnnouncementDismissal.belongsTo(Announcement, { foreignKey: 'announcement_id', as: 'announcement' });
+AnnouncementDismissal.belongsTo(Announcement, {
+    foreignKey: 'announcement_id',
+    as: 'announcement',
+});
 ModuleAccess.belongsTo(Role, { foreignKey: 'role_id', as: 'role' });
 ModuleAccess.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
@@ -648,5 +748,5 @@ module.exports = {
     Announcement,
     AnnouncementDismissal,
     Feedback,
-    testConnection
+    testConnection,
 };

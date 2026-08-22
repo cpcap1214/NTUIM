@@ -96,12 +96,21 @@ const AnnouncementDialog = () => {
                         <Box key={announcement.id}>
                             {index > 0 && <Divider sx={{ mb: 2.5 }} />}
 
-                            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.75 }}>
+                            <Stack
+                                direction="row"
+                                spacing={1}
+                                alignItems="center"
+                                sx={{ mb: 0.75 }}
+                            >
                                 <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                                     {announcement.title}
                                 </Typography>
                                 {announcement.level === 'important' && (
-                                    <Chip label={t('announcement.important')} color="error" size="small" />
+                                    <Chip
+                                        label={t('announcement.important')}
+                                        color="error"
+                                        size="small"
+                                    />
                                 )}
                             </Stack>
 

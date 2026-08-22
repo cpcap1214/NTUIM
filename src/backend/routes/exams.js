@@ -4,94 +4,123 @@ const path = require('path');
 const fs = require('fs');
 const { body, validationResult, query } = require('express-validator');
 const { Exam, User } = require('../models');
-const { authenticateToken, requirePermission, isOwnerOrHasPermission } = require('../middleware/auth');
+const {
+    authenticateToken,
+    requirePermission,
+    isOwnerOrHasPermission,
+} = require('../middleware/auth');
 const { adminUpload, handleUploadError } = require('../middleware/upload');
 const { Op } = require('sequelize');
 
 // 取得考古題列表（公開）
-router.get('/', [
-    query('courseCode').optional().isString(),
-    query('year').optional().isInt(),
-    query('semester').optional().isIn(['1', '2', 'summer']),
-    query('examType').optional().isIn(['midterm', 'final', 'quiz']),
-    query('page').optional().isInt({ min: 1 }),
-    query('limit').optional().isInt({ min: 1, max: 10000 })
-], async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
+router.get(
+    '/',
+    [
+        query('courseCode').optional().isString(),
+        query('year').optional().isInt(),
+        query('semester').optional().isIn(['1', '2', 'summer']),
+        query('examType').optional().isIn(['midterm', 'final', 'quiz']),
+        query('page').optional().isInt({ min: 1 }),
+        query('limit').optional().isInt({ min: 1, max: 10000 }),
+    ],
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
 
-    try {
-        const {
-            courseCode,
-            year,
-            semester,
-            examType,
-            page = 1,
-            limit = 20
-        } = req.query;
+        try {
+            const { courseCode, year, semester, examType, page = 1, limit = 20 } = req.query;
 
-        // 建立查詢條件
-        const where = {};
-        if (courseCode) where.courseCode = { [Op.like]: `%${courseCode}%` };
-        if (year) where.year = year;
-        if (semester) where.semester = semester;
-        if (examType) where.examType = examType;
+            // 建立查詢條件
+            const where = {};
+            if (courseCode) where.courseCode = { [Op.like]: `%${courseCode}%` };
+            if (year) where.year = year;
+            if (semester) where.semester = semester;
+            if (examType) where.examType = examType;
 
-        // 查詢考古題。
-        // ⚠️ 必須明確列出欄位：這是公開端點，先前沒有白名單、直接回傳整列，
-        // 連 question_file_path / answer_file_path 都送出去。搭配當時公開的
-        // /uploads 靜態服務，任何人都能列出檔案路徑再直接抓檔，完全繞過付費牆。
-        // 檔案路徑一律不出伺服器，取檔只能走有認證的 preview / download 端點。
-        const { count, rows } = await Exam.findAndCountAll({
-            where,
-            attributes: [
-                'id', 'courseCode', 'courseName', 'professor', 'year', 'semester',
-                'examType', 'examAttempt', 'questionFileName', 'questionFileSize',
-                'answerFileName', 'answerFileSize', 'uploadedBy', 'downloadCount', 'created_at'
-            ],
-            include: [{
-                model: User,
-                as: 'uploader',
-                attributes: ['username', 'fullName']
-            }],
-            order: [['created_at', 'DESC']],
-            limit: parseInt(limit),
-            offset: (parseInt(page) - 1) * parseInt(limit)
-        });
+            // 查詢考古題。
+            // ⚠️ 必須明確列出欄位：這是公開端點，先前沒有白名單、直接回傳整列，
+            // 連 question_file_path / answer_file_path 都送出去。搭配當時公開的
+            // /uploads 靜態服務，任何人都能列出檔案路徑再直接抓檔，完全繞過付費牆。
+            // 檔案路徑一律不出伺服器，取檔只能走有認證的 preview / download 端點。
+            const { count, rows } = await Exam.findAndCountAll({
+                where,
+                attributes: [
+                    'id',
+                    'courseCode',
+                    'courseName',
+                    'professor',
+                    'year',
+                    'semester',
+                    'examType',
+                    'examAttempt',
+                    'questionFileName',
+                    'questionFileSize',
+                    'answerFileName',
+                    'answerFileSize',
+                    'uploadedBy',
+                    'downloadCount',
+                    'created_at',
+                ],
+                include: [
+                    {
+                        model: User,
+                        as: 'uploader',
+                        attributes: ['username', 'fullName'],
+                    },
+                ],
+                order: [['created_at', 'DESC']],
+                limit: parseInt(limit),
+                offset: (parseInt(page) - 1) * parseInt(limit),
+            });
 
-        res.json({
-            data: rows,
-            pagination: {
-                total: count,
-                page: parseInt(page),
-                pages: Math.ceil(count / limit)
-            }
-        });
-    } catch (error) {
-        console.error('取得考古題列表錯誤:', error);
-        res.status(500).json({ error: '取得考古題失敗', errorCode: 'FETCH_EXAMS_FAILED' });
-    }
-});
+            res.json({
+                data: rows,
+                pagination: {
+                    total: count,
+                    page: parseInt(page),
+                    pages: Math.ceil(count / limit),
+                },
+            });
+        } catch (error) {
+            console.error('取得考古題列表錯誤:', error);
+            res.status(500).json({ error: '取得考古題失敗', errorCode: 'FETCH_EXAMS_FAILED' });
+        }
+    },
+);
 
 // 上傳考古題（只有管理員可以上傳）
-router.post('/upload', 
+router.post(
+    '/upload',
     authenticateToken,
     requirePermission('exams.upload'),
     adminUpload.fields([
         { name: 'questionFile', maxCount: 1 },
-        { name: 'answerFile', maxCount: 1 }
+        { name: 'answerFile', maxCount: 1 },
     ]),
     handleUploadError,
     [
-        body('courseCode').notEmpty().withMessage({ code: 'COURSE_CODE_REQUIRED', message: '課號為必填' }),
-        body('courseName').notEmpty().withMessage({ code: 'COURSE_NAME_REQUIRED', message: '課程名稱為必填' }),
-        body('year').isInt({ min: 2000, max: 2100 }).withMessage({ code: 'YEAR_INVALID', message: '請輸入有效年份' }),
-        body('semester').isIn(['1', '2', 'summer']).withMessage({ code: 'SEMESTER_REQUIRED', message: '請選擇學期' }),
-        body('examType').isIn(['midterm', 'final', 'quiz']).withMessage({ code: 'EXAM_TYPE_REQUIRED', message: '請選擇考試類型' }),
-        body('examAttempt').optional().isInt({ min: 1, max: 3 }).withMessage({ code: 'EXAM_ATTEMPT_RANGE', message: '考試次數須為 1-3' }),
-        body('professor').optional().isString()
+        body('courseCode')
+            .notEmpty()
+            .withMessage({ code: 'COURSE_CODE_REQUIRED', message: '課號為必填' }),
+        body('courseName')
+            .notEmpty()
+            .withMessage({ code: 'COURSE_NAME_REQUIRED', message: '課程名稱為必填' }),
+        body('year')
+            .isInt({ min: 2000, max: 2100 })
+            .withMessage({ code: 'YEAR_INVALID', message: '請輸入有效年份' }),
+        body('semester')
+            .isIn(['1', '2', 'summer'])
+            .withMessage({ code: 'SEMESTER_REQUIRED', message: '請選擇學期' }),
+        body('examType')
+            .isIn(['midterm', 'final', 'quiz'])
+            .withMessage({ code: 'EXAM_TYPE_REQUIRED', message: '請選擇考試類型' }),
+        body('examAttempt')
+            .optional()
+            .isInt({ min: 1, max: 3 })
+            .withMessage({ code: 'EXAM_ATTEMPT_RANGE', message: '考試次數須為 1-3' }),
+        body('professor').optional().isString(),
     ],
     async (req, res) => {
         const errors = validationResult(req);
@@ -109,7 +138,9 @@ router.post('/upload',
         }
 
         if (!req.files || !req.files.questionFile) {
-            return res.status(400).json({ error: '請選擇要上傳的題目檔案', errorCode: 'QUESTION_FILE_REQUIRED' });
+            return res
+                .status(400)
+                .json({ error: '請選擇要上傳的題目檔案', errorCode: 'QUESTION_FILE_REQUIRED' });
         }
 
         try {
@@ -120,18 +151,22 @@ router.post('/upload',
                 semester,
                 examType,
                 examAttempt = 1,
-                professor
+                professor,
             } = req.body;
 
             const questionFile = req.files.questionFile[0];
             const answerFile = req.files.answerFile ? req.files.answerFile[0] : null;
 
             // 建立考古題記錄 - 使用修正編碼後的檔名
-            const questionFileName = req.fileInfo?.questionFile?.originalName || questionFile.originalname;
-            const answerFileName = answerFile && req.fileInfo?.answerFile?.originalName 
-                ? req.fileInfo.answerFile.originalName 
-                : (answerFile ? answerFile.originalname : null);
-                
+            const questionFileName =
+                req.fileInfo?.questionFile?.originalName || questionFile.originalname;
+            const answerFileName =
+                answerFile && req.fileInfo?.answerFile?.originalName
+                    ? req.fileInfo.answerFile.originalName
+                    : answerFile
+                      ? answerFile.originalname
+                      : null;
+
             const exam = await Exam.create({
                 courseCode,
                 courseName,
@@ -146,12 +181,12 @@ router.post('/upload',
                 answerFilePath: answerFile ? answerFile.path : null,
                 answerFileName: answerFileName, // 使用修正編碼的檔名
                 answerFileSize: answerFile ? answerFile.size : null,
-                uploadedBy: req.user.id
+                uploadedBy: req.user.id,
             });
 
             res.status(201).json({
                 message: '考古題上傳成功',
-                data: exam
+                data: exam,
             });
         } catch (error) {
             // 刪除已上傳的檔案
@@ -166,159 +201,220 @@ router.post('/upload',
             console.error('上傳考古題錯誤:', error);
             res.status(500).json({ error: '上傳失敗', errorCode: 'UPLOAD_FAILED' });
         }
-    }
+    },
 );
 
 // 下載考古題（需登入且繳費）
 // 預覽考古題題目（需要繳費）
-router.get('/:id/preview/question', authenticateToken, requirePermission('exams.download'), async (req, res) => {
-    try {
-        const exam = await Exam.findByPk(req.params.id);
-        
-        if (!exam) {
-            return res.status(404).json({ error: '考古題不存在', errorCode: 'EXAM_NOT_FOUND' });
-        }
+router.get(
+    '/:id/preview/question',
+    authenticateToken,
+    requirePermission('exams.download'),
+    async (req, res) => {
+        try {
+            const exam = await Exam.findByPk(req.params.id);
 
-        const filePath = path.resolve(exam.questionFilePath);
-        
-        // 檢查檔案是否存在
-        if (!fs.existsSync(filePath)) {
-            console.error('考古題檔案不存在:', filePath);
-            return res.status(404).json({ error: '考古題檔案不存在', errorCode: 'EXAM_FILE_NOT_FOUND' });
-        }
+            if (!exam) {
+                return res.status(404).json({ error: '考古題不存在', errorCode: 'EXAM_NOT_FOUND' });
+            }
 
-        // 設定為在線預覽（而非下載）
-        res.setHeader('Content-Type', 'application/pdf');
-        // 使用 RFC 5987 標準處理中文檔名
-        const encodedFilename = encodeURIComponent(exam.questionFileName);
-        res.setHeader('Content-Disposition', `inline; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`);
-        
-        // 傳送檔案
-        const fileStream = fs.createReadStream(filePath);
-        fileStream.pipe(res);
-        
-    } catch (error) {
-        console.error('預覽考古題錯誤:', error);
-        res.status(500).json({ error: '預覽失敗，請稍後再試', errorCode: 'PREVIEW_FAILED' });
-    }
-});
+            const filePath = path.resolve(exam.questionFilePath);
+
+            // 檢查檔案是否存在
+            if (!fs.existsSync(filePath)) {
+                console.error('考古題檔案不存在:', filePath);
+                return res
+                    .status(404)
+                    .json({ error: '考古題檔案不存在', errorCode: 'EXAM_FILE_NOT_FOUND' });
+            }
+
+            // 設定為在線預覽（而非下載）
+            res.setHeader('Content-Type', 'application/pdf');
+            // 使用 RFC 5987 標準處理中文檔名
+            const encodedFilename = encodeURIComponent(exam.questionFileName);
+            res.setHeader(
+                'Content-Disposition',
+                `inline; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`,
+            );
+
+            // 傳送檔案
+            const fileStream = fs.createReadStream(filePath);
+            fileStream.pipe(res);
+        } catch (error) {
+            console.error('預覽考古題錯誤:', error);
+            res.status(500).json({ error: '預覽失敗，請稍後再試', errorCode: 'PREVIEW_FAILED' });
+        }
+    },
+);
 
 // 預覽考古題答案（需要繳費）
-router.get('/:id/preview/answer', authenticateToken, requirePermission('exams.download'), async (req, res) => {
-    try {
-        const exam = await Exam.findByPk(req.params.id);
-        
-        if (!exam) {
-            return res.status(404).json({ error: '考古題不存在', errorCode: 'EXAM_NOT_FOUND' });
-        }
+router.get(
+    '/:id/preview/answer',
+    authenticateToken,
+    requirePermission('exams.download'),
+    async (req, res) => {
+        try {
+            const exam = await Exam.findByPk(req.params.id);
 
-        if (!exam.answerFilePath) {
-            return res.status(404).json({ error: '此考古題沒有答案檔案', errorCode: 'EXAM_HAS_NO_ANSWER' });
-        }
+            if (!exam) {
+                return res.status(404).json({ error: '考古題不存在', errorCode: 'EXAM_NOT_FOUND' });
+            }
 
-        const filePath = path.resolve(exam.answerFilePath);
-        
-        // 檢查檔案是否存在
-        if (!fs.existsSync(filePath)) {
-            console.error('答案檔案不存在:', filePath);
-            return res.status(404).json({ error: '答案檔案不存在', errorCode: 'ANSWER_FILE_NOT_FOUND' });
-        }
+            if (!exam.answerFilePath) {
+                return res
+                    .status(404)
+                    .json({ error: '此考古題沒有答案檔案', errorCode: 'EXAM_HAS_NO_ANSWER' });
+            }
 
-        // 設定為在線預覽（而非下載）
-        res.setHeader('Content-Type', 'application/pdf');
-        // 使用 RFC 5987 標準處理中文檔名
-        const encodedFilename = encodeURIComponent(exam.answerFileName);
-        res.setHeader('Content-Disposition', `inline; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`);
-        
-        // 傳送檔案
-        const fileStream = fs.createReadStream(filePath);
-        fileStream.pipe(res);
-        
-    } catch (error) {
-        console.error('預覽答案錯誤:', error);
-        res.status(500).json({ error: '預覽失敗，請稍後再試', errorCode: 'PREVIEW_FAILED' });
-    }
-});
+            const filePath = path.resolve(exam.answerFilePath);
+
+            // 檢查檔案是否存在
+            if (!fs.existsSync(filePath)) {
+                console.error('答案檔案不存在:', filePath);
+                return res
+                    .status(404)
+                    .json({ error: '答案檔案不存在', errorCode: 'ANSWER_FILE_NOT_FOUND' });
+            }
+
+            // 設定為在線預覽（而非下載）
+            res.setHeader('Content-Type', 'application/pdf');
+            // 使用 RFC 5987 標準處理中文檔名
+            const encodedFilename = encodeURIComponent(exam.answerFileName);
+            res.setHeader(
+                'Content-Disposition',
+                `inline; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`,
+            );
+
+            // 傳送檔案
+            const fileStream = fs.createReadStream(filePath);
+            fileStream.pipe(res);
+        } catch (error) {
+            console.error('預覽答案錯誤:', error);
+            res.status(500).json({ error: '預覽失敗，請稍後再試', errorCode: 'PREVIEW_FAILED' });
+        }
+    },
+);
 
 // 下載考古題題目
-router.get('/:id/download/question', authenticateToken, requirePermission('exams.download'), async (req, res) => {
-    try {
-        const exam = await Exam.findByPk(req.params.id);
+router.get(
+    '/:id/download/question',
+    authenticateToken,
+    requirePermission('exams.download'),
+    async (req, res) => {
+        try {
+            const exam = await Exam.findByPk(req.params.id);
 
-        if (!exam) {
-            return res.status(404).json({ error: '考古題不存在', errorCode: 'EXAM_NOT_FOUND' });
+            if (!exam) {
+                return res.status(404).json({ error: '考古題不存在', errorCode: 'EXAM_NOT_FOUND' });
+            }
+
+            // 檢查檔案是否存在
+            if (!fs.existsSync(exam.questionFilePath)) {
+                return res
+                    .status(404)
+                    .json({ error: '題目檔案不存在', errorCode: 'QUESTION_FILE_NOT_FOUND' });
+            }
+
+            // 更新下載次數
+            exam.downloadCount += 1;
+            await exam.save();
+
+            // 設定下載標頭
+            res.setHeader('Content-Type', 'application/octet-stream');
+            // 使用 RFC 5987 標準處理中文檔名
+            const encodedFilename = encodeURIComponent(exam.questionFileName);
+            res.setHeader(
+                'Content-Disposition',
+                `attachment; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`,
+            );
+
+            // 傳送檔案
+            res.sendFile(path.resolve(exam.questionFilePath));
+        } catch (error) {
+            console.error('下載考古題題目錯誤:', error);
+            res.status(500).json({ error: '下載失敗', errorCode: 'DOWNLOAD_FAILED' });
         }
-
-        // 檢查檔案是否存在
-        if (!fs.existsSync(exam.questionFilePath)) {
-            return res.status(404).json({ error: '題目檔案不存在', errorCode: 'QUESTION_FILE_NOT_FOUND' });
-        }
-
-        // 更新下載次數
-        exam.downloadCount += 1;
-        await exam.save();
-
-        // 設定下載標頭
-        res.setHeader('Content-Type', 'application/octet-stream');
-        // 使用 RFC 5987 標準處理中文檔名
-        const encodedFilename = encodeURIComponent(exam.questionFileName);
-        res.setHeader('Content-Disposition', `attachment; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`);
-
-        // 傳送檔案
-        res.sendFile(path.resolve(exam.questionFilePath));
-    } catch (error) {
-        console.error('下載考古題題目錯誤:', error);
-        res.status(500).json({ error: '下載失敗', errorCode: 'DOWNLOAD_FAILED' });
-    }
-});
+    },
+);
 
 // 下載考古題答案
-router.get('/:id/download/answer', authenticateToken, requirePermission('exams.download'), async (req, res) => {
-    try {
-        const exam = await Exam.findByPk(req.params.id);
+router.get(
+    '/:id/download/answer',
+    authenticateToken,
+    requirePermission('exams.download'),
+    async (req, res) => {
+        try {
+            const exam = await Exam.findByPk(req.params.id);
 
-        if (!exam) {
-            return res.status(404).json({ error: '考古題不存在', errorCode: 'EXAM_NOT_FOUND' });
+            if (!exam) {
+                return res.status(404).json({ error: '考古題不存在', errorCode: 'EXAM_NOT_FOUND' });
+            }
+
+            if (!exam.answerFilePath) {
+                return res
+                    .status(404)
+                    .json({ error: '此考古題沒有答案檔案', errorCode: 'EXAM_HAS_NO_ANSWER' });
+            }
+
+            // 檢查檔案是否存在
+            if (!fs.existsSync(exam.answerFilePath)) {
+                return res
+                    .status(404)
+                    .json({ error: '答案檔案不存在', errorCode: 'ANSWER_FILE_NOT_FOUND' });
+            }
+
+            // 更新下載次數
+            exam.downloadCount += 1;
+            await exam.save();
+
+            // 設定下載標頭
+            res.setHeader('Content-Type', 'application/octet-stream');
+            // 使用 RFC 5987 標準處理中文檔名
+            const encodedFilename = encodeURIComponent(exam.answerFileName);
+            res.setHeader(
+                'Content-Disposition',
+                `attachment; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`,
+            );
+
+            // 傳送檔案
+            res.sendFile(path.resolve(exam.answerFilePath));
+        } catch (error) {
+            console.error('下載考古題答案錯誤:', error);
+            res.status(500).json({ error: '下載失敗', errorCode: 'DOWNLOAD_FAILED' });
         }
-
-        if (!exam.answerFilePath) {
-            return res.status(404).json({ error: '此考古題沒有答案檔案', errorCode: 'EXAM_HAS_NO_ANSWER' });
-        }
-
-        // 檢查檔案是否存在
-        if (!fs.existsSync(exam.answerFilePath)) {
-            return res.status(404).json({ error: '答案檔案不存在', errorCode: 'ANSWER_FILE_NOT_FOUND' });
-        }
-
-        // 更新下載次數
-        exam.downloadCount += 1;
-        await exam.save();
-
-        // 設定下載標頭
-        res.setHeader('Content-Type', 'application/octet-stream');
-        // 使用 RFC 5987 標準處理中文檔名
-        const encodedFilename = encodeURIComponent(exam.answerFileName);
-        res.setHeader('Content-Disposition', `attachment; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`);
-
-        // 傳送檔案
-        res.sendFile(path.resolve(exam.answerFilePath));
-    } catch (error) {
-        console.error('下載考古題答案錯誤:', error);
-        res.status(500).json({ error: '下載失敗', errorCode: 'DOWNLOAD_FAILED' });
-    }
-});
+    },
+);
 
 // 更新考古題資訊（只有上傳者或管理員可以更新）
-router.put('/:id',
+router.put(
+    '/:id',
     authenticateToken,
     [
-        body('courseCode').optional().notEmpty().withMessage({ code: 'COURSE_CODE_EMPTY', message: '課號不能為空' }),
-        body('courseName').optional().notEmpty().withMessage({ code: 'COURSE_NAME_EMPTY', message: '課程名稱不能為空' }),
+        body('courseCode')
+            .optional()
+            .notEmpty()
+            .withMessage({ code: 'COURSE_CODE_EMPTY', message: '課號不能為空' }),
+        body('courseName')
+            .optional()
+            .notEmpty()
+            .withMessage({ code: 'COURSE_NAME_EMPTY', message: '課程名稱不能為空' }),
         body('professor').optional().isString(),
-        body('year').optional().isInt({ min: 2000, max: 2100 }).withMessage({ code: 'YEAR_INVALID', message: '請輸入有效年份' }),
-        body('semester').optional().isIn(['1', '2', 'summer']).withMessage({ code: 'SEMESTER_REQUIRED', message: '請選擇學期' }),
-        body('examType').optional().isIn(['midterm', 'final', 'quiz']).withMessage({ code: 'EXAM_TYPE_REQUIRED', message: '請選擇考試類型' }),
-        body('examAttempt').optional().isInt({ min: 1, max: 3 }).withMessage({ code: 'EXAM_ATTEMPT_RANGE', message: '考試次數須為 1-3' })
+        body('year')
+            .optional()
+            .isInt({ min: 2000, max: 2100 })
+            .withMessage({ code: 'YEAR_INVALID', message: '請輸入有效年份' }),
+        body('semester')
+            .optional()
+            .isIn(['1', '2', 'summer'])
+            .withMessage({ code: 'SEMESTER_REQUIRED', message: '請選擇學期' }),
+        body('examType')
+            .optional()
+            .isIn(['midterm', 'final', 'quiz'])
+            .withMessage({ code: 'EXAM_TYPE_REQUIRED', message: '請選擇考試類型' }),
+        body('examAttempt')
+            .optional()
+            .isInt({ min: 1, max: 3 })
+            .withMessage({ code: 'EXAM_ATTEMPT_RANGE', message: '考試次數須為 1-3' }),
     ],
     async (req, res) => {
         const errors = validationResult(req);
@@ -335,19 +431,14 @@ router.put('/:id',
 
             // 檢查權限
             if (!isOwnerOrHasPermission(req, exam.uploadedBy, 'exams.manage')) {
-                return res.status(403).json({ error: '無權修改此考古題', errorCode: 'NO_PERMISSION_EDIT_EXAM' });
+                return res
+                    .status(403)
+                    .json({ error: '無權修改此考古題', errorCode: 'NO_PERMISSION_EDIT_EXAM' });
             }
 
             // 更新資訊
-            const {
-                courseCode,
-                courseName,
-                professor,
-                year,
-                semester,
-                examType,
-                examAttempt
-            } = req.body;
+            const { courseCode, courseName, professor, year, semester, examType, examAttempt } =
+                req.body;
 
             if (courseCode) exam.courseCode = courseCode;
             if (courseName) exam.courseName = courseName;
@@ -361,21 +452,22 @@ router.put('/:id',
 
             res.json({
                 message: '考古題資訊更新成功',
-                data: exam
+                data: exam,
             });
         } catch (error) {
             console.error('更新考古題錯誤:', error);
             res.status(500).json({ error: '更新失敗', errorCode: 'UPDATE_FAILED_GENERIC' });
         }
-    }
+    },
 );
 
 // 更新考古題檔案（只有上傳者或管理員可以更新）
-router.put('/:id/files',
+router.put(
+    '/:id/files',
     authenticateToken,
     adminUpload.fields([
         { name: 'questionFile', maxCount: 1 },
-        { name: 'answerFile', maxCount: 1 }
+        { name: 'answerFile', maxCount: 1 },
     ]),
     handleUploadError,
     async (req, res) => {
@@ -385,9 +477,11 @@ router.put('/:id/files',
             if (!exam) {
                 // 清理上傳的檔案
                 if (req.files) {
-                    Object.values(req.files).flat().forEach(file => {
-                        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
-                    });
+                    Object.values(req.files)
+                        .flat()
+                        .forEach((file) => {
+                            if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+                        });
                 }
                 return res.status(404).json({ error: '考古題不存在', errorCode: 'EXAM_NOT_FOUND' });
             }
@@ -396,11 +490,15 @@ router.put('/:id/files',
             if (!isOwnerOrHasPermission(req, exam.uploadedBy, 'exams.manage')) {
                 // 清理上傳的檔案
                 if (req.files) {
-                    Object.values(req.files).flat().forEach(file => {
-                        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
-                    });
+                    Object.values(req.files)
+                        .flat()
+                        .forEach((file) => {
+                            if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+                        });
                 }
-                return res.status(403).json({ error: '無權修改此考古題', errorCode: 'NO_PERMISSION_EDIT_EXAM' });
+                return res
+                    .status(403)
+                    .json({ error: '無權修改此考古題', errorCode: 'NO_PERMISSION_EDIT_EXAM' });
             }
 
             const questionFile = req.files?.questionFile?.[0];
@@ -414,7 +512,8 @@ router.put('/:id/files',
                 }
 
                 // 更新題目檔案資訊
-                const questionFileName = req.fileInfo?.questionFile?.originalName || questionFile.originalname;
+                const questionFileName =
+                    req.fileInfo?.questionFile?.originalName || questionFile.originalname;
                 exam.questionFilePath = questionFile.path;
                 exam.questionFileName = questionFileName;
                 exam.questionFileSize = questionFile.size;
@@ -428,7 +527,8 @@ router.put('/:id/files',
                 }
 
                 // 更新答案檔案資訊
-                const answerFileName = req.fileInfo?.answerFile?.originalName || answerFile.originalname;
+                const answerFileName =
+                    req.fileInfo?.answerFile?.originalName || answerFile.originalname;
                 exam.answerFilePath = answerFile.path;
                 exam.answerFileName = answerFileName;
                 exam.answerFileSize = answerFile.size;
@@ -448,19 +548,21 @@ router.put('/:id/files',
 
             res.json({
                 message: '考古題檔案更新成功',
-                data: exam
+                data: exam,
             });
         } catch (error) {
             // 清理上傳的檔案
             if (req.files) {
-                Object.values(req.files).flat().forEach(file => {
-                    if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
-                });
+                Object.values(req.files)
+                    .flat()
+                    .forEach((file) => {
+                        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+                    });
             }
             console.error('更新考古題檔案錯誤:', error);
             res.status(500).json({ error: '檔案更新失敗', errorCode: 'FILE_UPDATE_FAILED' });
         }
-    }
+    },
 );
 
 // 刪除考古題（只有上傳者或管理員可以刪除）
@@ -474,7 +576,9 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
         // 檢查權限
         if (!isOwnerOrHasPermission(req, exam.uploadedBy, 'exams.manage')) {
-            return res.status(403).json({ error: '無權刪除此考古題', errorCode: 'NO_PERMISSION_DELETE_EXAM' });
+            return res
+                .status(403)
+                .json({ error: '無權刪除此考古題', errorCode: 'NO_PERMISSION_DELETE_EXAM' });
         }
 
         // 刪除檔案

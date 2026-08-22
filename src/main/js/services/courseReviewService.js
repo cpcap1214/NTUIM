@@ -6,7 +6,9 @@ import i18n from '../i18n';
 // 呼叫方式下丟失綁定，所以這裡刻意不用 this。
 const metricText = (metric, value) => {
     const index = Math.min(5, Math.max(1, Math.round(value)));
-    return i18n.t(`courseReview.metricTexts.${metric}.${index}`, { defaultValue: i18n.t('common.unknown') });
+    return i18n.t(`courseReview.metricTexts.${metric}.${index}`, {
+        defaultValue: i18n.t('common.unknown'),
+    });
 };
 
 const courseReviewService = {
@@ -118,7 +120,7 @@ const courseReviewService = {
     async getAdminReviews(status) {
         try {
             const response = await api.get('/course-reviews/admin/reviews', {
-                params: status ? { status } : {}
+                params: status ? { status } : {},
             });
             return response.data;
         } catch (error) {
@@ -129,7 +131,10 @@ const courseReviewService = {
     // 審核評價：核准或拒絕（管理員）
     async reviewStatus(id, { status, rejectReason }) {
         try {
-            const response = await api.patch(`/course-reviews/${id}/status`, { status, rejectReason });
+            const response = await api.patch(`/course-reviews/${id}/status`, {
+                status,
+                rejectReason,
+            });
             return response.data;
         } catch (error) {
             throw error.response?.data || error;
@@ -141,7 +146,7 @@ const courseReviewService = {
     async getPayouts(payoutStatus) {
         try {
             const response = await api.get('/course-reviews/payouts', {
-                params: payoutStatus === undefined ? {} : { payoutStatus }
+                params: payoutStatus === undefined ? {} : { payoutStatus },
             });
             return response.data.data || [];
         } catch (error) {
@@ -163,7 +168,9 @@ const courseReviewService = {
     // 下載發放清單 CSV：走 blob 才能帶上認證 token（單純用 <a href> 會少了 Authorization 標頭）
     async downloadPayoutCsv() {
         try {
-            const response = await api.get('/course-reviews/payouts/export', { responseType: 'blob' });
+            const response = await api.get('/course-reviews/payouts/export', {
+                responseType: 'blob',
+            });
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
@@ -191,7 +198,9 @@ const courseReviewService = {
     // 西元年+學期 轉成民國學年期顯示格式（例如 2026, '2' → '115-2'；2026, 'summer' → '115-暑'）
     getAcademicTermLabel(year, semester) {
         const rocYear = parseInt(year, 10) - 1911;
-        const suffix = i18n.t(`courseReview.academicTermSuffix.${semester}`, { defaultValue: semester });
+        const suffix = i18n.t(`courseReview.academicTermSuffix.${semester}`, {
+            defaultValue: semester,
+        });
         return `${rocYear}-${suffix}`;
     },
 
@@ -200,7 +209,7 @@ const courseReviewService = {
         return [
             { value: '1', label: i18n.t('courseReview.semester.1') },
             { value: '2', label: i18n.t('courseReview.semester.2') },
-            { value: 'summer', label: i18n.t('courseReview.semester.summer') }
+            { value: 'summer', label: i18n.t('courseReview.semester.summer') },
         ];
     },
 
@@ -230,7 +239,7 @@ const courseReviewService = {
     },
     getUsefulnessText(usefulness) {
         return metricText('usefulness', usefulness);
-    }
+    },
 };
 
 export default courseReviewService;

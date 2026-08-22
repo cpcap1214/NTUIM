@@ -16,8 +16,8 @@ const activeWhere = () => {
         enabled: true,
         [Op.and]: [
             { [Op.or]: [{ publishAt: null }, { publishAt: { [Op.lte]: now } }] },
-            { [Op.or]: [{ expireAt: null }, { expireAt: { [Op.gt]: now } }] }
-        ]
+            { [Op.or]: [{ expireAt: null }, { expireAt: { [Op.gt]: now } }] },
+        ],
     };
 };
 
@@ -28,7 +28,7 @@ const toPublicJSON = (a) => ({
     body: a.body,
     level: a.level,
     // ISO 8601（UTC）。前端要顯示成本地時間自行轉換。
-    createdAt: a.createdAt
+    createdAt: a.createdAt,
 });
 
 // ---------------------------------------------------------------------------
@@ -46,15 +46,15 @@ router.get('/active', optionalAuth, async (req, res) => {
             // important 先出現，其次才是新的在前
             order: [
                 [literal("CASE WHEN level = 'important' THEN 0 ELSE 1 END"), 'ASC'],
-                ['created_at', 'DESC']
-            ]
+                ['created_at', 'DESC'],
+            ],
         });
 
         let dismissedIds = [];
         if (req.user) {
             const rows = await AnnouncementDismissal.findAll({
                 where: { userId: req.user.id },
-                attributes: ['announcementId']
+                attributes: ['announcementId'],
             });
             dismissedIds = rows.map((r) => r.announcementId);
         }
@@ -71,13 +71,15 @@ router.post('/:id/dismiss', authenticateToken, async (req, res) => {
     try {
         const announcement = await Announcement.findByPk(req.params.id);
         if (!announcement) {
-            return res.status(404).json({ error: '公告不存在', errorCode: 'ANNOUNCEMENT_NOT_FOUND' });
+            return res
+                .status(404)
+                .json({ error: '公告不存在', errorCode: 'ANNOUNCEMENT_NOT_FOUND' });
         }
 
         // 複合主鍵已擋掉重複，findOrCreate 讓重送不會噴 constraint 錯誤
         await AnnouncementDismissal.findOrCreate({
             where: { announcementId: announcement.id, userId: req.user.id },
-            defaults: { announcementId: announcement.id, userId: req.user.id }
+            defaults: { announcementId: announcement.id, userId: req.user.id },
         });
 
         res.json({ message: '已標記為不再提醒' });
@@ -94,17 +96,27 @@ router.post('/:id/dismiss', authenticateToken, async (req, res) => {
 const manageOnly = [authenticateToken, requirePermission('announcements.manage')];
 
 const validators = [
-    body('title').trim().isLength({ min: 1, max: 200 })
-        .withMessage({ code: 'ANNOUNCEMENT_TITLE_REQUIRED', message: '公告標題為必填，且不超過 200 字' }),
-    body('body').trim().notEmpty()
+    body('title').trim().isLength({ min: 1, max: 200 }).withMessage({
+        code: 'ANNOUNCEMENT_TITLE_REQUIRED',
+        message: '公告標題為必填，且不超過 200 字',
+    }),
+    body('body')
+        .trim()
+        .notEmpty()
         .withMessage({ code: 'ANNOUNCEMENT_BODY_REQUIRED', message: '公告內容為必填' }),
-    body('level').optional().isIn(['info', 'important'])
+    body('level')
+        .optional()
+        .isIn(['info', 'important'])
         .withMessage({ code: 'ANNOUNCEMENT_LEVEL_INVALID', message: '公告層級無效' }),
     body('enabled').optional().isBoolean(),
-    body('publishAt').optional({ nullable: true, checkFalsy: true }).isISO8601()
+    body('publishAt')
+        .optional({ nullable: true, checkFalsy: true })
+        .isISO8601()
         .withMessage({ code: 'ANNOUNCEMENT_TIME_INVALID', message: '上架時間格式無效' }),
-    body('expireAt').optional({ nullable: true, checkFalsy: true }).isISO8601()
-        .withMessage({ code: 'ANNOUNCEMENT_TIME_INVALID', message: '下架時間格式無效' })
+    body('expireAt')
+        .optional({ nullable: true, checkFalsy: true })
+        .isISO8601()
+        .withMessage({ code: 'ANNOUNCEMENT_TIME_INVALID', message: '下架時間格式無效' }),
 ];
 
 // 從請求取出要寫入的欄位。空字串一律轉成 null——
@@ -115,7 +127,7 @@ const pickFields = (payload) => ({
     level: payload.level || 'info',
     enabled: payload.enabled === undefined ? true : Boolean(payload.enabled),
     publishAt: payload.publishAt ? new Date(payload.publishAt) : null,
-    expireAt: payload.expireAt ? new Date(payload.expireAt) : null
+    expireAt: payload.expireAt ? new Date(payload.expireAt) : null,
 });
 
 // 下架時間早於上架時間的公告永遠不會出現，而且畫面上完全看不出原因，
@@ -128,12 +140,15 @@ router.get('/', ...manageOnly, async (req, res) => {
     try {
         const announcements = await Announcement.findAll({
             include: [{ model: User, as: 'author', attributes: ['id', 'username', 'fullName'] }],
-            order: [['created_at', 'DESC']]
+            order: [['created_at', 'DESC']],
         });
         res.json({ data: announcements });
     } catch (error) {
         console.error('取得公告清單錯誤:', error);
-        res.status(500).json({ error: '取得公告清單失敗', errorCode: 'FETCH_ANNOUNCEMENTS_FAILED' });
+        res.status(500).json({
+            error: '取得公告清單失敗',
+            errorCode: 'FETCH_ANNOUNCEMENTS_FAILED',
+        });
     }
 });
 
@@ -146,7 +161,10 @@ router.post('/', ...manageOnly, validators, async (req, res) => {
     try {
         const fields = pickFields(req.body);
         if (windowInvalid(fields)) {
-            return res.status(400).json({ error: '下架時間必須晚於上架時間', errorCode: 'ANNOUNCEMENT_INVALID_WINDOW' });
+            return res.status(400).json({
+                error: '下架時間必須晚於上架時間',
+                errorCode: 'ANNOUNCEMENT_INVALID_WINDOW',
+            });
         }
 
         const announcement = await Announcement.create({ ...fields, createdBy: req.user.id });
@@ -166,12 +184,17 @@ router.put('/:id', ...manageOnly, validators, async (req, res) => {
     try {
         const announcement = await Announcement.findByPk(req.params.id);
         if (!announcement) {
-            return res.status(404).json({ error: '公告不存在', errorCode: 'ANNOUNCEMENT_NOT_FOUND' });
+            return res
+                .status(404)
+                .json({ error: '公告不存在', errorCode: 'ANNOUNCEMENT_NOT_FOUND' });
         }
 
         const fields = pickFields(req.body);
         if (windowInvalid(fields)) {
-            return res.status(400).json({ error: '下架時間必須晚於上架時間', errorCode: 'ANNOUNCEMENT_INVALID_WINDOW' });
+            return res.status(400).json({
+                error: '下架時間必須晚於上架時間',
+                errorCode: 'ANNOUNCEMENT_INVALID_WINDOW',
+            });
         }
 
         await announcement.update(fields);
@@ -186,7 +209,9 @@ router.delete('/:id', ...manageOnly, async (req, res) => {
     try {
         const announcement = await Announcement.findByPk(req.params.id);
         if (!announcement) {
-            return res.status(404).json({ error: '公告不存在', errorCode: 'ANNOUNCEMENT_NOT_FOUND' });
+            return res
+                .status(404)
+                .json({ error: '公告不存在', errorCode: 'ANNOUNCEMENT_NOT_FOUND' });
         }
 
         // dismissals 靠 ON DELETE CASCADE 一併清掉，不必手動刪

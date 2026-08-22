@@ -12,8 +12,8 @@ const api = axios.create({
     baseURL: API_BASE_URL,
     timeout: 15000, // 增加超時時間至15秒，適應手機網路
     headers: {
-        'Content-Type': 'application/json'
-    }
+        'Content-Type': 'application/json',
+    },
 });
 
 // 預覽目標的存取放在 previewStorage.js（那裡只碰 sessionStorage、不依賴 axios）。
@@ -46,7 +46,7 @@ api.interceptors.request.use(
     },
     (error) => {
         return Promise.reject(error);
-    }
+    },
 );
 
 // 回應攔截器 - 處理錯誤
@@ -72,7 +72,7 @@ api.interceptors.response.use(
                 localStorage.removeItem('user');
                 window.location.href = '/login';
             }
-            
+
             // 處理 403 錯誤 - 需要繳費
             if (error.response.status === 403 && error.response.data.requirePayment) {
                 alert('此功能需要繳交系學會費');
@@ -86,7 +86,7 @@ api.interceptors.response.use(
             error.message = '請求超時，請檢查網路連線後重試';
         }
         return Promise.reject(error);
-    }
+    },
 );
 
 export default api;
