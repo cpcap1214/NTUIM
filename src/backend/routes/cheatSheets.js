@@ -5,7 +5,7 @@ const fs = require('fs');
 const { body, validationResult, query } = require('express-validator');
 const { CheatSheet, User } = require('../models');
 const { authenticateToken, requirePermission, isOwnerOrHasPermission } = require('../middleware/auth');
-const { upload, adminUpload, handleUploadError } = require('../middleware/upload');
+const { adminUpload, handleUploadError } = require('../middleware/upload');
 const { Op } = require('sequelize');
 
 // 取得大抄列表（公開）

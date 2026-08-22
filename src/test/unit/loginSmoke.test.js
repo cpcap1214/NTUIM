@@ -19,7 +19,6 @@ jest.mock('axios', () => {
     return { __esModule: true, default: { create: () => instance }, __instance: instance };
 });
 
-import axios from 'axios';
 import { AuthProvider } from '../../main/js/contexts/AuthContext';
 import LoginPage from '../../main/js/pages/LoginPage';
 
@@ -48,11 +47,10 @@ describe('登入頁冒煙測試', () => {
 
     test('表單欄位與按鈕都渲染得出來（i18n key 有查到）', async () => {
         renderLogin();
-        // 查不到 key 時 i18next 會回 key 本身，畫面就會出現 'auth.password' 這種字串
-        await waitFor(() => {
-            expect(screen.queryByText(/^auth\./)).not.toBeInTheDocument();
-            expect(screen.queryByText(/^nav\./)).not.toBeInTheDocument();
-        });
+        // 查不到 key 時 i18next 會回 key 本身，畫面就會出現 'auth.password' 這種字串。
+        // 兩個命名空間分開等，失敗時才看得出是哪一個沒查到
+        await waitFor(() => expect(screen.queryByText(/^auth\./)).not.toBeInTheDocument());
+        await waitFor(() => expect(screen.queryByText(/^nav\./)).not.toBeInTheDocument());
         expect(screen.getByRole('button', { name: /log in|登入/i })).toBeInTheDocument();
     });
 

@@ -1,11 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcryptjs');
 const { body, validationResult, query } = require('express-validator');
 const { User, Exam, CheatSheet, CourseReview, Role, UserRole } = require('../models');
 const { requirePermission, requireOwnerOrAdmin } = require('../middleware/auth');
 const permissionService = require('../services/permissionService');
-const { Op } = require('sequelize');
 
 // 取得使用者列表（管理員）
 router.get('/', requirePermission('users.manage'), [

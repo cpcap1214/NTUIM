@@ -18,8 +18,7 @@ import {
   Login as LoginIcon,
   Lock as LockIcon,
 } from '@mui/icons-material';
-import { APP_CONFIG } from '../../resources/config/constants';
-import { API_BASE_URL } from '../services/api';
+import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import NTUCalendar from '../components/NTUCalendar';
 
@@ -36,32 +35,41 @@ const HomePage = () => {
   const [stats, setStats] = useState({ courseReviews: 0, exams: 0, cheatSheets: 0 });
   const [loading, setLoading] = useState(true);
 
+  // 登入狀態改變時重取：模組可能對訪客關閉（回 403）、登入後才看得到數字，
+  // 否則會停在 0 直到手動重新整理
   useEffect(() => {
     fetchStats();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
+
+  // 只要 pagination.total，所以 limit 取 1。
+  // 注意 course-reviews 的 limit 上限是 50（見 routes/courseReviews.js 的驗證），
+  // 原本 exams 用的 limit=1000 套過去會直接 400。
+  //
+  // 用 api（不是裸 fetch）才會帶上 token：模組未對訪客開放時，
+  // 沒有 token 一律 403，登入的使用者也會拿到 0。
+  const fetchTotal = async (path) => {
+    try {
+      const { data } = await api.get(path, { params: { limit: 1 } });
+      return data.pagination?.total ?? data.data?.length ?? 0;
+    } catch (error) {
+      // 模組尚未開放（403）或後端出錯 → 這個數字顯示 0，
+      // 但不能影響另外兩個，所以在這裡就吞掉
+      return 0;
+    }
+  };
 
   const fetchStats = async () => {
-    try {
-      setLoading(true);
-      const [examResponse, cheatSheetResponse] = await Promise.all([
-        fetch(`${API_BASE_URL}/exams?limit=1000`),
-        fetch(`${API_BASE_URL}/cheat-sheets`),
-      ]);
-
-      const examResult = await examResponse.json();
-      const cheatSheetResult = await cheatSheetResponse.json();
-
-      setStats({
-        courseReviews: 0,
-        exams: examResult.pagination?.total || examResult.data?.length || 0,
-        cheatSheets: cheatSheetResult.pagination?.total || cheatSheetResult.data?.length || 0,
-      });
-    } catch (error) {
-      console.error('獲取統計數據錯誤:', error);
-      setStats({ courseReviews: 0, exams: 0, cheatSheets: 0 });
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    // 三個各自獨立取。原本用一個 try 包住 Promise.all，
+    // 任何一項失敗就把三個數字全部歸零
+    const [courseReviews, exams, cheatSheets] = await Promise.all([
+      fetchTotal('/course-reviews'),
+      fetchTotal('/exams'),
+      fetchTotal('/cheat-sheets'),
+    ]);
+    setStats({ courseReviews, exams, cheatSheets });
+    setLoading(false);
   };
 
   const quickLinks = [
@@ -232,52 +240,33 @@ const HomePage = () => {
 
   return (
     <Box>
-      {/* Hero */}
-      <Box
-        sx={{
-          textAlign: 'center',
-          py: { xs: 5, md: 8 },
-          mb: { xs: 2, md: 3 },
-        }}
-      >
-        <Typography
-          variant="h1"
-          component="h1"
-          sx={{
-            fontSize: { xs: '2rem', md: '3rem' },
-            fontWeight: 700,
-            color: 'text.primary',
-            mb: 1.5,
-            letterSpacing: '-0.025em',
-          }}
-        >
-          {APP_CONFIG.name}
-        </Typography>
-        <Typography
-          variant="h6"
-          color="text.secondary"
-          sx={{
-            fontWeight: 400,
-            fontSize: { xs: '1rem', md: '1.125rem' },
-            maxWidth: 640,
-            mx: 'auto',
-          }}
-        >
-          {APP_CONFIG.fullName}
-        </Typography>
-        {APP_CONFIG.description && (
-          <Typography
-            variant="body1"
-            color="text.secondary"
-            sx={{ maxWidth: 720, mx: 'auto', mt: 2, lineHeight: 1.7 }}
-          >
-            {APP_CONFIG.description}
-          </Typography>
-        )}
-      </Box>
+      {/* 註：這裡原本有一塊置中的 Hero，印 APP_CONFIG.name / fullName / description。
+          名稱改走 i18n（app.name）後那三個欄位就不存在了，於是它變成三個空的
+          Typography——文字沒了、py: 8 的留白還在，看起來就是頁首下方一段莫名的空白。
+          橫幅已經扮演 Hero 的角色，整塊移除。 */}
 
       {/* Contextual Banner */}
       {renderContextBanner()}
+
+      {/* IMSA 橫幅 */}
+      <Box
+        component="img"
+        src="/images/branding/imsa-banner.png"
+        alt={t('app.name')}
+        onError={(e) => {
+          // 缺檔時整塊藏起來，不要留下破圖的框（同 AboutUsPage 的 logo 作法）
+          e.currentTarget.style.display = 'none';
+        }}
+        sx={{
+          display: 'block',
+          width: '100%',
+          height: 'auto',
+          // 先用原圖比例（2460×936）把版位撐開，圖載入時才不會把下面的內容往下推
+          aspectRatio: '2460 / 936',
+          borderRadius: 2,
+          mb: { xs: 3, md: 4 },
+        }}
+      />
 
       {/* Quick Links */}
       <Box sx={{ mb: { xs: 4, md: 5 } }}>

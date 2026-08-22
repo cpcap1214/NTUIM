@@ -69,6 +69,16 @@ describe('Date Utils', () => {
       const result = formatRelativeTime('2024-03-13T12:00:00Z');
       expect(result).toBe('2 天前');
     });
+
+    // 無效日期在這裡的壞法比 formatDate 更難看：now - date 是 NaN，
+    // 每個區間比較都是 false，於是一路落到最後一行，輸出「NaN 年前」。
+    test('handles invalid date string', () => {
+      expect(formatRelativeTime('invalid-date')).toBe('invalid-date');
+    });
+
+    test('handles empty string', () => {
+      expect(formatRelativeTime('')).toBe('');
+    });
   });
 
   describe('formatSemester', () => {

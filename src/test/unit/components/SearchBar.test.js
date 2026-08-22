@@ -62,8 +62,7 @@ describe('SearchBar Component', () => {
       />
     );
     
-    // MUI 的 Search icon 會渲染為 SVG
-    const searchIcon = document.querySelector('svg[data-testid="SearchIcon"]');
-    expect(searchIcon).toBeInTheDocument();
+    // MUI 的 Search icon 會渲染為 SVG，且帶有 data-testid="SearchIcon"
+    expect(screen.getByTestId('SearchIcon')).toBeInTheDocument();
   });
 });
