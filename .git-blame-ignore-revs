@@ -1,0 +1,10 @@
+# 這裡列出「純格式化」的 commit，讓 git blame 跳過它們，
+# 追出來的才是真正改動那行邏輯的人。
+#
+# 啟用（每個 clone 各做一次）：
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# GitHub 的 blame 檢視會自動讀這個檔案，不必設定。
+
+# 全專案套用 prettier（125 支檔案重排，無行為變更）
+b53fe3f9b036ed7320939557656328f1774440e1
