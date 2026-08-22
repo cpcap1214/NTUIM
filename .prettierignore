@@ -1,0 +1,20 @@
+# 建置產物與相依套件
+build/
+node_modules/
+coverage/
+
+# 執行期資料，不是原始碼
+uploads/
+photo-originals/
+src/backend/database/*.db
+src/backend/database/*.db-*
+
+# 由腳本產生，格式化沒有意義
+src/main/resources/data/ntuCalendar.json
+
+# 鎖定檔
+package-lock.json
+
+# 文件維持人工排版：HANDOVER.md 等交接文件的表格與段落是刻意安排的，
+# 重排只會產生雜訊，而 prettier 對散文格式沒有一致性上的價值。
+*.md
