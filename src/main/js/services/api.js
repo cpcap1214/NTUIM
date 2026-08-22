@@ -20,6 +20,16 @@ const api = axios.create({
 // 這裡再匯出一次，讓既有的 import 位置不用改。
 export { getPreviewTarget, setPreviewTarget } from './previewStorage';
 
+// 401 有兩種意思，處理方式剛好相反：
+//   (a) session 沒了（AUTH_TOKEN_EXPIRED 之類）→ 清掉本地資料並回登入頁
+//   (b) 你剛剛輸入的帳密／舊密碼不對 → 這是那個表單的「答案」，
+//       清資料或導頁會把錯誤訊息連同整個頁面一起沖掉，
+//       使用者只看到畫面莫名跳一下、然後什麼都沒發生
+//
+// 刻意用 allowlist 而不是 blocklist：認不得的 401 一律走 (a)。
+// 寧可多登出一次，也不要把一個真的失效的 session 留在瀏覽器裡。
+const INPUT_REJECTED_CODES = ['CREDENTIALS_INVALID', 'OLD_PASSWORD_INVALID'];
+
 // 請求攔截器 - 自動加入認證 token
 api.interceptors.request.use(
     (config) => {
@@ -56,8 +66,8 @@ api.interceptors.response.use(
                 setPreviewTarget(null);
             }
 
-            // 處理 401 錯誤 - 未授權
-            if (error.response.status === 401) {
+            // 處理 401 錯誤 - 未授權（但「輸入的帳密不對」不算，見 INPUT_REJECTED_CODES）
+            if (error.response.status === 401 && !INPUT_REJECTED_CODES.includes(errorCode)) {
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
                 window.location.href = '/login';

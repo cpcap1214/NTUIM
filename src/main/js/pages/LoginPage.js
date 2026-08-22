@@ -13,6 +13,7 @@ import {
   Link,
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
+import { translateApiError } from '../utils/apiError';
 
 const LoginPage = () => {
   const { t } = useTranslation();
@@ -35,7 +36,9 @@ const LoginPage = () => {
       navigate('/');
     } catch (err) {
       console.error('登入錯誤:', err);
-      setError(err.error || err.message || t('auth.loginFailed'));
+      // 走 errorCode 查譯文（errors.CREDENTIALS_INVALID）。
+      // 直接用 err.error 會顯示後端寫死的中文，介面切成英文時就露餡了。
+      setError(translateApiError(err, t('auth.loginFailed')));
     } finally {
       setLoading(false);
     }
