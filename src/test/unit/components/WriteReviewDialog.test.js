@@ -339,7 +339,7 @@ describe('WriteReviewDialog 回饋金名額', () => {
 
         fireEvent.click(screen.getByText('courseReview.form.submitReview'));
 
-        await waitFor(() => expect(screen.getByText('errors.COMMENT_LENGTH')).toBeInTheDocument());
+        expect(await screen.findByText('errors.COMMENT_LENGTH')).toBeInTheDocument();
         expect(courseReviewService.createReview).not.toHaveBeenCalled();
     });
 });

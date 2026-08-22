@@ -63,37 +63,56 @@ fi
 echo "📦 安裝前端依賴..."
 npm install
 
-# 檢查並複製環境變數檔案
-if [ -f ".env.production" ]; then
-    echo "⚙️ 設定前端生產環境變數..."
-    cp .env.production .env.local
-elif [ ! -f ".env.local" ]; then
-    echo "⚠️ 警告：找不到 .env.production，請確認環境變數設定"
+# 檢查前端環境變數檔案
+#
+# 不再 cp .env.production .env.local：CRA 在 production build 時本來就會讀
+# .env.production（載入順序 .env.production.local > .env.local > .env.production > .env），
+# 複製一份只會在伺服器上留下一個 gitignore 掉的檔案，讓人以為設定在那裡。
+if [ ! -f ".env.production" ]; then
+    echo "⚠️ 警告：找不到 .env.production，前端將使用同源 /api（由 nginx 轉發）"
 fi
 
 # 建置前端
+#
+# 原本這裡是 if npm run build 2>/dev/null; then ... else "建置命令不存在，跳過"。
+# 那樣寫有兩個問題：編譯錯誤同樣會落進 else，訊息卻說「命令不存在」；而 2>/dev/null
+# 把真正的錯誤原因也丟掉了。腳本接著跑完並印出「部署完成」——前端根本沒更新，
+# 但看起來是成功的。建置失敗必須中止，而且要看得到原因。
 echo "🔨 建置前端..."
-if npm run build 2>/dev/null; then
-    echo "✅ 前端建置成功"
-    
-    # 建立部署目錄
-    echo "📁 建立前端部署目錄..."
-    sudo mkdir -p /var/www/ntuim
-    
-    # 複製建置檔案到部署目錄
-    echo "📋 複製前端檔案到部署目錄..."
-    sudo cp -r build /var/www/ntuim/
-    sudo chown -R www-data:www-data /var/www/ntuim
-    sudo chmod -R 755 /var/www/ntuim
-    
-    # 重新載入 nginx
-    echo "🔄 重新載入 nginx..."
-    sudo systemctl reload nginx
-    
-    echo "✅ 前端檔案部署完成"
-else
-    echo "⚠️ 前端建置命令不存在，跳過建置步驟"
+if ! npm run build; then
+    echo ""
+    echo "❌ 前端建置失敗，已中止部署（網站維持原狀，未做任何變更）"
+    echo "   錯誤訊息在上方。修好後重新執行本腳本。"
+    exit 1
 fi
+echo "✅ 前端建置成功"
+
+if [ ! -d "build" ]; then
+    echo "❌ 建置回報成功卻找不到 build/ 目錄，已中止部署"
+    exit 1
+fi
+
+# 建立部署目錄
+echo "📁 建立前端部署目錄..."
+sudo mkdir -p /var/www/ntuim
+
+# 複製建置檔案到部署目錄
+#
+# 用 build/. 而不是原本的 cp -r build /var/www/ntuim/：後者在目標的 build/
+# 已存在時，會複製成 /var/www/ntuim/build/build，越部署越深一層。
+# 先整個移除再複製，順便清掉上一版殘留、這一版已不存在的檔案（帶 hash 的舊 JS/CSS）。
+echo "📋 複製前端檔案到部署目錄..."
+sudo rm -rf /var/www/ntuim/build
+sudo mkdir -p /var/www/ntuim/build
+sudo cp -r build/. /var/www/ntuim/build/
+sudo chown -R www-data:www-data /var/www/ntuim
+sudo chmod -R 755 /var/www/ntuim
+
+# 重新載入 nginx
+echo "🔄 重新載入 nginx..."
+sudo systemctl reload nginx
+
+echo "✅ 前端檔案部署完成"
 
 # 進入後端目錄
 cd src/backend
@@ -130,18 +149,18 @@ if [ -f "database/ntuim.db" ]; then
     # 產生時間戳記的備份檔名
     TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
     BACKUP_FILE="$BACKUP_DIR/ntuim_backup_${TIMESTAMP}.db"
-    
+
     echo "📦 備份現有資料庫到: $BACKUP_FILE"
     cp "database/ntuim.db" "$BACKUP_FILE"
-    
+
     # 壓縮備份檔案以節省空間
     gzip "$BACKUP_FILE"
     echo "✅ 資料庫備份完成: ${BACKUP_FILE}.gz"
-    
+
     # 保留最近 10 個備份，刪除較舊的
     echo "🧹 清理舊備份檔案..."
     ls -t "$BACKUP_DIR"/ntuim_backup_*.db.gz 2>/dev/null | tail -n +11 | xargs -r rm -f
-    
+
     # 設定資料庫權限
     chmod 664 database/ntuim.db
     echo "✅ 資料庫權限設定完成"
