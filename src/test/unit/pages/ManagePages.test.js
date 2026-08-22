@@ -318,3 +318,30 @@ test('考古題管理頁可以用教授名稱搜尋', async () => {
     expect(screen.queryByText('資料結構')).not.toBeInTheDocument();
     delete global.fetch;
 });
+
+// ── 表格標題必須走 i18n ────────────────────────────────────────────
+//
+// 這些標題原本是直接寫在 JSX 裡的中文，介面切成英文時整排標題仍是中文。
+// t() 在測試裡回傳 key 本身，所以「看得到 manage.columns.* 這種字串」
+// 就等於「這一格有走 i18n」。有人改回寫死中文，這裡會轉紅。
+describe.each(CASES)('$name 的表格標題', (c) => {
+    beforeEach(() => {
+        mockAuth.isAdmin = true;
+        global.fetch = jest.fn().mockResolvedValue(okJson(c.rows));
+    });
+
+    afterEach(() => {
+        delete global.fetch;
+    });
+
+    test('每個欄位標題都是 i18n key，沒有寫死的字', async () => {
+        render(<c.Page />);
+        await screen.findByText(c.firstRowText);
+
+        const headers = screen.getAllByRole('columnheader');
+        expect(headers.length).toBeGreaterThan(0);
+        headers.forEach((cell) => {
+            expect(cell.textContent).toMatch(/^manage.columns./);
+        });
+    });
+});

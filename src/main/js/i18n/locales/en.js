@@ -528,6 +528,23 @@ const en = {
         cheatSheetFileUpdated: 'Cheat sheet file updated',
         uploadCheatSheetFirst: 'Upload a cheat sheet first',
         confirmDeleteCheatSheet: 'Delete "{{name}}"?',
+        // Table column headers for the two manage pages. These used to be
+        // hardcoded Chinese in the JSX, so the whole header row stayed Chinese in English.
+        columns: {
+            courseInfo: 'Course',
+            professor: 'Professor',
+            examInfo: 'Exam',
+            fileInfo: 'File',
+            uploader: 'Uploaded by',
+            uploadDate: 'Uploaded',
+            downloads: 'Downloads',
+            actions: 'Actions',
+            title: 'Title',
+            description: 'Description',
+            tags: 'Tags',
+        },
+        confirmDeleteExamTitle: 'Delete this past exam?',
+        confirmDeleteCheatSheetTitle: 'Delete this cheat sheet?',
     },
 
     admin: {

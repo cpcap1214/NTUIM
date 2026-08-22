@@ -495,6 +495,22 @@ const zhTW = {
         cheatSheetFileUpdated: '大抄檔案已更新',
         uploadCheatSheetFirst: '請先上傳大抄',
         confirmDeleteCheatSheet: '確定要刪除「{{name}}」嗎？',
+        // 兩支管理頁的表格欄位標題。原本直接寫在 JSX 裡，切成英文時整排標題仍是中文。
+        columns: {
+            courseInfo: '課程資訊',
+            professor: '教授',
+            examInfo: '考試資訊',
+            fileInfo: '檔案資訊',
+            uploader: '上傳者',
+            uploadDate: '上傳日期',
+            downloads: '下載次數',
+            actions: '操作',
+            title: '標題',
+            description: '描述',
+            tags: '標籤',
+        },
+        confirmDeleteExamTitle: '確認刪除考古題',
+        confirmDeleteCheatSheetTitle: '確認刪除大抄',
     },
 
     admin: {

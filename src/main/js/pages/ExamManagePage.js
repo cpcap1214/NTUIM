@@ -125,11 +125,16 @@ const ExamManagePage = () => {
     }
 
     return (
-        <Container maxWidth="lg">
-            <Box sx={{ py: 4 }}>
+        <Container maxWidth="lg" sx={{ px: { xs: 1.5, sm: 3 } }}>
+            <Box sx={{ py: { xs: 2, md: 4 } }}>
                 {/* Header */}
                 <Box sx={{ mb: 4 }}>
-                    <Typography variant="h3" component="h1" gutterBottom sx={{ fontWeight: 700 }}>
+                    <Typography
+                        variant="h3"
+                        component="h1"
+                        gutterBottom
+                        sx={{ fontWeight: 700, fontSize: { xs: '1.75rem', md: '3rem' } }}
+                    >
                         {t('nav.adminExamManage')}
                     </Typography>
                     <Typography variant="body1" color="text.secondary">
@@ -172,18 +177,23 @@ const ExamManagePage = () => {
 
                 {/* 考古題列表 */}
                 {!loading && (
-                    <TableContainer component={Paper}>
-                        <Table>
+                    <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+                        {/* 低於 minWidth 就在容器內橫向捲動，不要把整頁撐開 */}
+                        <Table sx={{ minWidth: 720 }}>
                             <TableHead>
                                 <TableRow>
-                                    <TableCell>課程資訊</TableCell>
-                                    <TableCell>教授</TableCell>
-                                    <TableCell>考試資訊</TableCell>
-                                    <TableCell>檔案資訊</TableCell>
-                                    <TableCell>上傳者</TableCell>
-                                    <TableCell>上傳日期</TableCell>
-                                    <TableCell align="right">下載次數</TableCell>
-                                    <TableCell align="center">操作</TableCell>
+                                    <TableCell>{t('manage.columns.courseInfo')}</TableCell>
+                                    <TableCell>{t('manage.columns.professor')}</TableCell>
+                                    <TableCell>{t('manage.columns.examInfo')}</TableCell>
+                                    <TableCell>{t('manage.columns.fileInfo')}</TableCell>
+                                    <TableCell>{t('manage.columns.uploader')}</TableCell>
+                                    <TableCell>{t('manage.columns.uploadDate')}</TableCell>
+                                    <TableCell align="right">
+                                        {t('manage.columns.downloads')}
+                                    </TableCell>
+                                    <TableCell align="center">
+                                        {t('manage.columns.actions')}
+                                    </TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
@@ -332,7 +342,7 @@ const ExamManagePage = () => {
 
                 {/* 刪除確認對話框 */}
                 <Dialog open={deleteDialogOpen} onClose={handleDeleteCancel}>
-                    <DialogTitle>確認刪除考古題</DialogTitle>
+                    <DialogTitle>{t('manage.confirmDeleteExamTitle')}</DialogTitle>
                     <DialogContent>
                         <DialogContentText>
                             {t('manage.confirmDeleteExam', {
