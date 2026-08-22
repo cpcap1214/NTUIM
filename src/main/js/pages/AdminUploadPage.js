@@ -17,21 +17,16 @@ import {
   Grid,
   Chip,
   Stack,
-  IconButton,
   FormHelperText,
   Snackbar,
   Card,
-  CardContent,
-  Divider,
 } from '@mui/material';
 import {
   CloudUpload as UploadIcon,
   PictureAsPdf as PdfIcon,
-  Close as CloseIcon,
   CheckCircle as SuccessIcon,
   Error as ErrorIcon,
   Add as AddIcon,
-  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';

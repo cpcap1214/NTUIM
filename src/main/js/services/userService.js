@@ -116,7 +116,10 @@ const userService = {
     // 格式化日期
     formatDate(dateString) {
         if (!dateString) return '未知';
-        return new Date(dateString).toLocaleDateString('zh-TW', {
+        // 無效日期不會 throw，格式化後會得到字串 "Invalid Date"（同 utils/dateUtils.js）
+        const date = new Date(dateString);
+        if (Number.isNaN(date.getTime())) return '未知';
+        return date.toLocaleDateString('zh-TW', {
             year: 'numeric',
             month: '2-digit',
             day: '2-digit',

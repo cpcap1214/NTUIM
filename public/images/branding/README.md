@@ -6,8 +6,8 @@
 
 ### `imsa-banner.png` — 寬版橫幅
 - 建議尺寸：2460 × 936（與原始 PNG 相同），自動 scale
-- **使用位置**：`AboutUsPage.js`（/about 頁面頂部）
-- 缺檔時自動 fallback 為藍色漸層 + 系學會名稱
+- **使用位置**：`HomePage.js`（首頁「快速入口」上方）
+- 缺檔時整塊隱藏（`onError` 把 img 設成 `display: none`），不會留下破圖
 
 ### `imsa-logo.png` — 方形標誌
 - 建議尺寸：1080 × 1080（與原始 PNG 相同），實際渲染 30~36px
