@@ -1,0 +1,49 @@
+# 每次 push 與 PR 都跑一次品質檢查。
+#
+# 為什麼需要這個：這個專案每年換屆交接，lint 與 test 全靠人記得跑的話，
+# 是最快腐化的地方。有了 CI，壞掉的東西在合併前就會被擋下來。
+name: CI
+
+on:
+    push:
+        branches: [main, develop]
+    pull_request:
+
+jobs:
+    check:
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: '22'
+                  cache: npm
+
+            # 用 npm ci 而不是 npm install：嚴格照 package-lock.json 安裝，
+            # 本機能跑、CI 跑不動的版本差異才不會被蓋掉
+            - name: 安裝前端依賴
+              run: npm ci
+
+            - name: 安裝後端依賴
+              # 後端有自己的 package.json，根目錄的 npm ci 不會裝到
+              run: npm ci
+              working-directory: src/backend
+
+            - name: 格式檢查
+              run: npm run format:check
+
+            - name: Lint
+              run: npm run lint
+
+            # CI=true 會讓 react-scripts test 跑完就結束，不進 watch 模式
+            - name: 測試
+              run: npm test -- --watchAll=false
+              env:
+                  CI: true
+
+            - name: 建置
+              run: npm run build
+              env:
+                  CI: true
