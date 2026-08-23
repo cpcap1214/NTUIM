@@ -71,6 +71,17 @@ import { translateApiError } from '../utils';
 
 // 後台各功能對應的權限與分頁編號。持有其中任何一項就能進入管理控制台，
 // 實際看得到哪些功能由每張 tile 各自的權限決定。順序即「第一個有權限的功能」判定順序。
+// 後台權限 → 該權限對應的分頁編號。
+//
+// 這張表有兩個用途，漏一筆就會有人被鎖在門外：
+//   1. CONSOLE_PERMISSIONS（下一行）＝ 控制台的門禁清單。不在表裡的權限，
+//      就算 adminSectionRows 為它列了功能卡片，持有者一進來仍會被
+//      alert + navigate('/') 踢出去。
+//   2. 沒有 users.manage 的人預設要落在哪個分頁（見「純總務身分」那個 effect）。
+//
+// announcements.manage 與 feedback.manage 原本就漏在這裡：公告管理與回饋管理
+// 兩張卡片都寫好了，但只有這兩種權限的幹部根本進不了控制台。
+// 新增分頁時務必回來補這一筆。
 const PERMISSION_TO_TAB = {
     'users.manage': 0,
     'roles.manage': 7,
@@ -81,6 +92,8 @@ const PERMISSION_TO_TAB = {
     'exams.upload': 1,
     'cheatSheets.upload': 2,
     'courseReviews.payout': 6,
+    'announcements.manage': 9,
+    'feedback.manage': 10,
 };
 const CONSOLE_PERMISSIONS = Object.keys(PERMISSION_TO_TAB);
 
@@ -284,6 +297,11 @@ const AdminPage = () => {
         // 沒有用戶管理權限的人（例如純總務）呼叫會被後端擋下，不必浪費一次請求
         if (hasPermission('users.manage')) {
             fetchUsers();
+        } else {
+            // 但 loading 一定要收掉。setLoading(false) 原本只寫在 fetchUsers 裡，
+            // 跳過它就沒有人把旗標放下來——只有審核權限的學術部幹部打開後台，
+            // 會永遠停在「載入中...」，整個控制台對他們是不能用的。
+            setLoading(false);
         }
 
         // 如果是管理分頁，載入對應資料
