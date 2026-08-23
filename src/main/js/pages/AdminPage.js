@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     Container,
@@ -29,7 +29,6 @@ import {
     LinearProgress,
     Chip,
     Stack,
-    Tooltip,
     InputAdornment,
     Avatar,
     DialogContentText,
@@ -45,9 +44,6 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 import SearchIcon from '@mui/icons-material/Search';
-import DownloadIcon from '@mui/icons-material/Download';
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
-import DescriptionIcon from '@mui/icons-material/Description';
 import ViewIcon from '@mui/icons-material/Visibility';
 import BadgeIcon from '@mui/icons-material/Badge';
 import PaidIcon from '@mui/icons-material/Paid';
@@ -60,6 +56,8 @@ import ModuleAdminPanel from '../components/admin/ModuleAdminPanel';
 import LineAdminPanel from '../components/admin/LineAdminPanel';
 import PayoutAdminPanel from '../components/admin/PayoutAdminPanel';
 import CourseReviewAdminPanel from '../components/admin/CourseReviewAdminPanel';
+import ExamManagePanel from '../components/admin/ExamManagePanel';
+import CheatSheetManagePanel from '../components/admin/CheatSheetManagePanel';
 import { API_BASE_URL } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import roleService from '../services/roleService';
@@ -112,6 +110,13 @@ const AdminPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+
+    // 共用面板（考古題／大抄管理）的提示接到控制台這組 Snackbar。
+    // 面板自己也有一組，但只在沒人接手時才顯示——同一個畫面兩組提示會互相蓋掉。
+    const notifyFromPanel = useCallback((message, severity) => {
+        if (severity === 'error') setError(message);
+        else setSuccess(message);
+    }, []);
     const [newPasswordDialog, setNewPasswordDialog] = useState(false);
     const [newPassword, setNewPassword] = useState('');
     const [selectedUserId, setSelectedUserId] = useState(null);
@@ -127,18 +132,8 @@ const AdminPage = () => {
     const [uploadMessage, setUploadMessage] = useState({ type: '', text: '' });
 
     // 考古題管理相關狀態
-    const [exams, setExams] = useState([]);
-    const [examSearchTerm, setExamSearchTerm] = useState('');
-    const [examDeleteDialog, setExamDeleteDialog] = useState(false);
-    const [examToDelete, setExamToDelete] = useState(null);
-    const [examLoading, setExamLoading] = useState(false);
 
     // 大抄管理相關狀態
-    const [cheatSheets, setCheatSheets] = useState([]);
-    const [cheatSheetSearchTerm, setCheatSheetSearchTerm] = useState('');
-    const [cheatSheetDeleteDialog, setCheatSheetDeleteDialog] = useState(false);
-    const [cheatSheetToDelete, setCheatSheetToDelete] = useState(null);
-    const [cheatSheetLoading, setCheatSheetLoading] = useState(false);
 
     // 課程評價管理相關狀態
 
@@ -235,11 +230,7 @@ const AdminPage = () => {
         }
 
         // 如果是管理分頁，載入對應資料
-        if (activeTab === 3) {
-            fetchExams();
-        } else if (activeTab === 4) {
-            fetchCheatSheets();
-        } else if (activeTab === 7) {
+        if (activeTab === 7) {
             fetchRoles();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -361,46 +352,7 @@ const AdminPage = () => {
     };
 
     // 獲取考古題資料
-    const fetchExams = async () => {
-        try {
-            setExamLoading(true);
-            // 不設限制，獲取所有考古題
-            const response = await fetch(`${API_BASE_URL}/exams?limit=1000`);
-
-            if (!response.ok) {
-                throw new Error(t('exam.fetchFailed'));
-            }
-
-            const result = await response.json();
-            setExams(result.data || []);
-        } catch (err) {
-            console.error('獲取考古題錯誤:', err);
-            setError(err.message);
-        } finally {
-            setExamLoading(false);
-        }
-    };
-
     // 獲取大抄資料
-    const fetchCheatSheets = async () => {
-        try {
-            setCheatSheetLoading(true);
-            const response = await fetch(`${API_BASE_URL}/cheat-sheets`);
-
-            if (!response.ok) {
-                throw new Error(t('cheatSheet.fetchFailed'));
-            }
-
-            const result = await response.json();
-            setCheatSheets(result.data || []);
-        } catch (err) {
-            console.error('獲取大抄錯誤:', err);
-            setError(err.message);
-        } finally {
-            setCheatSheetLoading(false);
-        }
-    };
-
     // 以某個身分組或某位成員的身分檢視全站。
     // 切換後管理台通常會直接消失（那正是預期結果），所以要先導回首頁——
     // 停在一個自己已經沒有權限的頁面上只會看到錯誤訊息，看不出模組與選單的實際樣貌。
@@ -723,167 +675,9 @@ const AdminPage = () => {
     };
 
     // 考古題處理函數
-    const handleExamDeleteClick = (exam) => {
-        setExamToDelete(exam);
-        setExamDeleteDialog(true);
-    };
-
-    const handleExamDeleteConfirm = async () => {
-        if (!examToDelete) return;
-
-        try {
-            const response = await fetch(`${API_BASE_URL}/exams/${examToDelete.id}`, {
-                method: 'DELETE',
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`,
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error(t('manage.deleteFailed'));
-            }
-
-            await fetchExams();
-            setSuccess(t('manage.examDeleted'));
-        } catch (error) {
-            console.error('刪除考古題錯誤:', error);
-            setError(error.message || t('manage.deleteFailed'));
-        } finally {
-            setExamDeleteDialog(false);
-            setExamToDelete(null);
-        }
-    };
-
-    const handleExamPreview = (examId, fileType = 'question') => {
-        const token = localStorage.getItem('token');
-        window.open(`${API_BASE_URL}/exams/${examId}/preview/${fileType}?token=${token}`, '_blank');
-    };
-
-    const handleExamDownload = async (examId, filename, fileType = 'question') => {
-        try {
-            const response = await fetch(`${API_BASE_URL}/exams/${examId}/download/${fileType}`, {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`,
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error(t('cheatSheet.downloadFailed'));
-            }
-
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url);
-        } catch (error) {
-            console.error('下載錯誤:', error);
-            setError(t('cheatSheet.downloadFailedRetry'));
-        }
-    };
-
     // 大抄處理函數
-    const handleCheatSheetDeleteClick = (cheatSheet) => {
-        setCheatSheetToDelete(cheatSheet);
-        setCheatSheetDeleteDialog(true);
-    };
-
-    const handleCheatSheetDeleteConfirm = async () => {
-        if (!cheatSheetToDelete) return;
-
-        try {
-            const response = await fetch(`${API_BASE_URL}/cheat-sheets/${cheatSheetToDelete.id}`, {
-                method: 'DELETE',
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`,
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error(t('manage.deleteFailed'));
-            }
-
-            await fetchCheatSheets();
-            setSuccess(t('manage.cheatSheetDeleted'));
-        } catch (error) {
-            console.error('刪除大抄錯誤:', error);
-            setError(error.message || t('manage.deleteFailed'));
-        } finally {
-            setCheatSheetDeleteDialog(false);
-            setCheatSheetToDelete(null);
-        }
-    };
-
-    const handleCheatSheetPreview = (cheatSheetId) => {
-        const token = localStorage.getItem('token');
-        window.open(
-            `${API_BASE_URL}/cheat-sheets/${cheatSheetId}/preview?token=${token}`,
-            '_blank',
-        );
-    };
-
-    const handleCheatSheetDownload = async (cheatSheetId, filename) => {
-        try {
-            const response = await fetch(`${API_BASE_URL}/cheat-sheets/${cheatSheetId}/download`, {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`,
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error(t('cheatSheet.downloadFailed'));
-            }
-
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url);
-        } catch (error) {
-            console.error('下載錯誤:', error);
-            setError(t('cheatSheet.downloadFailedRetry'));
-        }
-    };
-
     // 這些鍵是資料庫裡實際的標籤字串，不是介面文案
-    const getTagColor = (tag) => {
-        const colors = {
-            資料庫: 'primary',
-            React: 'info',
-            JavaScript: 'warning',
-            前端: 'success',
-            機器學習: 'secondary',
-            AI: 'error',
-            演算法: 'primary',
-            理論: 'info',
-        };
-        return colors[tag] || 'default';
-    };
-
     // 篩選考古題和大抄
-    const filteredExams = exams.filter(
-        (exam) =>
-            exam.courseName.toLowerCase().includes(examSearchTerm.toLowerCase()) ||
-            exam.courseCode.toLowerCase().includes(examSearchTerm.toLowerCase()) ||
-            (exam.professor && exam.professor.toLowerCase().includes(examSearchTerm.toLowerCase())),
-    );
-
-    const filteredCheatSheets = cheatSheets.filter(
-        (sheet) =>
-            sheet.title.toLowerCase().includes(cheatSheetSearchTerm.toLowerCase()) ||
-            sheet.courseName.toLowerCase().includes(cheatSheetSearchTerm.toLowerCase()) ||
-            (sheet.description &&
-                sheet.description.toLowerCase().includes(cheatSheetSearchTerm.toLowerCase())),
-    );
-
     const filteredUsers = users.filter((managedUser) => {
         const keyword = userSearchTerm.trim().toLowerCase();
         const matchKeyword =
@@ -2270,596 +2064,14 @@ const AdminPage = () => {
                 )}
 
                 {/* 考古題管理分頁 */}
-                {activeTab === 3 && (
-                    <Paper sx={{ p: 2 }}>
-                        <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
-                            {t('nav.adminExamManage')}
-                        </Typography>
-                        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                            {t('manage.examDescription')}
-                        </Typography>
-
-                        {/* 搜尋欄 */}
-                        <Paper sx={{ p: 2, mb: 3 }}>
-                            <TextField
-                                fullWidth
-                                placeholder={t('courseReview.admin.searchPlaceholder')}
-                                value={examSearchTerm}
-                                onChange={(e) => setExamSearchTerm(e.target.value)}
-                                InputProps={{
-                                    startAdornment: (
-                                        <InputAdornment position="start">
-                                            <SearchIcon color="action" />
-                                        </InputAdornment>
-                                    ),
-                                }}
-                            />
-                        </Paper>
-
-                        {/* 載入中 */}
-                        {examLoading && (
-                            <Box sx={{ textAlign: 'center', py: 8 }}>
-                                <Typography variant="h6" color="text.secondary">
-                                    {t('exam.loadingList')}
-                                </Typography>
-                            </Box>
-                        )}
-
-                        {/* 考古題列表 */}
-                        {!examLoading && (
-                            <TableContainer component={Paper}>
-                                <Table>
-                                    <TableHead>
-                                        <TableRow>
-                                            <TableCell>課程資訊</TableCell>
-                                            <TableCell>教授</TableCell>
-                                            <TableCell>考試資訊</TableCell>
-                                            <TableCell>檔案資訊</TableCell>
-                                            <TableCell>上傳者</TableCell>
-                                            <TableCell>上傳日期</TableCell>
-                                            <TableCell align="right">下載次數</TableCell>
-                                            <TableCell align="center">操作</TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {filteredExams.map((exam) => (
-                                            <TableRow key={exam.id} hover>
-                                                <TableCell>
-                                                    <Box>
-                                                        <Typography
-                                                            variant="body2"
-                                                            sx={{ fontWeight: 500 }}
-                                                        >
-                                                            {exam.courseName}
-                                                        </Typography>
-                                                        <Typography
-                                                            variant="caption"
-                                                            color="text.secondary"
-                                                        >
-                                                            {exam.courseCode}
-                                                        </Typography>
-                                                    </Box>
-                                                </TableCell>
-                                                <TableCell>{exam.professor || '-'}</TableCell>
-                                                <TableCell>
-                                                    <Box
-                                                        sx={{
-                                                            display: 'flex',
-                                                            gap: 0.5,
-                                                            flexWrap: 'wrap',
-                                                        }}
-                                                    >
-                                                        <Chip
-                                                            label={exam.examType}
-                                                            color="primary"
-                                                            size="small"
-                                                        />
-                                                        <Chip
-                                                            label={`${exam.year - 1911}-${exam.semester}`}
-                                                            color="secondary"
-                                                            size="small"
-                                                        />
-                                                    </Box>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Box>
-                                                        <Box
-                                                            sx={{
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: 1,
-                                                                mb: 1,
-                                                            }}
-                                                        >
-                                                            <PictureAsPdfIcon
-                                                                sx={{
-                                                                    fontSize: 16,
-                                                                    color: 'error.main',
-                                                                }}
-                                                            />
-                                                            <Box>
-                                                                <Typography
-                                                                    variant="caption"
-                                                                    display="block"
-                                                                    sx={{ fontWeight: 500 }}
-                                                                >
-                                                                    {t(
-                                                                        'admin.manage.questionLine',
-                                                                        {
-                                                                            name: exam.questionFileName,
-                                                                        },
-                                                                    )}
-                                                                </Typography>
-                                                                <Typography
-                                                                    variant="caption"
-                                                                    color="text.secondary"
-                                                                >
-                                                                    {(
-                                                                        exam.questionFileSize /
-                                                                        1024 /
-                                                                        1024
-                                                                    ).toFixed(2)}{' '}
-                                                                    MB
-                                                                </Typography>
-                                                            </Box>
-                                                        </Box>
-                                                        {exam.answerFileName && (
-                                                            <Box
-                                                                sx={{
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    gap: 1,
-                                                                }}
-                                                            >
-                                                                <PictureAsPdfIcon
-                                                                    sx={{
-                                                                        fontSize: 16,
-                                                                        color: 'success.main',
-                                                                    }}
-                                                                />
-                                                                <Box>
-                                                                    <Typography
-                                                                        variant="caption"
-                                                                        display="block"
-                                                                        sx={{ fontWeight: 500 }}
-                                                                    >
-                                                                        {t(
-                                                                            'admin.manage.answerLine',
-                                                                            {
-                                                                                name: exam.answerFileName,
-                                                                            },
-                                                                        )}
-                                                                    </Typography>
-                                                                    <Typography
-                                                                        variant="caption"
-                                                                        color="text.secondary"
-                                                                    >
-                                                                        {(
-                                                                            exam.answerFileSize /
-                                                                            1024 /
-                                                                            1024
-                                                                        ).toFixed(2)}{' '}
-                                                                        MB
-                                                                    </Typography>
-                                                                </Box>
-                                                            </Box>
-                                                        )}
-                                                    </Box>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {exam.uploader?.fullName || t('common.unknown')}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {exam.created_at
-                                                        ? new Date(
-                                                              exam.created_at,
-                                                          ).toLocaleDateString(i18n.language)
-                                                        : t('common.unknown')}
-                                                </TableCell>
-                                                <TableCell align="right">
-                                                    {exam.downloadCount || 0}
-                                                </TableCell>
-                                                <TableCell align="center">
-                                                    <Box
-                                                        sx={{
-                                                            display: 'flex',
-                                                            flexDirection: 'column',
-                                                            gap: 0.5,
-                                                            alignItems: 'center',
-                                                        }}
-                                                    >
-                                                        {/* 題目操作 */}
-                                                        <Box sx={{ display: 'flex', gap: 0.5 }}>
-                                                            <Tooltip
-                                                                title={t('exam.previewQuestions')}
-                                                            >
-                                                                <IconButton
-                                                                    size="small"
-                                                                    onClick={() =>
-                                                                        handleExamPreview(
-                                                                            exam.id,
-                                                                            'question',
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <ViewIcon fontSize="small" />
-                                                                </IconButton>
-                                                            </Tooltip>
-                                                            <Tooltip
-                                                                title={t('exam.downloadQuestions')}
-                                                            >
-                                                                <IconButton
-                                                                    size="small"
-                                                                    color="primary"
-                                                                    onClick={() =>
-                                                                        handleExamDownload(
-                                                                            exam.id,
-                                                                            exam.questionFileName,
-                                                                            'question',
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <DownloadIcon fontSize="small" />
-                                                                </IconButton>
-                                                            </Tooltip>
-                                                        </Box>
-
-                                                        {/* 答案操作（如果有答案） */}
-                                                        {exam.answerFileName && (
-                                                            <Box sx={{ display: 'flex', gap: 0.5 }}>
-                                                                <Tooltip
-                                                                    title={t('exam.previewAnswers')}
-                                                                >
-                                                                    <IconButton
-                                                                        size="small"
-                                                                        color="success"
-                                                                        onClick={() =>
-                                                                            handleExamPreview(
-                                                                                exam.id,
-                                                                                'answer',
-                                                                            )
-                                                                        }
-                                                                    >
-                                                                        <ViewIcon fontSize="small" />
-                                                                    </IconButton>
-                                                                </Tooltip>
-                                                                <Tooltip
-                                                                    title={t(
-                                                                        'exam.downloadAnswers',
-                                                                    )}
-                                                                >
-                                                                    <IconButton
-                                                                        size="small"
-                                                                        color="success"
-                                                                        onClick={() =>
-                                                                            handleExamDownload(
-                                                                                exam.id,
-                                                                                exam.answerFileName,
-                                                                                'answer',
-                                                                            )
-                                                                        }
-                                                                    >
-                                                                        <DownloadIcon fontSize="small" />
-                                                                    </IconButton>
-                                                                </Tooltip>
-                                                            </Box>
-                                                        )}
-
-                                                        {/* 刪除操作 */}
-                                                        <Tooltip title={t('common.delete')}>
-                                                            <IconButton
-                                                                size="small"
-                                                                color="error"
-                                                                onClick={() =>
-                                                                    handleExamDeleteClick(exam)
-                                                                }
-                                                            >
-                                                                <DeleteIcon fontSize="small" />
-                                                            </IconButton>
-                                                        </Tooltip>
-                                                    </Box>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
-                        )}
-
-                        {/* 沒有結果 */}
-                        {!examLoading && filteredExams.length === 0 && (
-                            <Box sx={{ textAlign: 'center', py: 8 }}>
-                                <Typography variant="h6" color="text.secondary" gutterBottom>
-                                    {t(exams.length === 0 ? 'exam.empty' : 'exam.noMatch')}
-                                </Typography>
-                                <Typography variant="body2" color="text.disabled">
-                                    {t(
-                                        exams.length === 0
-                                            ? 'manage.uploadExamFirst'
-                                            : 'manage.adjustSearch',
-                                    )}
-                                </Typography>
-                            </Box>
-                        )}
-                    </Paper>
-                )}
+                {/* 考古題管理分頁。與獨立頁面 /admin/exam-manage 共用同一個元件，
+                    功能只有一份（原本後台這裡是隔天複製過來的第二份實作）。 */}
+                {activeTab === 3 && <ExamManagePanel onNotify={notifyFromPanel} />}
 
                 {/* 大抄管理分頁 */}
-                {activeTab === 4 && (
-                    <Paper sx={{ p: 2 }}>
-                        <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
-                            {t('nav.adminCheatSheetManage')}
-                        </Typography>
-                        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                            {t('manage.cheatSheetDescription')}
-                        </Typography>
-
-                        {/* 搜尋欄 */}
-                        <Paper sx={{ p: 2, mb: 3 }}>
-                            <TextField
-                                fullWidth
-                                placeholder={t('cheatSheet.searchPlaceholder')}
-                                value={cheatSheetSearchTerm}
-                                onChange={(e) => setCheatSheetSearchTerm(e.target.value)}
-                                InputProps={{
-                                    startAdornment: (
-                                        <InputAdornment position="start">
-                                            <SearchIcon color="action" />
-                                        </InputAdornment>
-                                    ),
-                                }}
-                            />
-                        </Paper>
-
-                        {/* 載入中 */}
-                        {cheatSheetLoading && (
-                            <Box sx={{ textAlign: 'center', py: 8 }}>
-                                <Typography variant="h6" color="text.secondary">
-                                    {t('cheatSheet.loadingList')}
-                                </Typography>
-                            </Box>
-                        )}
-
-                        {/* 大抄列表 */}
-                        {!cheatSheetLoading && (
-                            <TableContainer component={Paper}>
-                                <Table>
-                                    <TableHead>
-                                        <TableRow>
-                                            <TableCell>標題</TableCell>
-                                            <TableCell>課程資訊</TableCell>
-                                            <TableCell>描述</TableCell>
-                                            <TableCell>標籤</TableCell>
-                                            <TableCell>檔案資訊</TableCell>
-                                            <TableCell>上傳者</TableCell>
-                                            <TableCell>上傳日期</TableCell>
-                                            <TableCell align="right">下載次數</TableCell>
-                                            <TableCell align="center">操作</TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {filteredCheatSheets.map((sheet) => (
-                                            <TableRow key={sheet.id} hover>
-                                                <TableCell>
-                                                    <Box
-                                                        sx={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: 1,
-                                                        }}
-                                                    >
-                                                        <DescriptionIcon
-                                                            sx={{
-                                                                fontSize: 20,
-                                                                color: 'success.main',
-                                                            }}
-                                                        />
-                                                        <Typography
-                                                            variant="body2"
-                                                            sx={{ fontWeight: 500 }}
-                                                        >
-                                                            {sheet.title}
-                                                        </Typography>
-                                                    </Box>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Box>
-                                                        <Typography
-                                                            variant="body2"
-                                                            sx={{ fontWeight: 500 }}
-                                                        >
-                                                            {sheet.courseName}
-                                                        </Typography>
-                                                        <Typography
-                                                            variant="caption"
-                                                            color="text.secondary"
-                                                        >
-                                                            {sheet.courseCode}
-                                                        </Typography>
-                                                    </Box>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Typography
-                                                        variant="body2"
-                                                        sx={{
-                                                            maxWidth: 200,
-                                                            overflow: 'hidden',
-                                                            textOverflow: 'ellipsis',
-                                                            whiteSpace: 'nowrap',
-                                                        }}
-                                                    >
-                                                        {sheet.description || '-'}
-                                                    </Typography>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Box sx={{ maxWidth: 150 }}>
-                                                        {sheet.tags && sheet.tags.length > 0 ? (
-                                                            <Stack
-                                                                direction="row"
-                                                                spacing={0.5}
-                                                                flexWrap="wrap"
-                                                                useFlexGap
-                                                            >
-                                                                {sheet.tags
-                                                                    .slice(0, 2)
-                                                                    .map((tag) => (
-                                                                        <Chip
-                                                                            key={tag}
-                                                                            label={tag}
-                                                                            size="small"
-                                                                            color={getTagColor(tag)}
-                                                                            variant="outlined"
-                                                                        />
-                                                                    ))}
-                                                                {sheet.tags.length > 2 && (
-                                                                    <Chip
-                                                                        label={`+${sheet.tags.length - 2}`}
-                                                                        size="small"
-                                                                        variant="outlined"
-                                                                    />
-                                                                )}
-                                                            </Stack>
-                                                        ) : (
-                                                            <Typography
-                                                                variant="caption"
-                                                                color="text.disabled"
-                                                            >
-                                                                {t('manage.noTags')}
-                                                            </Typography>
-                                                        )}
-                                                    </Box>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Box>
-                                                        <Typography
-                                                            variant="caption"
-                                                            display="block"
-                                                        >
-                                                            {sheet.fileName}
-                                                        </Typography>
-                                                        <Typography
-                                                            variant="caption"
-                                                            color="text.secondary"
-                                                        >
-                                                            {(sheet.fileSize / 1024 / 1024).toFixed(
-                                                                2,
-                                                            )}{' '}
-                                                            MB
-                                                        </Typography>
-                                                    </Box>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Box
-                                                        sx={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: 1,
-                                                        }}
-                                                    >
-                                                        <Avatar
-                                                            sx={{
-                                                                width: 24,
-                                                                height: 24,
-                                                                fontSize: 12,
-                                                            }}
-                                                        >
-                                                            {sheet.uploader
-                                                                ? sheet.uploader.fullName.charAt(0)
-                                                                : '?'}
-                                                        </Avatar>
-                                                        <Typography variant="body2">
-                                                            {sheet.uploader?.fullName ||
-                                                                t('common.unknown')}
-                                                        </Typography>
-                                                    </Box>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {sheet.created_at
-                                                        ? new Date(
-                                                              sheet.created_at,
-                                                          ).toLocaleDateString(i18n.language)
-                                                        : t('common.unknown')}
-                                                </TableCell>
-                                                <TableCell align="right">
-                                                    {sheet.downloadCount || 0}
-                                                </TableCell>
-                                                <TableCell align="center">
-                                                    <Box
-                                                        sx={{
-                                                            display: 'flex',
-                                                            gap: 0.5,
-                                                            justifyContent: 'center',
-                                                        }}
-                                                    >
-                                                        <Tooltip title={t('exam.preview')}>
-                                                            <IconButton
-                                                                size="small"
-                                                                onClick={() =>
-                                                                    handleCheatSheetPreview(
-                                                                        sheet.id,
-                                                                    )
-                                                                }
-                                                            >
-                                                                <ViewIcon fontSize="small" />
-                                                            </IconButton>
-                                                        </Tooltip>
-                                                        <Tooltip title={t('exam.download')}>
-                                                            <IconButton
-                                                                size="small"
-                                                                color="primary"
-                                                                onClick={() =>
-                                                                    handleCheatSheetDownload(
-                                                                        sheet.id,
-                                                                        sheet.fileName,
-                                                                    )
-                                                                }
-                                                            >
-                                                                <DownloadIcon fontSize="small" />
-                                                            </IconButton>
-                                                        </Tooltip>
-                                                        <Tooltip title={t('common.delete')}>
-                                                            <IconButton
-                                                                size="small"
-                                                                color="error"
-                                                                onClick={() =>
-                                                                    handleCheatSheetDeleteClick(
-                                                                        sheet,
-                                                                    )
-                                                                }
-                                                            >
-                                                                <DeleteIcon fontSize="small" />
-                                                            </IconButton>
-                                                        </Tooltip>
-                                                    </Box>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
-                        )}
-
-                        {/* 沒有結果 */}
-                        {!cheatSheetLoading && filteredCheatSheets.length === 0 && (
-                            <Box sx={{ textAlign: 'center', py: 8 }}>
-                                <Typography variant="h6" color="text.secondary" gutterBottom>
-                                    {t(
-                                        cheatSheets.length === 0
-                                            ? 'cheatSheet.empty'
-                                            : 'cheatSheet.noMatch',
-                                    )}
-                                </Typography>
-                                <Typography variant="body2" color="text.disabled">
-                                    {t(
-                                        cheatSheets.length === 0
-                                            ? 'manage.uploadCheatSheetFirst'
-                                            : 'manage.adjustSearch',
-                                    )}
-                                </Typography>
-                            </Box>
-                        )}
-                    </Paper>
-                )}
+                {/* 大抄管理分頁。與獨立頁面 /admin/cheatsheet-manage 共用同一個元件，
+                    功能只有一份（原本後台這裡是隔天複製過來的第二份實作）。 */}
+                {activeTab === 4 && <CheatSheetManagePanel onNotify={notifyFromPanel} />}
 
                 {/* 課程評價管理分頁 */}
                 {/* 課程評價審核分頁。整段已搬到 components/admin/CourseReviewAdminPanel.js */}
@@ -3307,57 +2519,6 @@ const AdminPage = () => {
                             {t('common.cancel')}
                         </Button>
                         <Button onClick={handleDeleteUser} color="error" variant="contained">
-                            {t('courseReview.admin.confirmDelete')}
-                        </Button>
-                    </DialogActions>
-                </Dialog>
-
-                {/* 考古題刪除確認對話框 */}
-                <Dialog open={examDeleteDialog} onClose={() => setExamDeleteDialog(false)}>
-                    <DialogTitle>確認刪除考古題</DialogTitle>
-                    <DialogContent>
-                        <DialogContentText>
-                            {t('manage.confirmDeleteExam', {
-                                name: `${examToDelete?.courseName} - ${examToDelete?.examType}`,
-                            })}
-                            <br />
-                            {t('manage.deleteIrreversible')}
-                        </DialogContentText>
-                    </DialogContent>
-                    <DialogActions>
-                        <Button onClick={() => setExamDeleteDialog(false)}>
-                            {t('common.cancel')}
-                        </Button>
-                        <Button onClick={handleExamDeleteConfirm} color="error" variant="contained">
-                            {t('courseReview.admin.confirmDelete')}
-                        </Button>
-                    </DialogActions>
-                </Dialog>
-
-                {/* 大抄刪除確認對話框 */}
-                <Dialog
-                    open={cheatSheetDeleteDialog}
-                    onClose={() => setCheatSheetDeleteDialog(false)}
-                >
-                    <DialogTitle>確認刪除大抄</DialogTitle>
-                    <DialogContent>
-                        <DialogContentText>
-                            {t('manage.confirmDeleteCheatSheet', {
-                                name: cheatSheetToDelete?.title,
-                            })}
-                            <br />
-                            {t('manage.deleteIrreversible')}
-                        </DialogContentText>
-                    </DialogContent>
-                    <DialogActions>
-                        <Button onClick={() => setCheatSheetDeleteDialog(false)}>
-                            {t('common.cancel')}
-                        </Button>
-                        <Button
-                            onClick={handleCheatSheetDeleteConfirm}
-                            color="error"
-                            variant="contained"
-                        >
                             {t('courseReview.admin.confirmDelete')}
                         </Button>
                     </DialogActions>

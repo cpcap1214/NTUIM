@@ -7,6 +7,8 @@
 // 兩支頁面刻意跑同一組情境：共用邏輯若在某一支壞掉、另一支沒壞，
 // 代表抽取抽得不對。
 
+import fs from 'fs';
+import path from 'path';
 import React from 'react';
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
@@ -166,17 +168,17 @@ describe.each(CASES)('$name', (c) => {
         expect(screen.getByText('guard.noPermissionTitle')).toBeInTheDocument();
     });
 
-    // 記錄現況而非理想：權限判斷是在 render 裡提前 return，但抓資料的
-    // useEffect 在那之前就跑掉了，所以非管理員仍然會送出一次清單請求。
+    // 這條原本釘的是一個壞掉的現況：權限判斷在 render 裡提前 return，
+    // 但抓資料的 useEffect 在那之前就跑掉了，非管理員仍會送出一次清單請求。
     //
-    // 這不是資安漏洞（清單端點本來就是公開的，另有模組層級的把關），
-    // 是一次沒有用處的請求。這裡先釘住現況，讓接下來的重構能證明
-    // 自己沒有改變行為；要修的話是獨立的一次改動。
-    test('（現況）非管理員仍然會送出一次清單請求', () => {
+    // 把功能抽成 ExamManagePanel / CheatSheetManagePanel 之後，抓資料的程式碼
+    // 隨面板一起走了，而面板要通過權限判斷才會掛載——問題自己消失了。
+    // 這不是刻意去修的，是結構變對之後的結果，所以改成釘住正確行為。
+    test('非管理員不會送出任何請求', () => {
         mockAuth.isAdmin = false;
         render(<c.Page />);
 
-        expect(global.fetch).toHaveBeenCalledTimes(1);
+        expect(global.fetch).not.toHaveBeenCalled();
     });
 
     test('載入後每一筆都渲染得出來', async () => {
@@ -343,5 +345,33 @@ describe.each(CASES)('$name 的表格標題', (c) => {
         headers.forEach((cell) => {
             expect(cell.textContent).toMatch(/^manage.columns./);
         });
+    });
+});
+
+// ── 後台分頁與獨立頁面必須共用同一份實作 ──────────────────────────
+//
+// 這兩份功能曾經是兩套：獨立頁面 /admin/exam-manage 建於 2025-08-30，
+// 後台控制台的分頁是隔天複製過去的。複製品後來沒跟上——欄位標題還是寫死的
+// 中文、表格在手機會把整頁撐開，而沒有人發現，因為兩邊看起來「差不多」。
+//
+// 這條測試直接讀原始碼，確認兩邊 import 的是同一個元件。
+// 有人為了改後台而複製第三份出來，這裡會轉紅。
+describe('考古題／大抄管理只有一份實作', () => {
+    const read = (rel) => fs.readFileSync(path.resolve(process.cwd(), rel), 'utf8');
+
+    test.each([
+        ['ExamManagePanel', 'src/main/js/pages/ExamManagePage.js'],
+        ['CheatSheetManagePanel', 'src/main/js/pages/CheatSheetManagePage.js'],
+    ])('後台與獨立頁面都用 %s', (panel, pagePath) => {
+        const adminSrc = read('src/main/js/pages/AdminPage.js');
+        const pageSrc = read(pagePath);
+
+        expect(adminSrc).toContain(`components/admin/${panel}`);
+        expect(pageSrc).toContain(`components/admin/${panel}`);
+
+        // 而且兩邊都不該再自己實作一次表格
+        expect(pageSrc).not.toContain('<TableHead>');
+        expect(adminSrc).not.toContain('filteredExams');
+        expect(adminSrc).not.toContain('filteredCheatSheets');
     });
 });

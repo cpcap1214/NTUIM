@@ -16,7 +16,17 @@ import { API_BASE_URL } from '../services/api';
 //   listQuery     取清單時附加的 query string，例如 '?limit=1000'
 //   matches       (item, 小寫後的搜尋字串) => boolean，決定搜尋比對哪些欄位
 //   messages      已經過 t() 翻譯的訊息字串，hook 本身不碰 i18n
-export const useResourceManage = ({ resourcePath, listQuery = '', matches, messages }) => {
+//   onNotify      選填。(message, severity) => void。
+//                 給了就把提示交給外部（後台控制台有共用的 Snackbar，
+//                 同一個畫面長出第二組只會互相蓋掉）；沒給就自己記在
+//                 snackbar 狀態裡，由呼叫端渲染。
+export const useResourceManage = ({
+    resourcePath,
+    listQuery = '',
+    matches,
+    messages,
+    onNotify,
+}) => {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -32,7 +42,15 @@ export const useResourceManage = ({ resourcePath, listQuery = '', matches, messa
     const messagesRef = useRef(messages);
     messagesRef.current = messages;
 
+    // onNotify 同理：每次 render 都可能是新的函式參考
+    const notifyRef = useRef(onNotify);
+    notifyRef.current = onNotify;
+
     const notify = useCallback((message, severity = 'success') => {
+        if (notifyRef.current) {
+            notifyRef.current(message, severity);
+            return;
+        }
         setSnackbar({ open: true, message, severity });
     }, []);
 
