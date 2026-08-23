@@ -30,16 +30,11 @@ import {
     Stack,
     InputAdornment,
     Avatar,
-    DialogContentText,
     Divider,
-    FormControlLabel,
-    Checkbox,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
-import AddIcon from '@mui/icons-material/Add';
-import DeleteIcon from '@mui/icons-material/Delete';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 import SearchIcon from '@mui/icons-material/Search';
 import ViewIcon from '@mui/icons-material/Visibility';
@@ -58,6 +53,7 @@ import ExamManagePanel from '../components/admin/ExamManagePanel';
 import CheatSheetManagePanel from '../components/admin/CheatSheetManagePanel';
 import ExamUploadPanel from '../components/admin/ExamUploadPanel';
 import CheatSheetUploadPanel from '../components/admin/CheatSheetUploadPanel';
+import RoleAdminPanel from '../components/admin/RoleAdminPanel';
 import { API_BASE_URL } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import roleService from '../services/roleService';
@@ -138,18 +134,6 @@ const AdminPage = () => {
     const [allRoles, setAllRoles] = useState([]);
     const [permissionCatalog, setPermissionCatalog] = useState([]);
     const [roleLoading, setRoleLoading] = useState(false);
-    const [roleDialog, setRoleDialog] = useState(false);
-    const [roleForm, setRoleForm] = useState({
-        id: null,
-        key: '',
-        name: '',
-        description: '',
-        color: '',
-        priority: 0,
-        permissions: [],
-    });
-    const [roleDeleteDialog, setRoleDeleteDialog] = useState(false);
-    const [roleToDelete, setRoleToDelete] = useState(null);
 
     // 公告管理相關狀態。
     // publishAt / expireAt 在表單裡是 datetime-local 需要的「本地牆上時間」格式，
@@ -245,51 +229,6 @@ const AdminPage = () => {
             setError(translateApiError(err, t('admin.roles.fetchFailed')));
         } finally {
             setRoleLoading(false);
-        }
-    };
-
-    const openRoleDialog = (role = null) => {
-        setRoleForm(
-            role
-                ? { ...role, permissions: role.permissions || [] }
-                : {
-                      id: null,
-                      key: '',
-                      name: '',
-                      description: '',
-                      color: '',
-                      priority: 0,
-                      permissions: [],
-                  },
-        );
-        setRoleDialog(true);
-    };
-
-    const handleSaveRole = async () => {
-        try {
-            if (roleForm.id) {
-                await roleService.updateRole(roleForm.id, roleForm);
-            } else {
-                await roleService.createRole(roleForm);
-            }
-            setRoleDialog(false);
-            await fetchRoles();
-            setSuccess(t('admin.roles.saved'));
-        } catch (err) {
-            setError(translateApiError(err, t('admin.roles.saveFailed')));
-        }
-    };
-
-    const handleDeleteRole = async () => {
-        try {
-            await roleService.deleteRole(roleToDelete.id);
-            await fetchRoles();
-            setSuccess(t('admin.roles.deleted'));
-        } catch (err) {
-            setError(translateApiError(err, t('admin.roles.deleteFailed')));
-        } finally {
-            setRoleDeleteDialog(false);
-            setRoleToDelete(null);
         }
     };
 
@@ -1507,200 +1446,17 @@ const AdminPage = () => {
                 {activeTab === 6 && <PayoutAdminPanel onError={setError} onSuccess={setSuccess} />}
 
                 {/* 身分組管理分頁 */}
+                {/* 身分組分頁。整段已搬到 components/admin/RoleAdminPanel.js */}
                 {activeTab === 7 && (
-                    <Paper sx={{ p: 2 }}>
-                        <Stack
-                            direction="row"
-                            justifyContent="space-between"
-                            alignItems="flex-start"
-                            sx={{ mb: 3 }}
-                        >
-                            <Box>
-                                <Typography
-                                    variant="h5"
-                                    gutterBottom
-                                    sx={{ fontWeight: 700, mb: 1 }}
-                                >
-                                    {t('admin.roles.title')}
-                                </Typography>
-                                <Typography variant="body1" color="text.secondary">
-                                    {t('admin.roles.description')}
-                                </Typography>
-                            </Box>
-                            <Button
-                                variant="contained"
-                                startIcon={<AddIcon />}
-                                onClick={() => openRoleDialog()}
-                            >
-                                {t('admin.roles.create')}
-                            </Button>
-                        </Stack>
-
-                        {roleLoading && (
-                            <Box sx={{ textAlign: 'center', py: 8 }}>
-                                <Typography variant="h6" color="text.secondary">
-                                    載入中...
-                                </Typography>
-                            </Box>
-                        )}
-
-                        {!roleLoading && (
-                            <Grid container spacing={2}>
-                                {allRoles.map((role) => (
-                                    <Grid item xs={12} md={6} key={role.id}>
-                                        <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
-                                            <Stack
-                                                direction="row"
-                                                justifyContent="space-between"
-                                                alignItems="flex-start"
-                                                sx={{ mb: 1 }}
-                                            >
-                                                <Stack
-                                                    direction="row"
-                                                    spacing={1}
-                                                    alignItems="center"
-                                                    flexWrap="wrap"
-                                                    useFlexGap
-                                                >
-                                                    <Chip
-                                                        label={role.name}
-                                                        size="small"
-                                                        sx={
-                                                            role.color
-                                                                ? {
-                                                                      bgcolor: role.color,
-                                                                      color: '#fff',
-                                                                      fontWeight: 600,
-                                                                  }
-                                                                : { fontWeight: 600 }
-                                                        }
-                                                    />
-                                                    <Typography
-                                                        variant="caption"
-                                                        color="text.secondary"
-                                                    >
-                                                        {role.key}
-                                                    </Typography>
-                                                    {role.isSystem && (
-                                                        <Chip
-                                                            label={t('admin.roles.builtin')}
-                                                            size="small"
-                                                            variant="outlined"
-                                                        />
-                                                    )}
-                                                    {role.isAuto && (
-                                                        <Chip
-                                                            label={t('admin.roles.auto')}
-                                                            size="small"
-                                                            color="info"
-                                                            variant="outlined"
-                                                        />
-                                                    )}
-                                                </Stack>
-                                                <Stack direction="row" spacing={0.5}>
-                                                    <IconButton
-                                                        size="small"
-                                                        color="warning"
-                                                        title={`以「${role.name}」的身分檢視全站（唯讀）`}
-                                                        onClick={() =>
-                                                            handleStartPreview(
-                                                                'role',
-                                                                role.id,
-                                                                `身分組「${role.name}」`,
-                                                            )
-                                                        }
-                                                    >
-                                                        <ViewIcon fontSize="small" />
-                                                    </IconButton>
-                                                    <IconButton
-                                                        size="small"
-                                                        onClick={() => openRoleDialog(role)}
-                                                        title={t('common.edit')}
-                                                    >
-                                                        <EditIcon fontSize="small" />
-                                                    </IconButton>
-                                                    <IconButton
-                                                        size="small"
-                                                        color="error"
-                                                        disabled={role.isSystem}
-                                                        title={t(
-                                                            role.isSystem
-                                                                ? 'admin.roles.builtinNotDeletable'
-                                                                : 'common.delete',
-                                                        )}
-                                                        onClick={() => {
-                                                            setRoleToDelete(role);
-                                                            setRoleDeleteDialog(true);
-                                                        }}
-                                                    >
-                                                        <DeleteIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Stack>
-                                            </Stack>
-
-                                            {role.description && (
-                                                <Typography
-                                                    variant="body2"
-                                                    color="text.secondary"
-                                                    sx={{ mb: 1 }}
-                                                >
-                                                    {role.description}
-                                                </Typography>
-                                            )}
-
-                                            <Typography
-                                                variant="caption"
-                                                color="text.secondary"
-                                                display="block"
-                                                sx={{ mb: 0.5 }}
-                                            >
-                                                {t('admin.roles.memberCount', {
-                                                    count: role.memberCount,
-                                                })}
-                                                {role.isAuto ? t('admin.roles.autoComputed') : ''}
-                                            </Typography>
-
-                                            <Stack
-                                                direction="row"
-                                                spacing={0.5}
-                                                flexWrap="wrap"
-                                                useFlexGap
-                                            >
-                                                {role.permissions.includes('*') ? (
-                                                    <Chip
-                                                        label={t('admin.roles.allPermissions')}
-                                                        size="small"
-                                                        color="error"
-                                                    />
-                                                ) : (
-                                                    role.permissions.map((p) => (
-                                                        <Chip
-                                                            key={p}
-                                                            label={
-                                                                permissionCatalog.find(
-                                                                    (c) => c.key === p,
-                                                                )?.label || p
-                                                            }
-                                                            size="small"
-                                                            variant="outlined"
-                                                        />
-                                                    ))
-                                                )}
-                                                {role.permissions.length === 0 && (
-                                                    <Typography
-                                                        variant="caption"
-                                                        color="text.disabled"
-                                                    >
-                                                        未設定任何權限
-                                                    </Typography>
-                                                )}
-                                            </Stack>
-                                        </Paper>
-                                    </Grid>
-                                ))}
-                            </Grid>
-                        )}
-                    </Paper>
+                    <RoleAdminPanel
+                        roles={allRoles}
+                        permissionCatalog={permissionCatalog}
+                        loading={roleLoading}
+                        onRefresh={fetchRoles}
+                        onStartPreview={handleStartPreview}
+                        onError={setError}
+                        onSuccess={setSuccess}
+                    />
                 )}
 
                 {/* 模組管理分頁 */}
@@ -1727,158 +1483,6 @@ const AdminPage = () => {
                 {activeTab === 10 && (
                     <FeedbackAdminPanel onError={setError} onSuccess={setSuccess} />
                 )}
-
-                {/* 身分組編輯對話框 */}
-                <Dialog
-                    open={roleDialog}
-                    onClose={() => setRoleDialog(false)}
-                    maxWidth="sm"
-                    fullWidth
-                >
-                    <DialogTitle>
-                        {t(roleForm.id ? 'admin.roles.editTitle' : 'admin.roles.create')}
-                    </DialogTitle>
-                    <DialogContent>
-                        <Stack spacing={2} sx={{ mt: 1 }}>
-                            <TextField
-                                label={t('admin.roles.keyLabel')}
-                                value={roleForm.key}
-                                onChange={(e) => setRoleForm({ ...roleForm, key: e.target.value })}
-                                disabled={!!roleForm.id}
-                                helperText={t(
-                                    roleForm.id ? 'admin.roles.keyLocked' : 'admin.roles.keyHelper',
-                                )}
-                                fullWidth
-                            />
-                            <TextField
-                                label={t('admin.roles.nameLabel')}
-                                value={roleForm.name}
-                                onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
-                                fullWidth
-                            />
-                            <TextField
-                                label={t('admin.roles.descLabel')}
-                                value={roleForm.description || ''}
-                                onChange={(e) =>
-                                    setRoleForm({ ...roleForm, description: e.target.value })
-                                }
-                                fullWidth
-                            />
-                            <Stack direction="row" spacing={2}>
-                                <TextField
-                                    label={t('admin.roles.colorLabel')}
-                                    type="color"
-                                    value={roleForm.color || '#1976d2'}
-                                    onChange={(e) =>
-                                        setRoleForm({ ...roleForm, color: e.target.value })
-                                    }
-                                    sx={{ width: 120 }}
-                                />
-                                <TextField
-                                    label={t('admin.roles.priorityLabel')}
-                                    type="number"
-                                    value={roleForm.priority}
-                                    onChange={(e) =>
-                                        setRoleForm({
-                                            ...roleForm,
-                                            priority: parseInt(e.target.value, 10) || 0,
-                                        })
-                                    }
-                                    helperText={t('admin.roles.priorityHelper')}
-                                />
-                            </Stack>
-
-                            <Divider />
-                            <Typography variant="subtitle2">權限</Typography>
-                            {roleForm.permissions.includes('*') ? (
-                                <Alert severity="info">此身分組擁有所有權限，無法逐項調整</Alert>
-                            ) : (
-                                Object.entries(
-                                    permissionCatalog.reduce((acc, p) => {
-                                        (acc[p.group] = acc[p.group] || []).push(p);
-                                        return acc;
-                                    }, {}),
-                                ).map(([group, items]) => (
-                                    <Box key={group}>
-                                        <Typography
-                                            variant="caption"
-                                            color="text.secondary"
-                                            sx={{ fontWeight: 600 }}
-                                        >
-                                            {group}
-                                        </Typography>
-                                        <Stack>
-                                            {items.map((p) => (
-                                                <FormControlLabel
-                                                    key={p.key}
-                                                    control={
-                                                        <Checkbox
-                                                            size="small"
-                                                            checked={roleForm.permissions.includes(
-                                                                p.key,
-                                                            )}
-                                                            onChange={(e) =>
-                                                                setRoleForm({
-                                                                    ...roleForm,
-                                                                    permissions: e.target.checked
-                                                                        ? [
-                                                                              ...roleForm.permissions,
-                                                                              p.key,
-                                                                          ]
-                                                                        : roleForm.permissions.filter(
-                                                                              (x) => x !== p.key,
-                                                                          ),
-                                                                })
-                                                            }
-                                                        />
-                                                    }
-                                                    label={
-                                                        <Typography variant="body2">
-                                                            {p.label}
-                                                            <Typography
-                                                                component="span"
-                                                                variant="caption"
-                                                                color="text.secondary"
-                                                            >
-                                                                {' '}
-                                                                — {p.description}
-                                                            </Typography>
-                                                        </Typography>
-                                                    }
-                                                />
-                                            ))}
-                                        </Stack>
-                                    </Box>
-                                ))
-                            )}
-                        </Stack>
-                    </DialogContent>
-                    <DialogActions>
-                        <Button onClick={() => setRoleDialog(false)}>取消</Button>
-                        <Button variant="contained" onClick={handleSaveRole}>
-                            儲存
-                        </Button>
-                    </DialogActions>
-                </Dialog>
-
-                {/* 刪除身分組確認 */}
-                <Dialog open={roleDeleteDialog} onClose={() => setRoleDeleteDialog(false)}>
-                    <DialogTitle>刪除身分組？</DialogTitle>
-                    <DialogContent>
-                        <DialogContentText>
-                            {t('admin.roles.deleteWarning', {
-                                name: roleToDelete?.name,
-                                count: roleToDelete?.memberCount,
-                            })}
-                        </DialogContentText>
-                    </DialogContent>
-                    <DialogActions>
-                        <Button onClick={() => setRoleDeleteDialog(false)}>取消</Button>
-                        <Button color="error" variant="contained" onClick={handleDeleteRole}>
-                            確認刪除
-                        </Button>
-                    </DialogActions>
-                </Dialog>
 
                 {/* 更改密碼對話框 */}
                 <Dialog open={newPasswordDialog} onClose={() => setNewPasswordDialog(false)}>
