@@ -34,14 +34,10 @@ import {
     Avatar,
     DialogContentText,
     Divider,
-    ToggleButton,
-    ToggleButtonGroup,
     FormControlLabel,
     Checkbox,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import RateReviewIcon from '@mui/icons-material/RateReview';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -63,11 +59,10 @@ import AnnouncementAdminPanel from '../components/admin/AnnouncementAdminPanel';
 import ModuleAdminPanel from '../components/admin/ModuleAdminPanel';
 import LineAdminPanel from '../components/admin/LineAdminPanel';
 import PayoutAdminPanel from '../components/admin/PayoutAdminPanel';
+import CourseReviewAdminPanel from '../components/admin/CourseReviewAdminPanel';
 import { API_BASE_URL } from '../services/api';
 import { useNavigate } from 'react-router-dom';
-import courseReviewService from '../services/courseReviewService';
 import roleService from '../services/roleService';
-import ReviewCard from '../components/courseReview/ReviewCard';
 import { translateApiError } from '../utils';
 
 // 後台各功能對應的權限與分頁編號。持有其中任何一項就能進入管理控制台，
@@ -146,17 +141,6 @@ const AdminPage = () => {
     const [cheatSheetLoading, setCheatSheetLoading] = useState(false);
 
     // 課程評價管理相關狀態
-    const [courseReviews, setCourseReviews] = useState([]);
-    const [courseReviewSearchTerm, setCourseReviewSearchTerm] = useState('');
-    const [courseReviewFilter, setCourseReviewFilter] = useState('pending');
-    const [courseReviewTermFilter, setCourseReviewTermFilter] = useState('all');
-    const [courseReviewProfessorFilter, setCourseReviewProfessorFilter] = useState('all');
-    const [courseReviewLoading, setCourseReviewLoading] = useState(false);
-    const [courseReviewRejectDialog, setCourseReviewRejectDialog] = useState(false);
-    const [reviewToReject, setReviewToReject] = useState(null);
-    const [rejectReason, setRejectReason] = useState('');
-    const [courseReviewDeleteDialog, setCourseReviewDeleteDialog] = useState(false);
-    const [reviewToDelete, setReviewToDelete] = useState(null);
 
     // 身分組與模組管理相關狀態
     const [allRoles, setAllRoles] = useState([]);
@@ -255,8 +239,6 @@ const AdminPage = () => {
             fetchExams();
         } else if (activeTab === 4) {
             fetchCheatSheets();
-        } else if (activeTab === 5) {
-            fetchCourseReviews();
         } else if (activeTab === 7) {
             fetchRoles();
         }
@@ -274,14 +256,6 @@ const AdminPage = () => {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTab, user]);
-
-    // 課程評價的篩選條件變更時重新載入
-    useEffect(() => {
-        if (activeTab === 5) {
-            fetchCourseReviews();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [courseReviewFilter]);
 
     // 純總務身分（非管理員）預設落在回饋金發放，不要停在他們沒權限的用戶管理分頁
     useEffect(() => {
@@ -361,72 +335,6 @@ const AdminPage = () => {
     // --- 回饋管理 -------------------------------------------------------------
 
     // status: 'pending'（未處理）| 'paid'（已發放）| 'declined'（不發放）
-    const fetchCourseReviews = async () => {
-        try {
-            setCourseReviewLoading(true);
-            const result = await courseReviewService.getAdminReviews(
-                courseReviewFilter === 'all' ? undefined : courseReviewFilter,
-            );
-            setCourseReviews(result.data || []);
-        } catch (err) {
-            console.error('取得課程評價錯誤:', err);
-            setError(translateApiError(err, t('errors.FETCH_LIST_FAILED')));
-        } finally {
-            setCourseReviewLoading(false);
-        }
-    };
-
-    const handleApproveCourseReview = async (review) => {
-        try {
-            await courseReviewService.reviewStatus(review.id, { status: 'approved' });
-            await fetchCourseReviews();
-            setSuccess(t('courseReview.admin.approveSuccess'));
-        } catch (err) {
-            setError(translateApiError(err, t('courseReview.admin.approveFailed')));
-        }
-    };
-
-    const openRejectDialog = (review) => {
-        setReviewToReject(review);
-        setRejectReason('');
-        setCourseReviewRejectDialog(true);
-    };
-
-    const handleRejectCourseReview = async () => {
-        if (!rejectReason.trim()) return;
-        try {
-            await courseReviewService.reviewStatus(reviewToReject.id, {
-                status: 'rejected',
-                rejectReason: rejectReason.trim(),
-            });
-            setCourseReviewRejectDialog(false);
-            setReviewToReject(null);
-            await fetchCourseReviews();
-            setSuccess(t('courseReview.admin.rejectSuccess'));
-        } catch (err) {
-            setError(translateApiError(err, t('courseReview.admin.rejectFailed')));
-        }
-    };
-
-    const handleDeleteCourseReviewClick = (review) => {
-        setReviewToDelete(review);
-        setCourseReviewDeleteDialog(true);
-    };
-
-    const handleDeleteCourseReviewConfirm = async () => {
-        if (!reviewToDelete) return;
-        try {
-            await courseReviewService.deleteReview(reviewToDelete.id);
-            await fetchCourseReviews();
-            setSuccess(t('courseReview.admin.deleteSuccess'));
-        } catch (err) {
-            setError(translateApiError(err, t('courseReview.admin.deleteFailed')));
-        } finally {
-            setCourseReviewDeleteDialog(false);
-            setReviewToDelete(null);
-        }
-    };
-
     const fetchUsers = async () => {
         try {
             const token = localStorage.getItem('token');
@@ -967,45 +875,6 @@ const AdminPage = () => {
             exam.courseCode.toLowerCase().includes(examSearchTerm.toLowerCase()) ||
             (exam.professor && exam.professor.toLowerCase().includes(examSearchTerm.toLowerCase())),
     );
-
-    const pendingCourseReviewCount = courseReviews.filter((r) => r.status === 'pending').length;
-
-    const courseReviewTermRank = { 1: 1, 2: 2, summer: 3 };
-    const courseReviewTermOptions = [
-        ...new Map(
-            courseReviews.map((r) => [
-                `${r.year}-${r.semester}`,
-                {
-                    value: `${r.year}-${r.semester}`,
-                    label: courseReviewService.getAcademicTermLabel(r.year, r.semester),
-                    year: r.year,
-                    semester: r.semester,
-                },
-            ]),
-        ).values(),
-    ].sort(
-        (a, b) =>
-            b.year - a.year || courseReviewTermRank[b.semester] - courseReviewTermRank[a.semester],
-    );
-
-    const courseReviewProfessorOptions = [
-        ...new Set(courseReviews.map((r) => r.professor).filter(Boolean)),
-    ].sort();
-
-    const filteredCourseReviews = courseReviews.filter((review) => {
-        const keyword = courseReviewSearchTerm.toLowerCase();
-        const matchesKeyword =
-            review.courseName.toLowerCase().includes(keyword) ||
-            review.courseCode.toLowerCase().includes(keyword) ||
-            (review.professor && review.professor.toLowerCase().includes(keyword));
-        const matchesTerm =
-            courseReviewTermFilter === 'all' ||
-            `${review.year}-${review.semester}` === courseReviewTermFilter;
-        const matchesProfessor =
-            courseReviewProfessorFilter === 'all' ||
-            review.professor === courseReviewProfessorFilter;
-        return matchesKeyword && matchesTerm && matchesProfessor;
-    });
 
     const filteredCheatSheets = cheatSheets.filter(
         (sheet) =>
@@ -2993,236 +2862,9 @@ const AdminPage = () => {
                 )}
 
                 {/* 課程評價管理分頁 */}
+                {/* 課程評價審核分頁。整段已搬到 components/admin/CourseReviewAdminPanel.js */}
                 {activeTab === 5 && (
-                    <Paper sx={{ p: 2 }}>
-                        <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
-                            {t('courseReview.admin.title')}
-                        </Typography>
-                        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                            {t('courseReview.admin.description')}
-                        </Typography>
-
-                        {/* 搜尋欄與篩選 */}
-                        <Paper sx={{ p: 2, mb: 3 }}>
-                            <Grid container spacing={2} alignItems="center">
-                                <Grid item xs={12} md={6}>
-                                    <TextField
-                                        fullWidth
-                                        placeholder={t('courseReview.admin.searchPlaceholder')}
-                                        value={courseReviewSearchTerm}
-                                        onChange={(e) => setCourseReviewSearchTerm(e.target.value)}
-                                        InputProps={{
-                                            startAdornment: (
-                                                <InputAdornment position="start">
-                                                    <SearchIcon color="action" />
-                                                </InputAdornment>
-                                            ),
-                                        }}
-                                    />
-                                </Grid>
-                                <Grid item xs={6} md={3}>
-                                    <FormControl fullWidth size="small">
-                                        <InputLabel>
-                                            {t('courseReview.form.academicTerm')}
-                                        </InputLabel>
-                                        <Select
-                                            value={courseReviewTermFilter}
-                                            label={t('courseReview.form.academicTerm')}
-                                            onChange={(e) =>
-                                                setCourseReviewTermFilter(e.target.value)
-                                            }
-                                        >
-                                            <MenuItem value="all">{t('common.all')}</MenuItem>
-                                            {courseReviewTermOptions.map((option) => (
-                                                <MenuItem key={option.value} value={option.value}>
-                                                    {option.label}
-                                                </MenuItem>
-                                            ))}
-                                        </Select>
-                                    </FormControl>
-                                </Grid>
-                                <Grid item xs={6} md={3}>
-                                    <FormControl fullWidth size="small">
-                                        <InputLabel>
-                                            {t('courseReview.professorFilterLabel')}
-                                        </InputLabel>
-                                        <Select
-                                            value={courseReviewProfessorFilter}
-                                            label={t('courseReview.professorFilterLabel')}
-                                            onChange={(e) =>
-                                                setCourseReviewProfessorFilter(e.target.value)
-                                            }
-                                        >
-                                            <MenuItem value="all">{t('common.all')}</MenuItem>
-                                            {courseReviewProfessorOptions.map((professor) => (
-                                                <MenuItem key={professor} value={professor}>
-                                                    {professor}
-                                                </MenuItem>
-                                            ))}
-                                        </Select>
-                                    </FormControl>
-                                </Grid>
-                            </Grid>
-                        </Paper>
-
-                        <ToggleButtonGroup
-                            value={courseReviewFilter}
-                            exclusive
-                            size="small"
-                            onChange={(_, v) => v && setCourseReviewFilter(v)}
-                            sx={{ mb: 3 }}
-                        >
-                            <ToggleButton value="all">{t('common.all')}</ToggleButton>
-                            <ToggleButton value="pending">
-                                {t('courseReview.status.pending')}
-                                {pendingCourseReviewCount > 0 && (
-                                    <Chip
-                                        label={pendingCourseReviewCount}
-                                        size="small"
-                                        color="warning"
-                                        sx={{ ml: 1 }}
-                                    />
-                                )}
-                            </ToggleButton>
-                            <ToggleButton value="approved">
-                                {t('courseReview.status.approved')}
-                            </ToggleButton>
-                            <ToggleButton value="rejected">
-                                {t('courseReview.status.rejected')}
-                            </ToggleButton>
-                        </ToggleButtonGroup>
-
-                        {courseReviewLoading && (
-                            <Box sx={{ textAlign: 'center', py: 8 }}>
-                                <Typography variant="h6" color="text.secondary">
-                                    {t('common.loading')}
-                                </Typography>
-                            </Box>
-                        )}
-
-                        {!courseReviewLoading && filteredCourseReviews.length === 0 && (
-                            <Box sx={{ textAlign: 'center', py: 8 }}>
-                                <RateReviewIcon
-                                    sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }}
-                                />
-                                <Typography variant="h6" color="text.secondary">
-                                    {courseReviews.length === 0
-                                        ? t('courseReview.admin.noMatchingReviews')
-                                        : t('courseReview.admin.noMatchingSearchReviews')}
-                                </Typography>
-                            </Box>
-                        )}
-
-                        {!courseReviewLoading && filteredCourseReviews.length > 0 && (
-                            <Box>
-                                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                    {t('courseReview.admin.countLabel', {
-                                        count: filteredCourseReviews.length,
-                                    })}
-                                </Typography>
-                                <Grid container spacing={2}>
-                                    {filteredCourseReviews.map((review) => (
-                                        <Grid item xs={12} md={6} key={review.id}>
-                                            <Box
-                                                sx={{
-                                                    display: 'flex',
-                                                    flexDirection: 'column',
-                                                    height: '100%',
-                                                }}
-                                            >
-                                                <ReviewCard
-                                                    review={review}
-                                                    showStatus
-                                                    hideReviewedBy
-                                                    currentUserId={null}
-                                                    onEdit={() => {}}
-                                                    onDelete={() => {}}
-                                                />
-                                                <Stack
-                                                    direction="row"
-                                                    justifyContent="space-between"
-                                                    alignItems="center"
-                                                    flexWrap="wrap"
-                                                    sx={{ mt: 1, rowGap: 1 }}
-                                                >
-                                                    <Stack spacing={0.25}>
-                                                        <Typography
-                                                            variant="caption"
-                                                            color="text.secondary"
-                                                        >
-                                                            {t('courseReview.admin.submittedAt', {
-                                                                time: review.created_at
-                                                                    ? new Date(
-                                                                          review.created_at,
-                                                                      ).toLocaleString('zh-TW')
-                                                                    : t('common.unknown'),
-                                                            })}
-                                                        </Typography>
-                                                        {review.reviewedByUser && (
-                                                            <Typography
-                                                                variant="caption"
-                                                                color="text.secondary"
-                                                            >
-                                                                {t('courseReview.reviewedBy', {
-                                                                    name: review.reviewedByUser
-                                                                        .fullName,
-                                                                })}
-                                                            </Typography>
-                                                        )}
-                                                    </Stack>
-                                                    <Stack
-                                                        direction="row"
-                                                        spacing={1}
-                                                        flexWrap="wrap"
-                                                        sx={{ rowGap: 1 }}
-                                                    >
-                                                        <Button
-                                                            variant="outlined"
-                                                            color="error"
-                                                            startIcon={<DeleteIcon />}
-                                                            onClick={() =>
-                                                                handleDeleteCourseReviewClick(
-                                                                    review,
-                                                                )
-                                                            }
-                                                        >
-                                                            {t('common.delete')}
-                                                        </Button>
-                                                        {review.status === 'pending' && (
-                                                            <>
-                                                                <Button
-                                                                    variant="outlined"
-                                                                    color="warning"
-                                                                    startIcon={<CancelIcon />}
-                                                                    onClick={() =>
-                                                                        openRejectDialog(review)
-                                                                    }
-                                                                >
-                                                                    {t('common.reject')}
-                                                                </Button>
-                                                                <Button
-                                                                    variant="contained"
-                                                                    color="success"
-                                                                    startIcon={<CheckCircleIcon />}
-                                                                    onClick={() =>
-                                                                        handleApproveCourseReview(
-                                                                            review,
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    {t('common.approve')}
-                                                                </Button>
-                                                            </>
-                                                        )}
-                                                    </Stack>
-                                                </Stack>
-                                            </Box>
-                                        </Grid>
-                                    ))}
-                                </Grid>
-                            </Box>
-                        )}
-                    </Paper>
+                    <CourseReviewAdminPanel onError={setError} onSuccess={setSuccess} />
                 )}
 
                 {/* 回饋金發放管理分頁 */}
@@ -3713,68 +3355,6 @@ const AdminPage = () => {
                         </Button>
                         <Button
                             onClick={handleCheatSheetDeleteConfirm}
-                            color="error"
-                            variant="contained"
-                        >
-                            {t('courseReview.admin.confirmDelete')}
-                        </Button>
-                    </DialogActions>
-                </Dialog>
-
-                {/* 拒絕課程評價對話框 */}
-                <Dialog
-                    open={courseReviewRejectDialog}
-                    onClose={() => setCourseReviewRejectDialog(false)}
-                    maxWidth="sm"
-                    fullWidth
-                >
-                    <DialogTitle>{t('courseReview.admin.rejectDialogTitle')}</DialogTitle>
-                    <DialogContent>
-                        <TextField
-                            fullWidth
-                            multiline
-                            rows={3}
-                            autoFocus
-                            label={t('courseReview.admin.rejectReasonInput')}
-                            required
-                            sx={{ mt: 1 }}
-                            value={rejectReason}
-                            onChange={(e) => setRejectReason(e.target.value)}
-                            helperText={t('courseReview.admin.rejectReasonHelper')}
-                        />
-                    </DialogContent>
-                    <DialogActions>
-                        <Button onClick={() => setCourseReviewRejectDialog(false)}>
-                            {t('common.cancel')}
-                        </Button>
-                        <Button
-                            variant="contained"
-                            color="error"
-                            onClick={handleRejectCourseReview}
-                            disabled={!rejectReason.trim()}
-                        >
-                            {t('courseReview.admin.confirmReject')}
-                        </Button>
-                    </DialogActions>
-                </Dialog>
-
-                {/* 刪除課程評價對話框 */}
-                <Dialog
-                    open={courseReviewDeleteDialog}
-                    onClose={() => setCourseReviewDeleteDialog(false)}
-                >
-                    <DialogTitle>{t('courseReview.admin.deleteDialogTitle')}</DialogTitle>
-                    <DialogContent>
-                        <DialogContentText>
-                            {t('courseReview.admin.deleteDialogBody')}
-                        </DialogContentText>
-                    </DialogContent>
-                    <DialogActions>
-                        <Button onClick={() => setCourseReviewDeleteDialog(false)}>
-                            {t('common.cancel')}
-                        </Button>
-                        <Button
-                            onClick={handleDeleteCourseReviewConfirm}
                             color="error"
                             variant="contained"
                         >
