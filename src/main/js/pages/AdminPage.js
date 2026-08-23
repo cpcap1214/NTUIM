@@ -62,6 +62,7 @@ import FeedbackAdminPanel from '../components/admin/FeedbackAdminPanel';
 import AnnouncementAdminPanel from '../components/admin/AnnouncementAdminPanel';
 import ModuleAdminPanel from '../components/admin/ModuleAdminPanel';
 import LineAdminPanel from '../components/admin/LineAdminPanel';
+import PayoutAdminPanel from '../components/admin/PayoutAdminPanel';
 import { API_BASE_URL } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import courseReviewService from '../services/courseReviewService';
@@ -96,28 +97,6 @@ const PERMISSION_TO_TAB = {
     'feedback.manage': 10,
 };
 const CONSOLE_PERMISSIONS = Object.keys(PERMISSION_TO_TAB);
-
-// 發放狀態列的標籤樣式。filled 與 outlined 兩種變體並排時，outlined 多出的 1px 邊框
-// 會讓它看起來比較矮、字也比較細，所以高度與字級都明確指定，兩顆共用同一組值。
-const PAYOUT_CHIP_SX = {
-    height: 24,
-    fontSize: '0.75rem',
-    fontWeight: 500,
-    '& .MuiChip-label': { px: 1 },
-};
-
-// 發放狀態 → 標籤顏色。declined 用中性灰而不是紅色：
-// 「不發放」是正常的結案結果（多半只是超出名額），不是錯誤，不該看起來像警報
-const PAYOUT_STATUS_COLOR = {
-    pending: 'warning',
-    paid: 'success',
-    declined: 'default',
-};
-
-// 投稿/發放時間一律顯示台北時間、24 時制。
-// 不指定 timeZone 的話跟著瀏覽器跑，總務在國外對帳就會看到差 8 小時的時間。
-const TAIPEI_DATE = { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' };
-const TAIPEI_TIME = { timeZone: 'Asia/Taipei', hour12: false, hour: '2-digit', minute: '2-digit' };
 
 const AdminPage = () => {
     const { t, i18n } = useTranslation();
@@ -208,10 +187,6 @@ const AdminPage = () => {
     // 已綁定的成員名單（需 users.manage）
 
     // 回饋金發放管理相關狀態
-    const [payouts, setPayouts] = useState([]);
-    const [payoutLoading, setPayoutLoading] = useState(false);
-    const [payoutFilter, setPayoutFilter] = useState('pending');
-    const [payoutSearchTerm, setPayoutSearchTerm] = useState('');
 
     // 考古題表單狀態
     const [examForm, setExamForm] = useState({
@@ -282,8 +257,6 @@ const AdminPage = () => {
             fetchCheatSheets();
         } else if (activeTab === 5) {
             fetchCourseReviews();
-        } else if (activeTab === 6) {
-            fetchPayouts();
         } else if (activeTab === 7) {
             fetchRoles();
         }
@@ -309,14 +282,6 @@ const AdminPage = () => {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [courseReviewFilter]);
-
-    // 發放清單的篩選條件變更時重新載入
-    useEffect(() => {
-        if (activeTab === 6) {
-            fetchPayouts();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [payoutFilter]);
 
     // 純總務身分（非管理員）預設落在回饋金發放，不要停在他們沒權限的用戶管理分頁
     useEffect(() => {
@@ -395,43 +360,7 @@ const AdminPage = () => {
 
     // --- 回饋管理 -------------------------------------------------------------
 
-    const fetchPayouts = async () => {
-        try {
-            setPayoutLoading(true);
-            const statusParam = payoutFilter === 'all' ? undefined : payoutFilter;
-            const result = await courseReviewService.getPayouts(statusParam);
-            setPayouts(result);
-        } catch (err) {
-            console.error('取得發放清單錯誤:', err);
-            setError(translateApiError(err, t('courseReview.payout.fetchFailed')));
-        } finally {
-            setPayoutLoading(false);
-        }
-    };
-
     // status: 'pending'（未處理）| 'paid'（已發放）| 'declined'（不發放）
-    const handleTogglePayout = async (review, status) => {
-        try {
-            await courseReviewService.setPayoutStatus(review.id, status);
-            await fetchPayouts();
-            setSuccess(
-                t(
-                    `courseReview.payout.mark${status.charAt(0).toUpperCase()}${status.slice(1)}Success`,
-                ),
-            );
-        } catch (err) {
-            setError(translateApiError(err, t('courseReview.payout.updateFailed')));
-        }
-    };
-
-    const handleExportPayouts = async () => {
-        try {
-            await courseReviewService.downloadPayoutCsv();
-        } catch (err) {
-            setError(translateApiError(err, t('courseReview.payout.exportFailed')));
-        }
-    };
-
     const fetchCourseReviews = async () => {
         try {
             setCourseReviewLoading(true);
@@ -1124,24 +1053,6 @@ const AdminPage = () => {
     };
 
     // 待辦數只算「未處理」。標記為不發放的已經結案了，不該繼續佔著徽章上的數字
-    const unpaidPayoutCount = payouts.filter(
-        (review) => (review.payoutStatus || 'pending') === 'pending',
-    ).length;
-
-    const filteredPayouts = payouts.filter((review) => {
-        const keyword = payoutSearchTerm.trim().toLowerCase();
-        if (!keyword) return true;
-        return (
-            review.courseName.toLowerCase().includes(keyword) ||
-            review.courseCode.toLowerCase().includes(keyword) ||
-            (review.professor && review.professor.toLowerCase().includes(keyword)) ||
-            (review.reviewer?.fullName &&
-                review.reviewer.fullName.toLowerCase().includes(keyword)) ||
-            (review.reviewer?.studentId &&
-                review.reviewer.studentId.toLowerCase().includes(keyword))
-        );
-    });
-
     // 每個功能標示它所需的權限，顯示與否一律以此為準（不再用 adminOnly 布林）。
     //
     // 用二維陣列而不是一維：公告管理要獨佔一列、右邊刻意留白。
@@ -3315,318 +3226,8 @@ const AdminPage = () => {
                 )}
 
                 {/* 回饋金發放管理分頁 */}
-                {activeTab === 6 && (
-                    <Paper sx={{ p: 2 }}>
-                        <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
-                            {t('courseReview.payout.title')}
-                        </Typography>
-                        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                            {t('courseReview.payout.description')}
-                        </Typography>
-
-                        {/* 搜尋與匯出 */}
-                        <Paper sx={{ p: 2, mb: 3 }}>
-                            <Grid container spacing={2} alignItems="center">
-                                <Grid item xs={12} md={8}>
-                                    <TextField
-                                        fullWidth
-                                        placeholder={t('courseReview.payout.searchPlaceholder')}
-                                        value={payoutSearchTerm}
-                                        onChange={(e) => setPayoutSearchTerm(e.target.value)}
-                                        InputProps={{
-                                            startAdornment: (
-                                                <InputAdornment position="start">
-                                                    <SearchIcon color="action" />
-                                                </InputAdornment>
-                                            ),
-                                        }}
-                                    />
-                                </Grid>
-                                <Grid item xs={12} md={4}>
-                                    <Button
-                                        fullWidth
-                                        variant="outlined"
-                                        startIcon={<DownloadIcon />}
-                                        onClick={handleExportPayouts}
-                                    >
-                                        {t('courseReview.payout.exportCsv')}
-                                    </Button>
-                                </Grid>
-                            </Grid>
-                        </Paper>
-
-                        <ToggleButtonGroup
-                            value={payoutFilter}
-                            exclusive
-                            size="small"
-                            onChange={(_, v) => v && setPayoutFilter(v)}
-                            sx={{ mb: 3 }}
-                        >
-                            <ToggleButton value="pending">
-                                {t('courseReview.payout.pending')}
-                                {unpaidPayoutCount > 0 && (
-                                    <Chip
-                                        label={unpaidPayoutCount}
-                                        size="small"
-                                        color="warning"
-                                        sx={{ ml: 1 }}
-                                    />
-                                )}
-                            </ToggleButton>
-                            <ToggleButton value="paid">
-                                {t('courseReview.payout.paid')}
-                            </ToggleButton>
-                            <ToggleButton value="declined">
-                                {t('courseReview.payout.declined')}
-                            </ToggleButton>
-                            <ToggleButton value="all">{t('common.all')}</ToggleButton>
-                        </ToggleButtonGroup>
-
-                        {payoutLoading && (
-                            <Box sx={{ textAlign: 'center', py: 8 }}>
-                                <Typography variant="h6" color="text.secondary">
-                                    {t('common.loading')}
-                                </Typography>
-                            </Box>
-                        )}
-
-                        {!payoutLoading && filteredPayouts.length === 0 && (
-                            <Box sx={{ textAlign: 'center', py: 8 }}>
-                                <PaidIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-                                <Typography variant="h6" color="text.secondary">
-                                    {t('courseReview.payout.empty')}
-                                </Typography>
-                            </Box>
-                        )}
-
-                        {!payoutLoading && filteredPayouts.length > 0 && (
-                            <TableContainer component={Paper} variant="outlined">
-                                <Table size="small">
-                                    <TableHead>
-                                        <TableRow>
-                                            <TableCell>
-                                                {t('courseReview.payout.recipient')}
-                                            </TableCell>
-                                            <TableCell>
-                                                {t('courseReview.payout.studentId')}
-                                            </TableCell>
-                                            <TableCell>{t('courseReview.payout.course')}</TableCell>
-                                            <TableCell>
-                                                {t('courseReview.form.academicTerm')}
-                                            </TableCell>
-                                            <TableCell>
-                                                {t('courseReview.payout.submittedAt')}
-                                            </TableCell>
-                                            <TableCell>{t('courseReview.payout.status')}</TableCell>
-                                            <TableCell>{t('courseReview.payout.paidBy')}</TableCell>
-                                            <TableCell align="center">
-                                                {t('courseReview.payout.action')}
-                                            </TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {filteredPayouts.map((review) => (
-                                            <TableRow key={review.id} hover>
-                                                <TableCell>
-                                                    <Stack
-                                                        direction="row"
-                                                        spacing={0.75}
-                                                        alignItems="center"
-                                                    >
-                                                        <Typography variant="body2">
-                                                            {review.reviewer?.fullName ||
-                                                                t('common.unknown')}
-                                                        </Typography>
-                                                        {review.isAnonymous && (
-                                                            <Tooltip
-                                                                title={t(
-                                                                    'courseReview.payout.anonymousHint',
-                                                                )}
-                                                            >
-                                                                <Chip
-                                                                    label={t(
-                                                                        'courseReview.payout.anonymousTag',
-                                                                    )}
-                                                                    size="small"
-                                                                    variant="outlined"
-                                                                />
-                                                            </Tooltip>
-                                                        )}
-                                                    </Stack>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {review.reviewer?.studentId || '-'}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Typography variant="body2">
-                                                        {review.courseName}
-                                                    </Typography>
-                                                    <Typography
-                                                        variant="caption"
-                                                        color="text.secondary"
-                                                    >
-                                                        {review.professor} · {review.courseCode}
-                                                    </Typography>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {courseReviewService.getAcademicTermLabel(
-                                                        review.year,
-                                                        review.semester,
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {review.created_at ? (
-                                                        <>
-                                                            {new Date(
-                                                                review.created_at,
-                                                            ).toLocaleDateString(
-                                                                'zh-TW',
-                                                                TAIPEI_DATE,
-                                                            )}
-                                                            <Typography
-                                                                variant="caption"
-                                                                color="text.secondary"
-                                                                display="block"
-                                                            >
-                                                                {new Date(
-                                                                    review.created_at,
-                                                                ).toLocaleTimeString(
-                                                                    'zh-TW',
-                                                                    TAIPEI_TIME,
-                                                                )}
-                                                            </Typography>
-                                                        </>
-                                                    ) : (
-                                                        '-'
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {/* 兩個標籤並排。共用同一組 sx 讓高度與字級一致——outlined 變體多了
-                            1px 邊框，不明確指定的話跟 filled 排在一起會看起來一高一低 */}
-                                                    <Stack
-                                                        direction="row"
-                                                        spacing={0.75}
-                                                        alignItems="center"
-                                                        flexWrap="wrap"
-                                                        useFlexGap
-                                                    >
-                                                        <Chip
-                                                            label={t(
-                                                                `courseReview.payout.${review.payoutStatus || 'pending'}`,
-                                                            )}
-                                                            size="small"
-                                                            color={
-                                                                PAYOUT_STATUS_COLOR[
-                                                                    review.payoutStatus
-                                                                ] || 'warning'
-                                                            }
-                                                            sx={PAYOUT_CHIP_SX}
-                                                        />
-                                                        {/* 超出回饋金名額的評價按下去會被後端擋，先標出來省得白按。
-                              比對 === false 而不是 !review.payoutEligible：後端若還沒
-                              部署到帶名額的版本，這個欄位會是 undefined，那時什麼都不該顯示 */}
-                                                        {review.payoutEligible === false && (
-                                                            <Tooltip
-                                                                title={t(
-                                                                    'courseReview.quota.overQuotaHint',
-                                                                )}
-                                                            >
-                                                                <Chip
-                                                                    label={t(
-                                                                        'courseReview.quota.overQuota',
-                                                                    )}
-                                                                    size="small"
-                                                                    color="error"
-                                                                    variant="outlined"
-                                                                    sx={PAYOUT_CHIP_SX}
-                                                                />
-                                                            </Tooltip>
-                                                        )}
-                                                    </Stack>
-                                                    {review.isPaid && review.paidAt && (
-                                                        <Typography
-                                                            variant="caption"
-                                                            color="text.secondary"
-                                                            display="block"
-                                                            sx={{ mt: 0.5 }}
-                                                        >
-                                                            {new Date(
-                                                                review.paidAt,
-                                                            ).toLocaleDateString(
-                                                                'zh-TW',
-                                                                TAIPEI_DATE,
-                                                            )}{' '}
-                                                            {new Date(
-                                                                review.paidAt,
-                                                            ).toLocaleTimeString(
-                                                                'zh-TW',
-                                                                TAIPEI_TIME,
-                                                            )}
-                                                        </Typography>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {review.isPaid
-                                                        ? review.paidByUser?.fullName ||
-                                                          t('common.unknown')
-                                                        : '-'}
-                                                </TableCell>
-                                                <TableCell align="center">
-                                                    {/* 取消發放永遠可以按：已發放的評價一定在名額內（is_paid 會把它固定住），
-                            而且不能讓任何一列卡在「無法操作」的狀態。
-                            只有「標記已發放」需要看名額——超出名額時後端會回 PAYOUT_OVER_QUOTA，
-                            按了必定失敗，所以整個不顯示，不是 disabled：
-                            一顆按不動的按鈕只會讓人反覆嘗試。理由已經寫在左邊的「超出名額」標籤上。 */}
-                                                    {review.payoutStatus === 'paid' ||
-                                                    review.payoutStatus === 'declined' ? (
-                                                        <Button
-                                                            size="small"
-                                                            color="inherit"
-                                                            onClick={() =>
-                                                                handleTogglePayout(
-                                                                    review,
-                                                                    'pending',
-                                                                )
-                                                            }
-                                                        >
-                                                            {t('courseReview.payout.markPending')}
-                                                        </Button>
-                                                    ) : review.payoutEligible === false ? (
-                                                        <Button
-                                                            size="small"
-                                                            variant="outlined"
-                                                            color="inherit"
-                                                            onClick={() =>
-                                                                handleTogglePayout(
-                                                                    review,
-                                                                    'declined',
-                                                                )
-                                                            }
-                                                        >
-                                                            {t('courseReview.payout.markDeclined')}
-                                                        </Button>
-                                                    ) : (
-                                                        <Button
-                                                            size="small"
-                                                            variant="contained"
-                                                            color="success"
-                                                            startIcon={<PaidIcon />}
-                                                            onClick={() =>
-                                                                handleTogglePayout(review, 'paid')
-                                                            }
-                                                        >
-                                                            {t('courseReview.payout.markPaid')}
-                                                        </Button>
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
-                        )}
-                    </Paper>
-                )}
+                {/* 回饋金撥款分頁。整段已搬到 components/admin/PayoutAdminPanel.js */}
+                {activeTab === 6 && <PayoutAdminPanel onError={setError} onSuccess={setSuccess} />}
 
                 {/* 身分組管理分頁 */}
                 {activeTab === 7 && (
