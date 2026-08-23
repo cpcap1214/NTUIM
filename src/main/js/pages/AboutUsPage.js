@@ -60,6 +60,8 @@ const AboutUsPage = () => {
     // mockData 裡的 position 就是中文（'會長'、'學術部長'…），所以判斷式要跟著用中文。
     // 抽到語言檔會讓篩選在英文介面下失效——比對的是資料，不是介面語言。
     // 幹部職稱本身要多語系的話，得先改成資料端帶 key（例如 positionKey），是另一件事。
+    // 這裡比對的是幹部名單資料裡的職稱字串（mockData 的 position），不是介面文案，
+    // 所以不走 i18n——名單本身就是中文，翻譯它反而會對不上。
     const presidents = members.filter((m) => m.position.includes('會長'));
     const directors = members.filter(
         (m) => m.position.includes('部長') && !m.position.includes('會長'),

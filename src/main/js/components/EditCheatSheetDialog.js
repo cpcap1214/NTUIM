@@ -123,7 +123,7 @@ const EditCheatSheetDialog = ({ open, onClose, cheatSheet, onSave, onFileUpdate 
 
     return (
         <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-            <DialogTitle>編輯大抄</DialogTitle>
+            <DialogTitle>{t('cheatSheet.form.editTitle')}</DialogTitle>
             <DialogContent>
                 {error && (
                     <Alert severity="error" sx={{ mb: 2 }}>

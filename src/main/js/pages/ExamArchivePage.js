@@ -468,13 +468,13 @@ const ExamArchivePage = () => {
                     <Table size="small">
                         <TableHead>
                             <TableRow>
-                                <TableCell>課程名稱</TableCell>
-                                <TableCell>教授</TableCell>
-                                <TableCell>類型</TableCell>
-                                <TableCell>學期</TableCell>
-                                <TableCell>上傳</TableCell>
-                                <TableCell align="right">下載</TableCell>
-                                <TableCell align="center">操作</TableCell>
+                                <TableCell>{t('manage.columns.courseName')}</TableCell>
+                                <TableCell>{t('manage.columns.professor')}</TableCell>
+                                <TableCell>{t('manage.columns.examType')}</TableCell>
+                                <TableCell>{t('exam.form.semester')}</TableCell>
+                                <TableCell>{t('manage.columns.uploadDate')}</TableCell>
+                                <TableCell align="right">{t('manage.columns.downloads')}</TableCell>
+                                <TableCell align="center">{t('manage.columns.actions')}</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>

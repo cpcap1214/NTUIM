@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Box, Typography, Paper, Stack, Chip, Divider } from '@mui/material';
 import { APP_CONFIG } from '../../resources/config/constants';
+import CHANGELOG from '../../resources/data/changelog';
 
 // 這些鍵對應下方 CHANGELOG 裡的分類名稱（資料本身就是中文），不是介面文案。
 // 歷史更新內容依決策保持原文不翻譯，所以這裡也維持中文鍵。
@@ -11,128 +12,6 @@ const CATEGORY_META = {
     修復: { color: '#dc2626', bg: 'rgba(220, 38, 38, 0.08)' },
     變更: { color: '#475569', bg: 'rgba(71, 85, 105, 0.08)' },
 };
-
-const CHANGELOG = [
-    {
-        version: '1.6.7',
-        date: '2026-05-10',
-        title: '上傳考古、行事曆、品牌調校',
-        highlights: [
-            '新增考古題上傳頁，含規則說明與表單嵌入',
-            '首頁加入台大行事曆，可點日期同步滾動近期行程',
-            '系學會 logo 串入 Header，關於我們 hero 重設計',
-        ],
-        changes: {
-            新功能: [
-                { text: '考古題上傳頁（/upload-exam）：規則卡、流程 stepper、Google Form 嵌入' },
-                { text: '台大行事曆：月份切換、可滾動近期行程、點日期同步滾到對應事項' },
-                { text: '考古題庫排序：最新上傳 / 下載次數 / 課程名稱' },
-            ],
-            優化: [
-                { text: '關於我們頁：左 logo + 右標題的 hero 排版' },
-                { text: 'Header 加入系學會方形 logo' },
-                { text: 'Google Workspace 按鈕：四色 G logo + 字樣' },
-                { text: 'Tab hover 滑順化（移除 reflow）' },
-                { text: '行事曆顏色：假日紅字、重要截止紅圈不撞色' },
-                { text: '用戶下拉選單瘦身、表單嵌入版面修正' },
-            ],
-            修復: [{ text: '手機右上頭像點不開' }],
-        },
-    },
-    {
-        version: '1.6.0',
-        date: '2026-05-10',
-        title: '前端介面重構',
-        highlights: [
-            '全站視覺語言重新調校，更簡潔明瞭',
-            '導覽列改為 sticky 毛玻璃',
-            '首頁新增情境式 Banner、版本紀錄頁',
-        ],
-        changes: {
-            新功能: [{ text: '版本紀錄頁' }, { text: '首頁情境式 Banner（依登入與繳費狀態切換）' }],
-            優化: [
-                { text: '主題系統：配色、陰影、字體節奏統一' },
-                { text: '考古題、大抄頁的搜尋篩選與卡片排版' },
-                { text: '登入、註冊、付費牆視覺與整站對齊' },
-            ],
-        },
-    },
-    {
-        version: '1.5.0',
-        date: '2026-03-14',
-        title: '自動審核 + 上傳體驗',
-        changes: {
-            新功能: [{ text: '繳費資格自動審核' }],
-            優化: [{ text: '考古題上傳流程' }],
-            修復: [{ text: '管理員後台與權限判斷' }],
-        },
-    },
-    {
-        version: '1.4.0',
-        date: '2025-09-24',
-        title: '行動端與審核機制',
-        changes: {
-            新功能: [{ text: '繳費審核機制說明' }],
-            修復: [{ text: '手機版登入' }],
-        },
-    },
-    {
-        version: '1.3.0',
-        date: '2025-09-16',
-        title: '安全性與導覽強化',
-        changes: {
-            新功能: [{ text: '漢堡選單加入登入按鈕' }, { text: '敏感目錄存取保護' }],
-            變更: [{ text: '繳費方式更新' }],
-        },
-    },
-    {
-        version: '1.2.0',
-        date: '2025-09-02',
-        title: '中文檔名修正',
-        changes: {
-            新功能: [{ text: '考古題與大抄編輯功能' }],
-            修復: [{ text: '中文檔名上傳、下載、編碼問題' }],
-        },
-    },
-    {
-        version: '1.1.0',
-        date: '2025-08-31',
-        title: '管理後台與 PDF 預覽',
-        changes: {
-            新功能: [{ text: '考古題雙檔案系統（題目 + 答案）' }, { text: 'PDF 預覽、使用者頭像' }],
-            變更: [{ text: '系學會費調整為 NT$2,000 / 四年' }],
-        },
-    },
-    {
-        version: '1.0.0',
-        date: '2025-08-30',
-        title: '正式上線',
-        highlights: ['資料庫整合 + 上傳功能', '付費牆與後台管理', '考古題庫支援民國紀年'],
-        changes: {
-            新功能: [
-                { text: '付費牆與會員制' },
-                { text: '考古題庫、大抄管理' },
-                { text: '部署配置' },
-            ],
-        },
-    },
-    {
-        version: '0.2.0',
-        date: '2025-08-19',
-        title: '會員系統',
-        changes: {
-            新功能: [{ text: '登入註冊與資料儲存' }],
-        },
-    },
-    {
-        version: '0.1.0',
-        date: '2025-08-03',
-        title: '初版',
-        changes: {
-            新功能: [{ text: '網站初版上線' }],
-        },
-    },
-];
 
 const ChangelogPage = () => {
     const { t } = useTranslation();
@@ -231,7 +110,7 @@ const ChangelogPage = () => {
                                             </Typography>
                                             {isLatest && (
                                                 <Chip
-                                                    label="最新"
+                                                    label={t('changelog.latest')}
                                                     size="small"
                                                     color="primary"
                                                     sx={{

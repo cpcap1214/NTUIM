@@ -328,6 +328,8 @@ const zhTW = {
             updateFailed: '更新失敗',
             fileUpdateFailed: '檔案更新失敗',
             pickFileOrRemove: '請選擇要更新的檔案或移除答案檔案',
+            editTitle: '編輯考古題',
+            semester: '學期',
         },
     },
 
@@ -357,6 +359,7 @@ const zhTW = {
             updateFilePdf: '更新檔案 (PDF)',
             requiredFields: '課號、課程名稱和標題為必填',
             pickFile: '請選擇要上傳的檔案',
+            editTitle: '編輯大抄',
         },
     },
 
@@ -508,6 +511,8 @@ const zhTW = {
             title: '標題',
             description: '描述',
             tags: '標籤',
+            courseName: '課程名稱',
+            examType: '類型',
         },
         confirmDeleteExamTitle: '確認刪除考古題',
         confirmDeleteCheatSheetTitle: '確認刪除大抄',
@@ -563,6 +568,13 @@ const zhTW = {
             detailTitle: '用戶詳情',
             adjustFilters: '請調整搜尋字詞或篩選條件。',
             empty: '目前沒有可顯示的用戶資料。',
+            colUser: '用戶',
+            colContact: '聯絡與校內資料',
+            colStatus: '身份狀態',
+            roleFilter: '身分組',
+            noRole: '無身分組',
+            changePasswordTitle: '更改密碼',
+            confirmDeleteTitle: '確認刪除用戶',
         },
         upload: {
             pdfOnly: '只能上傳 PDF 檔案',
@@ -598,6 +610,11 @@ const zhTW = {
             cheatSheetTitleExample: '例如：期末考重點整理',
             cheatSheetDescExample: '簡述大抄內容...',
             tagPlaceholder: '輸入標籤後按 Enter 或點擊新增',
+            semesterLabel: '學期',
+            examTypeLabel: '考試類型',
+            examTypeMidterm: '期中考',
+            examTypeFinal: '期末考',
+            examTypeQuiz: '小考',
         },
         manage: {
             questionLine: '題目: {{name}}',
@@ -634,6 +651,9 @@ const zhTW = {
             priorityHelper: '數字越大越前面',
             deleteWarning:
                 '將刪除「{{name}}」，持有此身分組的 {{count}} 位使用者會失去對應權限。此操作無法復原。',
+            permissionsLabel: '權限',
+            allPermissionsLocked: '此身分組擁有所有權限，無法逐項調整',
+            deleteTitle: '刪除身分組？',
         },
         modules: {
             title: '模組管理',
@@ -646,12 +666,15 @@ const zhTW = {
             allowedRoles: '可使用的身分組',
             showComingSoon: '顯示「即將推出」',
             hideCompletely: '完全隱藏',
+            visibilityPublic: '公開（所有人）',
+            visibilityRestricted: '限定（白名單）',
         },
     },
 
     changelog: {
         summary: '{{count}} 個版本 · {{from}} 起持續更新至 {{to}}',
         currentVersion: '目前版本：v{{version}}',
+        latest: '最新',
     },
 
     error: {
@@ -1078,6 +1101,9 @@ const zhTW = {
         USERNAME_TOO_SHORT: '使用者名稱至少3個字元',
         USER_NOT_FOUND: '找不到用戶',
         VALIDATION_FAILED: '資料驗證失敗',
+        NETWORK_FAILED: '網路連線失敗，請檢查您的網路連線',
+        REQUEST_TIMEOUT: '請求超時，請檢查網路連線後重試',
+        PAYMENT_REQUIRED: '此功能需要繳交系學會費',
     },
 };
 

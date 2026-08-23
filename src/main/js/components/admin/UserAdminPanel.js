@@ -359,14 +359,14 @@ const UserAdminPanel = ({
             自訂身分組（例如「測試員」）永遠篩不到，而「一般用戶」在身分組模型下
             的正確語意是「沒有任何身分組」，不是某個 role 值。 */}
                             <FormControl sx={{ minWidth: 140 }}>
-                                <InputLabel>身分組</InputLabel>
+                                <InputLabel>{t('admin.users.roleFilter')}</InputLabel>
                                 <Select
                                     value={roleFilter}
                                     label={t('admin.roles.label')}
                                     onChange={(e) => setRoleFilter(e.target.value)}
                                 >
-                                    <MenuItem value="all">全部</MenuItem>
-                                    <MenuItem value="none">無身分組</MenuItem>
+                                    <MenuItem value="all">{t('common.all')}</MenuItem>
+                                    <MenuItem value="none">{t('admin.users.noRole')}</MenuItem>
                                     {roles.map((r) => (
                                         <MenuItem key={r.id} value={r.key}>
                                             {r.name}
@@ -375,15 +375,15 @@ const UserAdminPanel = ({
                                 </Select>
                             </FormControl>
                             <FormControl sx={{ minWidth: 140 }}>
-                                <InputLabel>繳費</InputLabel>
+                                <InputLabel>{t('admin.users.paymentFilter')}</InputLabel>
                                 <Select
                                     value={paymentFilter}
                                     label={t('admin.users.paymentFilter')}
                                     onChange={(e) => setPaymentFilter(e.target.value)}
                                 >
-                                    <MenuItem value="all">全部</MenuItem>
-                                    <MenuItem value="paid">已繳費</MenuItem>
-                                    <MenuItem value="unpaid">未繳費</MenuItem>
+                                    <MenuItem value="all">{t('common.all')}</MenuItem>
+                                    <MenuItem value="paid">{t('admin.users.paid')}</MenuItem>
+                                    <MenuItem value="unpaid">{t('admin.users.unpaid')}</MenuItem>
                                 </Select>
                             </FormControl>
                         </Stack>
@@ -426,10 +426,12 @@ const UserAdminPanel = ({
                                 </colgroup>
                                 <TableHead>
                                     <TableRow>
-                                        <TableCell>用戶</TableCell>
-                                        <TableCell>聯絡與校內資料</TableCell>
-                                        <TableCell>身份狀態</TableCell>
-                                        <TableCell align="right">操作</TableCell>
+                                        <TableCell>{t('admin.users.colUser')}</TableCell>
+                                        <TableCell>{t('admin.users.colContact')}</TableCell>
+                                        <TableCell>{t('admin.users.colStatus')}</TableCell>
+                                        <TableCell align="right">
+                                            {t('manage.columns.actions')}
+                                        </TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -589,7 +591,9 @@ const UserAdminPanel = ({
                                                         {/* 身分組（可複選）。取代原本的「總務權限」開關——
                           後端已改用身分組授權，那個布林欄位不再有任何作用。 */}
                                                         <FormControl fullWidth size="small">
-                                                            <InputLabel>身分組</InputLabel>
+                                                            <InputLabel>
+                                                                {t('admin.users.roleFilter')}
+                                                            </InputLabel>
                                                             <Select
                                                                 multiple
                                                                 value={editData.roleIds || []}
@@ -957,7 +961,7 @@ const UserAdminPanel = ({
 
             {/* 更改密碼對話框 */}
             <Dialog open={newPasswordDialog} onClose={() => setNewPasswordDialog(false)}>
-                <DialogTitle>更改密碼</DialogTitle>
+                <DialogTitle>{t('admin.users.changePasswordTitle')}</DialogTitle>
                 <DialogContent>
                     <TextField
                         autoFocus
@@ -987,7 +991,7 @@ const UserAdminPanel = ({
 
             {/* 刪除用戶對話框 */}
             <Dialog open={deleteUserDialog} onClose={() => setDeleteUserDialog(false)}>
-                <DialogTitle>確認刪除用戶</DialogTitle>
+                <DialogTitle>{t('admin.users.confirmDeleteTitle')}</DialogTitle>
                 <DialogContent>
                     <Typography>
                         {t('admin.users.confirmDelete', { name: userToDelete?.username })}

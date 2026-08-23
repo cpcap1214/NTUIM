@@ -1,5 +1,8 @@
 import axios from 'axios';
 import { getPreviewTarget, setPreviewTarget } from './previewStorage';
+// 攔截器不在元件裡，拿不到 useTranslation，改用 i18n 實例
+// （utils/apiError.js 也是這樣做的）
+import i18n from '../i18n';
 
 // API 基礎設定 - 使用同源 /api（避免 CORS）
 export const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
@@ -75,15 +78,15 @@ api.interceptors.response.use(
 
             // 處理 403 錯誤 - 需要繳費
             if (error.response.status === 403 && error.response.data.requirePayment) {
-                alert('此功能需要繳交系學會費');
+                alert(i18n.t('errors.PAYMENT_REQUIRED'));
             }
         } else if (error.request) {
             // 網路錯誤 - 特別針對手機版的網路問題
             console.error('網路連線錯誤:', error.request);
-            error.message = '網路連線失敗，請檢查您的網路連線';
+            error.message = i18n.t('errors.NETWORK_FAILED');
         } else if (error.code === 'ECONNABORTED') {
             // 超時錯誤
-            error.message = '請求超時，請檢查網路連線後重試';
+            error.message = i18n.t('errors.REQUEST_TIMEOUT');
         }
         return Promise.reject(error);
     },

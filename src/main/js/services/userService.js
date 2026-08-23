@@ -83,63 +83,6 @@ const userService = {
             throw error.response?.data || error;
         }
     },
-
-    // 角色選項
-    getRoleOptions() {
-        return [
-            { value: 'user', label: '一般使用者' },
-            { value: 'member', label: '系學會成員' },
-            { value: 'admin', label: '管理員' },
-        ];
-    },
-
-    // 取得角色顯示名稱
-    getRoleDisplayName(role) {
-        const roleMap = {
-            user: '一般使用者',
-            member: '系學會成員',
-            admin: '管理員',
-        };
-        return roleMap[role] || '未知';
-    },
-
-    // 取得角色顏色
-    getRoleColor(role) {
-        const colorMap = {
-            admin: '#f44336', // 紅色
-            member: '#2196f3', // 藍色
-            user: '#9e9e9e', // 灰色
-        };
-        return colorMap[role] || '#9e9e9e';
-    },
-
-    // 格式化日期
-    formatDate(dateString) {
-        if (!dateString) return '未知';
-        // 無效日期不會 throw，格式化後會得到字串 "Invalid Date"（同 utils/dateUtils.js）
-        const date = new Date(dateString);
-        if (Number.isNaN(date.getTime())) return '未知';
-        return date.toLocaleDateString('zh-TW', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-        });
-    },
-
-    // 驗證學號格式
-    validateStudentId(studentId) {
-        // 台大學號格式: B09705001 (1個英文字母 + 8個數字)
-        const pattern = /^[A-Z]\d{8}$/;
-        return pattern.test(studentId);
-    },
-
-    // 驗證電子郵件格式
-    validateEmail(email) {
-        const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return pattern.test(email);
-    },
 };
 
 export default userService;

@@ -340,6 +340,8 @@ const en = {
             updateFailed: 'Update failed',
             fileUpdateFailed: 'File update failed',
             pickFileOrRemove: 'Choose a file to upload, or remove the answer file',
+            editTitle: 'Edit past exam',
+            semester: 'Semester',
         },
     },
 
@@ -369,6 +371,7 @@ const en = {
             updateFilePdf: 'Replace file (PDF)',
             requiredFields: 'Course number, course name and title are required',
             pickFile: 'Please choose a file to upload',
+            editTitle: 'Edit cheat sheet',
         },
     },
 
@@ -542,6 +545,8 @@ const en = {
             title: 'Title',
             description: 'Description',
             tags: 'Tags',
+            courseName: 'Course',
+            examType: 'Type',
         },
         confirmDeleteExamTitle: 'Delete this past exam?',
         confirmDeleteCheatSheetTitle: 'Delete this cheat sheet?',
@@ -598,6 +603,13 @@ const en = {
             detailTitle: 'User details',
             adjustFilters: 'Try adjusting your search terms or filters.',
             empty: 'No users to show.',
+            colUser: 'User',
+            colContact: 'Contact & campus details',
+            colStatus: 'Status',
+            roleFilter: 'Role',
+            noRole: 'No role',
+            changePasswordTitle: 'Change password',
+            confirmDeleteTitle: 'Delete this user?',
         },
         upload: {
             pdfOnly: 'Only PDF files can be uploaded',
@@ -633,6 +645,11 @@ const en = {
             cheatSheetTitleExample: 'e.g. Final exam summary',
             cheatSheetDescExample: 'Briefly describe the contents…',
             tagPlaceholder: 'Type a tag then press Enter or click Add',
+            semesterLabel: 'Semester',
+            examTypeLabel: 'Exam type',
+            examTypeMidterm: 'Midterm',
+            examTypeFinal: 'Final',
+            examTypeQuiz: 'Quiz',
         },
         manage: {
             questionLine: 'Questions: {{name}}',
@@ -671,6 +688,10 @@ const en = {
             priorityHelper: 'Higher numbers come first',
             deleteWarning:
                 'This will delete "{{name}}". The {{count}} users holding it will lose the matching permissions. This cannot be undone.',
+            permissionsLabel: 'Permissions',
+            allPermissionsLocked:
+                'This role holds every permission and cannot be adjusted item by item',
+            deleteTitle: 'Delete this role?',
         },
         modules: {
             title: 'Module management',
@@ -683,12 +704,15 @@ const en = {
             allowedRoles: 'Allowed roles',
             showComingSoon: 'Show as "Coming soon"',
             hideCompletely: 'Hide completely',
+            visibilityPublic: 'Public (everyone)',
+            visibilityRestricted: 'Restricted (allowlist)',
         },
     },
 
     changelog: {
         summary: '{{count}} releases · continuously updated from {{from}} to {{to}}',
         currentVersion: 'Current version: v{{version}}',
+        latest: 'Latest',
     },
 
     error: {
@@ -1122,6 +1146,9 @@ const en = {
         USERNAME_TOO_SHORT: 'Username must be at least 3 characters',
         USER_NOT_FOUND: 'User not found',
         VALIDATION_FAILED: 'Validation failed',
+        NETWORK_FAILED: 'Connection failed — please check your network',
+        REQUEST_TIMEOUT: 'The request timed out — please check your network and try again',
+        PAYMENT_REQUIRED: 'This feature requires paying the association fee',
     },
 };
 

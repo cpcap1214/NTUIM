@@ -176,29 +176,29 @@ const ExamUploadPanel = ({ onNotify }) => {
                 </Grid>
                 <Grid item xs={12} sm={4}>
                     <FormControl fullWidth>
-                        <InputLabel>學期</InputLabel>
+                        <InputLabel>{t('admin.upload.semesterLabel')}</InputLabel>
                         <Select
                             value={examForm.semester}
                             label={t('courseReview.detailField.academicTerm')}
                             onChange={(e) => handleExamChange('semester', e.target.value)}
                         >
-                            <MenuItem value="1">上學期</MenuItem>
-                            <MenuItem value="2">下學期</MenuItem>
-                            <MenuItem value="summer">暑期</MenuItem>
+                            <MenuItem value="1">{t('courseReview.semester.1')}</MenuItem>
+                            <MenuItem value="2">{t('courseReview.semester.2')}</MenuItem>
+                            <MenuItem value="summer">{t('courseReview.semester.summer')}</MenuItem>
                         </Select>
                     </FormControl>
                 </Grid>
                 <Grid item xs={12} sm={4}>
                     <FormControl fullWidth>
-                        <InputLabel>考試類型</InputLabel>
+                        <InputLabel>{t('admin.upload.examTypeLabel')}</InputLabel>
                         <Select
                             value={examForm.examType}
                             label={t('exam.form.examType')}
                             onChange={(e) => handleExamChange('examType', e.target.value)}
                         >
-                            <MenuItem value="midterm">期中考</MenuItem>
-                            <MenuItem value="final">期末考</MenuItem>
-                            <MenuItem value="quiz">小考</MenuItem>
+                            <MenuItem value="midterm">{t('admin.upload.examTypeMidterm')}</MenuItem>
+                            <MenuItem value="final">{t('admin.upload.examTypeFinal')}</MenuItem>
+                            <MenuItem value="quiz">{t('admin.upload.examTypeQuiz')}</MenuItem>
                         </Select>
                     </FormControl>
                 </Grid>

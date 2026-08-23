@@ -328,9 +328,11 @@ const RoleAdminPanel = ({
                         </Stack>
 
                         <Divider />
-                        <Typography variant="subtitle2">權限</Typography>
+                        <Typography variant="subtitle2">
+                            {t('admin.roles.permissionsLabel')}
+                        </Typography>
                         {roleForm.permissions.includes('*') ? (
-                            <Alert severity="info">此身分組擁有所有權限，無法逐項調整</Alert>
+                            <Alert severity="info">{t('admin.roles.allPermissionsLocked')}</Alert>
                         ) : (
                             Object.entries(
                                 permissionCatalog.reduce((acc, p) => {
@@ -393,7 +395,7 @@ const RoleAdminPanel = ({
                     </Stack>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setRoleDialog(false)}>取消</Button>
+                    <Button onClick={() => setRoleDialog(false)}>{t('common.cancel')}</Button>
                     <Button variant="contained" onClick={handleSaveRole}>
                         儲存
                     </Button>
@@ -402,7 +404,7 @@ const RoleAdminPanel = ({
 
             {/* 刪除身分組確認 */}
             <Dialog open={roleDeleteDialog} onClose={() => setRoleDeleteDialog(false)}>
-                <DialogTitle>刪除身分組？</DialogTitle>
+                <DialogTitle>{t('admin.roles.deleteTitle')}</DialogTitle>
                 <DialogContent>
                     <DialogContentText>
                         {t('admin.roles.deleteWarning', {
@@ -412,7 +414,7 @@ const RoleAdminPanel = ({
                     </DialogContentText>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setRoleDeleteDialog(false)}>取消</Button>
+                    <Button onClick={() => setRoleDeleteDialog(false)}>{t('common.cancel')}</Button>
                     <Button color="error" variant="contained" onClick={handleDeleteRole}>
                         確認刪除
                     </Button>

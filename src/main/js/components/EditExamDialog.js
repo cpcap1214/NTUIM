@@ -129,7 +129,7 @@ const EditExamDialog = ({ open, onClose, exam, onSave, onFileUpdate }) => {
 
     return (
         <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-            <DialogTitle>編輯考古題</DialogTitle>
+            <DialogTitle>{t('exam.form.editTitle')}</DialogTitle>
             <DialogContent>
                 {error && (
                     <Alert severity="error" sx={{ mb: 2 }}>
@@ -184,29 +184,37 @@ const EditExamDialog = ({ open, onClose, exam, onSave, onFileUpdate }) => {
                         </Grid>
                         <Grid item xs={12} sm={4}>
                             <FormControl fullWidth>
-                                <InputLabel>學期</InputLabel>
+                                <InputLabel>{t('exam.form.semester')}</InputLabel>
                                 <Select
                                     value={formData.semester}
                                     label={t('courseReview.detailField.academicTerm')}
                                     onChange={(e) => handleInputChange('semester', e.target.value)}
                                 >
-                                    <MenuItem value="1">第一學期</MenuItem>
-                                    <MenuItem value="2">第二學期</MenuItem>
-                                    <MenuItem value="summer">暑期</MenuItem>
+                                    <MenuItem value="1">{t('courseReview.semester.1')}</MenuItem>
+                                    <MenuItem value="2">{t('courseReview.semester.2')}</MenuItem>
+                                    <MenuItem value="summer">
+                                        {t('courseReview.semester.summer')}
+                                    </MenuItem>
                                 </Select>
                             </FormControl>
                         </Grid>
                         <Grid item xs={12} sm={4}>
                             <FormControl fullWidth>
-                                <InputLabel>考試類型</InputLabel>
+                                <InputLabel>{t('exam.form.examType')}</InputLabel>
                                 <Select
                                     value={formData.examType}
                                     label={t('exam.form.examType')}
                                     onChange={(e) => handleInputChange('examType', e.target.value)}
                                 >
-                                    <MenuItem value="midterm">期中考</MenuItem>
-                                    <MenuItem value="final">期末考</MenuItem>
-                                    <MenuItem value="quiz">小考</MenuItem>
+                                    <MenuItem value="midterm">
+                                        {t('admin.upload.examTypeMidterm')}
+                                    </MenuItem>
+                                    <MenuItem value="final">
+                                        {t('admin.upload.examTypeFinal')}
+                                    </MenuItem>
+                                    <MenuItem value="quiz">
+                                        {t('admin.upload.examTypeQuiz')}
+                                    </MenuItem>
                                 </Select>
                             </FormControl>
                         </Grid>

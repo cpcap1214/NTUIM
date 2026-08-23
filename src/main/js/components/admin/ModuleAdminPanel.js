@@ -90,7 +90,9 @@ const ModuleAdminPanel = ({ roles, onEnsureRoles, onError, onSuccess }) => {
                                 </Grid>
                                 <Grid item xs={12} md={3}>
                                     <FormControl fullWidth size="small">
-                                        <InputLabel>開放狀態</InputLabel>
+                                        <InputLabel>
+                                            {t('admin.modules.visibilityLabel')}
+                                        </InputLabel>
                                         <Select
                                             value={module.visibility}
                                             label={t('admin.modules.visibilityLabel')}
@@ -100,8 +102,12 @@ const ModuleAdminPanel = ({ roles, onEnsureRoles, onError, onSuccess }) => {
                                                 })
                                             }
                                         >
-                                            <MenuItem value="public">公開（所有人）</MenuItem>
-                                            <MenuItem value="restricted">限定（白名單）</MenuItem>
+                                            <MenuItem value="public">
+                                                {t('admin.modules.visibilityPublic')}
+                                            </MenuItem>
+                                            <MenuItem value="restricted">
+                                                {t('admin.modules.visibilityRestricted')}
+                                            </MenuItem>
                                         </Select>
                                     </FormControl>
                                 </Grid>
@@ -111,7 +117,7 @@ const ModuleAdminPanel = ({ roles, onEnsureRoles, onError, onSuccess }) => {
                                         size="small"
                                         disabled={module.visibility === 'public'}
                                     >
-                                        <InputLabel>可使用的身分組</InputLabel>
+                                        <InputLabel>{t('admin.modules.allowedRoles')}</InputLabel>
                                         <Select
                                             multiple
                                             value={(module.allowedRoles || []).map((r) => r.id)}
