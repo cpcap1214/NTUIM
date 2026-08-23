@@ -205,7 +205,9 @@ const PayoutAdminPanel = ({ onError, onSuccess }) => {
 
             {!payoutLoading && filteredPayouts.length > 0 && (
                 <TableContainer component={Paper} variant="outlined">
-                    <Table size="small">
+                    {/* 低於 minWidth 就在 TableContainer 內橫向捲動（它預設 overflow-x: auto），
+                            不加的話欄位會被擠到字疊在一起 */}
+                    <Table size="small" sx={{ minWidth: 880 }}>
                         <TableHead>
                             <TableRow>
                                 <TableCell>{t('courseReview.payout.recipient')}</TableCell>

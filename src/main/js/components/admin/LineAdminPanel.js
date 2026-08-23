@@ -180,7 +180,9 @@ const LineAdminPanel = ({ canManageUsers, onError, onSuccess }) => {
                             </Typography>
                         ) : (
                             <TableContainer>
-                                <Table size="small">
+                                {/* 低於 minWidth 就在 TableContainer 內橫向捲動（它預設 overflow-x: auto），
+                            不加的話欄位會被擠到字疊在一起 */}
+                                <Table size="small" sx={{ minWidth: 520 }}>
                                     <TableHead>
                                         <TableRow>
                                             <TableCell>{t('line.admin.colUser')}</TableCell>

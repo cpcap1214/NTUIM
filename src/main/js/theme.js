@@ -1,5 +1,9 @@
 import { createTheme } from '@mui/material/styles';
 
+// 只為了拿預設斷點來寫下面的 media query——typography 裡不能直接用
+// theme.breakpoints（那時 theme 還沒建好）。
+const { breakpoints } = createTheme();
+
 // 統一的陰影層級：更柔和、更一致
 const softShadow = {
     xs: '0 1px 2px rgba(15, 23, 42, 0.04)',
@@ -58,19 +62,25 @@ const theme = createTheme({
             'sans-serif',
         ].join(','),
         h1: {
-            fontSize: '2.5rem',
+            // 手機縮一級：2.5rem 的中文標題在 375px 寬會斷成好幾行
+            fontSize: '1.875rem',
+            [breakpoints.up('md')]: { fontSize: '2.5rem' },
             fontWeight: 700,
             lineHeight: 1.2,
             letterSpacing: '-0.02em',
         },
         h2: {
-            fontSize: '2rem',
+            // 手機縮一級：2rem 的中文標題在 375px 寬會斷成好幾行
+            fontSize: '1.5rem',
+            [breakpoints.up('md')]: { fontSize: '2rem' },
             fontWeight: 700,
             lineHeight: 1.25,
             letterSpacing: '-0.015em',
         },
         h3: {
-            fontSize: '1.5rem',
+            // 手機縮一級：1.5rem 的中文標題在 375px 寬會斷成好幾行
+            fontSize: '1.25rem',
+            [breakpoints.up('md')]: { fontSize: '1.5rem' },
             fontWeight: 600,
             lineHeight: 1.3,
             letterSpacing: '-0.01em',
