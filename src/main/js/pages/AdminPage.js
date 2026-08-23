@@ -59,12 +59,12 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import LockResetIcon from '@mui/icons-material/LockReset';
 import { useAuth } from '../contexts/AuthContext';
 import FeedbackAdminPanel from '../components/admin/FeedbackAdminPanel';
+import AnnouncementAdminPanel from '../components/admin/AnnouncementAdminPanel';
 import { API_BASE_URL } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import courseReviewService from '../services/courseReviewService';
 import roleService from '../services/roleService';
 import moduleService from '../services/moduleService';
-import announcementService from '../services/announcementService';
 import lineService from '../services/lineService';
 import ReviewCard from '../components/courseReview/ReviewCard';
 import { translateApiError } from '../utils';
@@ -201,20 +201,6 @@ const AdminPage = () => {
     // 公告管理相關狀態。
     // publishAt / expireAt 在表單裡是 datetime-local 需要的「本地牆上時間」格式，
     // 送出前才轉成 UTC ISO；載入既有公告時反向轉回來（見 toLocalInput / toUtcIso）。
-    const [announcements, setAnnouncements] = useState([]);
-    const [announcementLoading, setAnnouncementLoading] = useState(false);
-    const [announcementDialog, setAnnouncementDialog] = useState(false);
-    const [announcementForm, setAnnouncementForm] = useState({
-        id: null,
-        title: '',
-        body: '',
-        level: 'info',
-        enabled: true,
-        publishAt: '',
-        expireAt: '',
-    });
-    const [announcementDeleteDialog, setAnnouncementDeleteDialog] = useState(false);
-    const [announcementToDelete, setAnnouncementToDelete] = useState(null);
 
     // 回饋管理相關狀態。
     // 這些資料裡沒有任何送出者的資訊——feedback 資料表刻意沒有 user_id 欄位。
@@ -311,8 +297,6 @@ const AdminPage = () => {
             fetchModuleSettings();
             // 模組白名單的下拉選單需要身分組清單
             if (allRoles.length === 0) fetchRoles();
-        } else if (activeTab === 9) {
-            fetchAnnouncements();
         } else if (activeTab === 11) {
             // 名單需要 users.manage；沒權限的人只看得到上半部的「我的綁定」
             if (hasPermission('users.manage')) fetchLineBindings();
@@ -457,100 +441,8 @@ const AdminPage = () => {
     // 「公告設好了卻沒跳出來」，完全看不出跟時區有關。
 
     // UTC ISO → datetime-local 的本地字串
-    const toLocalInput = (iso) => {
-        if (!iso) return '';
-        const d = new Date(iso);
-        if (Number.isNaN(d.getTime())) return '';
-        // 減掉時區偏移後取 ISO 的前 16 字元，就是本地牆上時間
-        const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
-        return local.toISOString().slice(0, 16);
-    };
-
-    // datetime-local 的本地字串 → UTC ISO（空字串代表不限制，要送 null）
-    const toUtcIso = (localValue) => (localValue ? new Date(localValue).toISOString() : null);
-
-    const fetchAnnouncements = async () => {
-        try {
-            setAnnouncementLoading(true);
-            setAnnouncements(await announcementService.getAll());
-        } catch (err) {
-            setError(translateApiError(err, t('announcement.admin.fetchFailed')));
-        } finally {
-            setAnnouncementLoading(false);
-        }
-    };
-
-    const openAnnouncementDialog = (announcement = null) => {
-        setAnnouncementForm(
-            announcement
-                ? {
-                      id: announcement.id,
-                      title: announcement.title,
-                      body: announcement.body,
-                      level: announcement.level,
-                      enabled: Boolean(announcement.enabled),
-                      publishAt: toLocalInput(announcement.publishAt),
-                      expireAt: toLocalInput(announcement.expireAt),
-                  }
-                : {
-                      id: null,
-                      title: '',
-                      body: '',
-                      level: 'info',
-                      enabled: true,
-                      publishAt: '',
-                      expireAt: '',
-                  },
-        );
-        setAnnouncementDialog(true);
-    };
-
-    const handleSaveAnnouncement = async () => {
-        const payload = {
-            title: announcementForm.title,
-            body: announcementForm.body,
-            level: announcementForm.level,
-            enabled: announcementForm.enabled,
-            publishAt: toUtcIso(announcementForm.publishAt),
-            expireAt: toUtcIso(announcementForm.expireAt),
-        };
-
-        try {
-            if (announcementForm.id) {
-                await announcementService.update(announcementForm.id, payload);
-            } else {
-                await announcementService.create(payload);
-            }
-            setAnnouncementDialog(false);
-            await fetchAnnouncements();
-            setSuccess(t('announcement.admin.saved'));
-        } catch (err) {
-            setError(translateApiError(err, t('announcement.admin.saveFailed')));
-        }
-    };
-
-    const handleDeleteAnnouncement = async () => {
-        try {
-            await announcementService.remove(announcementToDelete.id);
-            setAnnouncementDeleteDialog(false);
-            setAnnouncementToDelete(null);
-            await fetchAnnouncements();
-            setSuccess(t('announcement.admin.deleted'));
-        } catch (err) {
-            setError(translateApiError(err, t('announcement.admin.deleteFailed')));
-        }
-    };
-
     // 這則公告「現在」會不會出現在前台。後端有同一套判斷，這裡是給管理員看的即時狀態——
     // 「已啟用但因為排程還沒到所以沒出現」是最容易誤判成故障的情況。
-    const announcementState = (a) => {
-        if (!a.enabled) return 'disabled';
-        const now = new Date();
-        if (a.publishAt && new Date(a.publishAt) > now) return 'scheduled';
-        if (a.expireAt && new Date(a.expireAt) <= now) return 'expired';
-        return 'active';
-    };
-
     // --- LINE 通知綁定 ---------------------------------------------------------
 
     const fetchLineBinding = async () => {
@@ -4377,144 +4269,9 @@ const AdminPage = () => {
                 )}
 
                 {/* 公告管理分頁 */}
+                {/* 公告管理分頁。整段已搬到 components/admin/AnnouncementAdminPanel.js */}
                 {activeTab === 9 && (
-                    <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 3 }}>
-                        <Stack
-                            direction="row"
-                            justifyContent="space-between"
-                            alignItems="center"
-                            sx={{ mb: 2 }}
-                        >
-                            <Box>
-                                <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                                    {t('announcement.admin.title')}
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                    {t('announcement.admin.description')}
-                                </Typography>
-                            </Box>
-                            <Button variant="contained" onClick={() => openAnnouncementDialog()}>
-                                {t('announcement.admin.create')}
-                            </Button>
-                        </Stack>
-
-                        {announcementLoading && <LinearProgress sx={{ mb: 2 }} />}
-
-                        {announcements.length === 0 && !announcementLoading ? (
-                            <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
-                                {t('announcement.admin.empty')}
-                            </Typography>
-                        ) : (
-                            <TableContainer>
-                                <Table size="small">
-                                    <TableHead>
-                                        <TableRow>
-                                            <TableCell>
-                                                {t('announcement.admin.colTitle')}
-                                            </TableCell>
-                                            <TableCell>
-                                                {t('announcement.admin.colState')}
-                                            </TableCell>
-                                            <TableCell>
-                                                {t('announcement.admin.colWindow')}
-                                            </TableCell>
-                                            <TableCell align="right">
-                                                {t('announcement.admin.colActions')}
-                                            </TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {announcements.map((a) => {
-                                            const state = announcementState(a);
-                                            return (
-                                                <TableRow key={a.id} hover>
-                                                    <TableCell>
-                                                        <Stack
-                                                            direction="row"
-                                                            spacing={1}
-                                                            alignItems="center"
-                                                        >
-                                                            <Typography
-                                                                variant="body2"
-                                                                sx={{ fontWeight: 600 }}
-                                                            >
-                                                                {a.title}
-                                                            </Typography>
-                                                            {a.level === 'important' && (
-                                                                <Chip
-                                                                    label={t(
-                                                                        'announcement.important',
-                                                                    )}
-                                                                    color="error"
-                                                                    size="small"
-                                                                />
-                                                            )}
-                                                        </Stack>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Chip
-                                                            size="small"
-                                                            label={t(
-                                                                `announcement.admin.state.${state}`,
-                                                            )}
-                                                            color={
-                                                                state === 'active'
-                                                                    ? 'success'
-                                                                    : 'default'
-                                                            }
-                                                            variant={
-                                                                state === 'active'
-                                                                    ? 'filled'
-                                                                    : 'outlined'
-                                                            }
-                                                        />
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Typography
-                                                            variant="caption"
-                                                            color="text.secondary"
-                                                        >
-                                                            {a.publishAt
-                                                                ? new Date(
-                                                                      a.publishAt,
-                                                                  ).toLocaleString(i18n.language)
-                                                                : t('announcement.admin.noLimit')}
-                                                            {' → '}
-                                                            {a.expireAt
-                                                                ? new Date(
-                                                                      a.expireAt,
-                                                                  ).toLocaleString(i18n.language)
-                                                                : t('announcement.admin.noLimit')}
-                                                        </Typography>
-                                                    </TableCell>
-                                                    <TableCell align="right">
-                                                        <IconButton
-                                                            size="small"
-                                                            onClick={() =>
-                                                                openAnnouncementDialog(a)
-                                                            }
-                                                        >
-                                                            <EditIcon fontSize="small" />
-                                                        </IconButton>
-                                                        <IconButton
-                                                            size="small"
-                                                            color="error"
-                                                            onClick={() => {
-                                                                setAnnouncementToDelete(a);
-                                                                setAnnouncementDeleteDialog(true);
-                                                            }}
-                                                        >
-                                                            <DeleteIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </TableCell>
-                                                </TableRow>
-                                            );
-                                        })}
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
-                        )}
-                    </Paper>
+                    <AnnouncementAdminPanel onError={setError} onSuccess={setSuccess} />
                 )}
 
                 {/* 回饋管理分頁 */}
@@ -4524,157 +4281,6 @@ const AdminPage = () => {
                 {activeTab === 10 && (
                     <FeedbackAdminPanel onError={setError} onSuccess={setSuccess} />
                 )}
-
-                {/* 公告編輯對話框 */}
-                <Dialog
-                    open={announcementDialog}
-                    onClose={() => setAnnouncementDialog(false)}
-                    maxWidth="sm"
-                    fullWidth
-                >
-                    <DialogTitle>
-                        {t(
-                            announcementForm.id
-                                ? 'announcement.admin.editTitle'
-                                : 'announcement.admin.create',
-                        )}
-                    </DialogTitle>
-                    <DialogContent>
-                        <Stack spacing={2} sx={{ mt: 1 }}>
-                            <TextField
-                                label={t('announcement.admin.fieldTitle')}
-                                value={announcementForm.title}
-                                onChange={(e) =>
-                                    setAnnouncementForm({
-                                        ...announcementForm,
-                                        title: e.target.value,
-                                    })
-                                }
-                                fullWidth
-                                required
-                            />
-                            <TextField
-                                label={t('announcement.admin.fieldBody')}
-                                value={announcementForm.body}
-                                onChange={(e) =>
-                                    setAnnouncementForm({
-                                        ...announcementForm,
-                                        body: e.target.value,
-                                    })
-                                }
-                                fullWidth
-                                required
-                                multiline
-                                minRows={4}
-                                helperText={t('announcement.admin.bodyHelper')}
-                            />
-                            <FormControl fullWidth>
-                                <InputLabel>{t('announcement.admin.fieldLevel')}</InputLabel>
-                                <Select
-                                    value={announcementForm.level}
-                                    label={t('announcement.admin.fieldLevel')}
-                                    onChange={(e) =>
-                                        setAnnouncementForm({
-                                            ...announcementForm,
-                                            level: e.target.value,
-                                        })
-                                    }
-                                >
-                                    <MenuItem value="info">{t('announcement.levelInfo')}</MenuItem>
-                                    <MenuItem value="important">
-                                        {t('announcement.important')}
-                                    </MenuItem>
-                                </Select>
-                            </FormControl>
-                            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                                <TextField
-                                    label={t('announcement.admin.fieldPublishAt')}
-                                    type="datetime-local"
-                                    value={announcementForm.publishAt}
-                                    onChange={(e) =>
-                                        setAnnouncementForm({
-                                            ...announcementForm,
-                                            publishAt: e.target.value,
-                                        })
-                                    }
-                                    InputLabelProps={{ shrink: true }}
-                                    fullWidth
-                                />
-                                <TextField
-                                    label={t('announcement.admin.fieldExpireAt')}
-                                    type="datetime-local"
-                                    value={announcementForm.expireAt}
-                                    onChange={(e) =>
-                                        setAnnouncementForm({
-                                            ...announcementForm,
-                                            expireAt: e.target.value,
-                                        })
-                                    }
-                                    InputLabelProps={{ shrink: true }}
-                                    fullWidth
-                                />
-                            </Stack>
-                            <Typography variant="caption" color="text.secondary">
-                                {t('announcement.admin.windowHelper')}
-                            </Typography>
-                            <FormControlLabel
-                                control={
-                                    <Switch
-                                        checked={announcementForm.enabled}
-                                        onChange={(e) =>
-                                            setAnnouncementForm({
-                                                ...announcementForm,
-                                                enabled: e.target.checked,
-                                            })
-                                        }
-                                    />
-                                }
-                                label={t('announcement.admin.fieldEnabled')}
-                            />
-                        </Stack>
-                    </DialogContent>
-                    <DialogActions>
-                        <Button onClick={() => setAnnouncementDialog(false)}>
-                            {t('common.cancel')}
-                        </Button>
-                        <Button
-                            variant="contained"
-                            onClick={handleSaveAnnouncement}
-                            disabled={
-                                !announcementForm.title.trim() || !announcementForm.body.trim()
-                            }
-                        >
-                            {t('common.save')}
-                        </Button>
-                    </DialogActions>
-                </Dialog>
-
-                {/* 公告刪除確認 */}
-                <Dialog
-                    open={announcementDeleteDialog}
-                    onClose={() => setAnnouncementDeleteDialog(false)}
-                >
-                    <DialogTitle>{t('announcement.admin.deleteTitle')}</DialogTitle>
-                    <DialogContent>
-                        <DialogContentText>
-                            {t('announcement.admin.confirmDelete', {
-                                title: announcementToDelete?.title,
-                            })}
-                        </DialogContentText>
-                    </DialogContent>
-                    <DialogActions>
-                        <Button onClick={() => setAnnouncementDeleteDialog(false)}>
-                            {t('common.cancel')}
-                        </Button>
-                        <Button
-                            color="error"
-                            variant="contained"
-                            onClick={handleDeleteAnnouncement}
-                        >
-                            {t('common.delete')}
-                        </Button>
-                    </DialogActions>
-                </Dialog>
 
                 {/* 身分組編輯對話框 */}
                 <Dialog
