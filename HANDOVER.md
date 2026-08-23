@@ -271,6 +271,55 @@ node database/grant-admin.js <username>    # 授予管理員權限
 
 ---
 
+## 程式結構
+
+前端在 `src/main/js/`、後端在 `src/backend/`（後端有自己的 `package.json`，
+根目錄的 `npm install` **不會**幫你裝，要另外進去裝一次）。
+
+幾個下一屆最可能要改的地方：
+
+| 想改什麼 | 檔案 |
+|---|---|
+| 介面文案（中英） | `src/main/js/i18n/locales/{zh-TW,en}.js` ——兩邊都要改，有測試在檢查覆蓋率 |
+| 版本更新紀錄 | `src/main/resources/data/changelog.js` ——加一筆就好，不用碰元件 |
+| 幹部名單、學年 | `src/main/resources/data/mockData.js` |
+| 後台某個分頁 | `src/main/js/components/admin/` ——一個分頁一支檔案 |
+| 評價字數門檻、回饋金 | `src/backend/config/reviewContent.js`、`reviewQuota.js` |
+| 權限定義 | `src/backend/config/permissions.js` |
+
+### 後台是拆開的
+
+`AdminPage.js` 只做四件事：權限守門、功能卡片、把分頁接起來、一組共用的 Snackbar。
+十二個分頁各自是 `components/admin/` 下的獨立元件。要改「意見回饋」就只開
+`FeedbackAdminPanel.js`，不必在一支幾千行的檔案裡找。
+
+新增分頁時有一個**容易漏掉**的地方：`AdminPage.js` 的 `PERMISSION_TO_TAB`
+必須補上對應的權限。那張表同時是控制台的門禁清單——沒補的話，
+就算功能卡片寫好了，只有該權限的幹部一進來仍會被踢回首頁。
+（公告與回饋兩個分頁就曾經這樣壞了一段時間。）
+
+### 考古題／大抄管理只有一份實作
+
+`/admin/exam-manage` 這類獨立頁面與後台的同名分頁**渲染同一個元件**
+（`components/admin/ExamManagePanel.js`）。曾經是兩套，其中一套沒跟上就默默過時了。
+有測試在檢查兩邊 import 的是同一個元件，不要為了改其中一邊而複製第三份。
+
+### 動手前先跑這三個
+
+```bash
+npm run lint          # 零 error 零 warning
+npm run format:check  # prettier
+CI=true npm test -- --watchAll=false
+```
+
+push 之後 GitHub Actions 會再跑一次（`.github/workflows/ci.yml`）。
+
+測試裡有幾條是**守衛**，故意去讀原始碼而不是測行為——例如回饋的匿名性
+（`feedbackAnonymity.test.js`）守的是「不記錄送出者」這個承諾。
+它們轉紅時，先看懂它在守什麼再決定怎麼改，不要為了讓它變綠而放寬斷言。
+
+---
+
 ## 其他項目
 
 > 以下尚未整理成完整步驟。**不要把這份文件當成已經寫完** —— 一份「看起來完整但其實有洞」的交接文件比沒有更危險。交接時請一併補上。
@@ -278,7 +327,7 @@ node database/grant-admin.js <username>    # 授予管理員權限
 - **伺服器 SSH**：主機在 `ntu.im`（140.112.106.45）。新人公鑰加入、舊人移除的實際步驟待補。
 - **GitHub**：儲存庫權限的轉移方式待補。
 - **網域 `ntu.im`**：註冊商、續約時間、管理帳號待補。
-- **部署**：目前的部署流程見 `DEPLOYMENT.md` 與 `deploy.sh`。已知陷阱：`deploy.sh` 第 85 行的 `cp -r build /var/www/ntuim/` 在目標已存在時會複製成 `build/build`，症狀是「部署成功但畫面沒變」。
+- **部署**：目前的部署流程見 `DEPLOYMENT.md` 與 `deploy.sh`。先前記載的兩個陷阱（`cp -r` 巢狀、建置失敗被靜默吞掉）都已修正，腳本現在建置失敗會直接中止。
 
 ---
 
