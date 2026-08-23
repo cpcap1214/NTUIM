@@ -60,11 +60,11 @@ import LockResetIcon from '@mui/icons-material/LockReset';
 import { useAuth } from '../contexts/AuthContext';
 import FeedbackAdminPanel from '../components/admin/FeedbackAdminPanel';
 import AnnouncementAdminPanel from '../components/admin/AnnouncementAdminPanel';
+import ModuleAdminPanel from '../components/admin/ModuleAdminPanel';
 import { API_BASE_URL } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import courseReviewService from '../services/courseReviewService';
 import roleService from '../services/roleService';
-import moduleService from '../services/moduleService';
 import lineService from '../services/lineService';
 import ReviewCard from '../components/courseReview/ReviewCard';
 import { translateApiError } from '../utils';
@@ -195,8 +195,6 @@ const AdminPage = () => {
     });
     const [roleDeleteDialog, setRoleDeleteDialog] = useState(false);
     const [roleToDelete, setRoleToDelete] = useState(null);
-    const [moduleSettings, setModuleSettings] = useState([]);
-    const [moduleLoading, setModuleLoading] = useState(false);
 
     // 公告管理相關狀態。
     // publishAt / expireAt 在表單裡是 datetime-local 需要的「本地牆上時間」格式，
@@ -293,10 +291,6 @@ const AdminPage = () => {
             fetchPayouts();
         } else if (activeTab === 7) {
             fetchRoles();
-        } else if (activeTab === 8) {
-            fetchModuleSettings();
-            // 模組白名單的下拉選單需要身分組清單
-            if (allRoles.length === 0) fetchRoles();
         } else if (activeTab === 11) {
             // 名單需要 users.manage；沒權限的人只看得到上半部的「我的綁定」
             if (hasPermission('users.manage')) fetchLineBindings();
@@ -412,37 +406,6 @@ const AdminPage = () => {
         }
     };
 
-    const fetchModuleSettings = async () => {
-        try {
-            setModuleLoading(true);
-            setModuleSettings(await moduleService.getModuleSettings());
-        } catch (err) {
-            setError(translateApiError(err, t('admin.modules.fetchFailed')));
-        } finally {
-            setModuleLoading(false);
-        }
-    };
-
-    const handleUpdateModule = async (key, payload) => {
-        try {
-            await moduleService.updateModule(key, payload);
-            await fetchModuleSettings();
-            setSuccess(t('admin.modules.saved'));
-        } catch (err) {
-            setError(translateApiError(err, t('admin.modules.saveFailed')));
-        }
-    };
-
-    // --- 公告管理 -------------------------------------------------------------
-    //
-    // 時區：資料庫存的是 UTC ISO 字串，但 <input type="datetime-local"> 只認
-    // 「YYYY-MM-DDTHH:mm」形式的本地牆上時間，而且不帶時區資訊。
-    // 兩邊各轉一次，少了任何一次台灣就會整整差 8 小時——而症狀只會是
-    // 「公告設好了卻沒跳出來」，完全看不出跟時區有關。
-
-    // UTC ISO → datetime-local 的本地字串
-    // 這則公告「現在」會不會出現在前台。後端有同一套判斷，這裡是給管理員看的即時狀態——
-    // 「已啟用但因為排程還沒到所以沒出現」是最容易誤判成故障的情況。
     // --- LINE 通知綁定 ---------------------------------------------------------
 
     const fetchLineBinding = async () => {
@@ -4130,142 +4093,14 @@ const AdminPage = () => {
                 )}
 
                 {/* 模組管理分頁 */}
+                {/* 模組管理分頁。整段已搬到 components/admin/ModuleAdminPanel.js */}
                 {activeTab === 8 && (
-                    <Paper sx={{ p: 2 }}>
-                        <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
-                            {t('admin.modules.title')}
-                        </Typography>
-                        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                            {t('admin.modules.description')}
-                        </Typography>
-
-                        {moduleLoading && (
-                            <Box sx={{ textAlign: 'center', py: 8 }}>
-                                <Typography variant="h6" color="text.secondary">
-                                    載入中...
-                                </Typography>
-                            </Box>
-                        )}
-
-                        {!moduleLoading && (
-                            <Stack spacing={2}>
-                                {moduleSettings.map((module) => (
-                                    <Paper key={module.key} variant="outlined" sx={{ p: 2 }}>
-                                        <Grid container spacing={2} alignItems="center">
-                                            <Grid item xs={12} md={3}>
-                                                <Typography
-                                                    variant="subtitle1"
-                                                    sx={{ fontWeight: 600 }}
-                                                >
-                                                    {module.name}
-                                                </Typography>
-                                                <Typography
-                                                    variant="caption"
-                                                    color="text.secondary"
-                                                >
-                                                    {module.key}
-                                                </Typography>
-                                            </Grid>
-                                            <Grid item xs={12} md={3}>
-                                                <FormControl fullWidth size="small">
-                                                    <InputLabel>開放狀態</InputLabel>
-                                                    <Select
-                                                        value={module.visibility}
-                                                        label={t('admin.modules.visibilityLabel')}
-                                                        onChange={(e) =>
-                                                            handleUpdateModule(module.key, {
-                                                                visibility: e.target.value,
-                                                            })
-                                                        }
-                                                    >
-                                                        <MenuItem value="public">
-                                                            公開（所有人）
-                                                        </MenuItem>
-                                                        <MenuItem value="restricted">
-                                                            限定（白名單）
-                                                        </MenuItem>
-                                                    </Select>
-                                                </FormControl>
-                                            </Grid>
-                                            <Grid item xs={12} md={4}>
-                                                <FormControl
-                                                    fullWidth
-                                                    size="small"
-                                                    disabled={module.visibility === 'public'}
-                                                >
-                                                    <InputLabel>可使用的身分組</InputLabel>
-                                                    <Select
-                                                        multiple
-                                                        value={(module.allowedRoles || []).map(
-                                                            (r) => r.id,
-                                                        )}
-                                                        label={t('admin.modules.allowedRoles')}
-                                                        onChange={(e) =>
-                                                            handleUpdateModule(module.key, {
-                                                                roleIds: e.target.value,
-                                                            })
-                                                        }
-                                                        renderValue={(selected) => (
-                                                            <Stack
-                                                                direction="row"
-                                                                spacing={0.5}
-                                                                flexWrap="wrap"
-                                                                useFlexGap
-                                                            >
-                                                                {selected.map((id) => {
-                                                                    const r = allRoles.find(
-                                                                        (x) => x.id === id,
-                                                                    );
-                                                                    return r ? (
-                                                                        <Chip
-                                                                            key={id}
-                                                                            label={r.name}
-                                                                            size="small"
-                                                                        />
-                                                                    ) : null;
-                                                                })}
-                                                            </Stack>
-                                                        )}
-                                                    >
-                                                        {allRoles.map((r) => (
-                                                            <MenuItem key={r.id} value={r.id}>
-                                                                {r.name}
-                                                            </MenuItem>
-                                                        ))}
-                                                    </Select>
-                                                </FormControl>
-                                            </Grid>
-                                            <Grid item xs={12} md={2}>
-                                                <Stack
-                                                    direction="row"
-                                                    spacing={1}
-                                                    alignItems="center"
-                                                >
-                                                    <Switch
-                                                        checked={!!module.showWhenRestricted}
-                                                        disabled={module.visibility === 'public'}
-                                                        onChange={(e) =>
-                                                            handleUpdateModule(module.key, {
-                                                                showWhenRestricted:
-                                                                    e.target.checked,
-                                                            })
-                                                        }
-                                                    />
-                                                    <Typography variant="caption">
-                                                        {t(
-                                                            module.showWhenRestricted
-                                                                ? 'admin.modules.showComingSoon'
-                                                                : 'admin.modules.hideCompletely',
-                                                        )}
-                                                    </Typography>
-                                                </Stack>
-                                            </Grid>
-                                        </Grid>
-                                    </Paper>
-                                ))}
-                            </Stack>
-                        )}
-                    </Paper>
+                    <ModuleAdminPanel
+                        roles={allRoles}
+                        onEnsureRoles={fetchRoles}
+                        onError={setError}
+                        onSuccess={setSuccess}
+                    />
                 )}
 
                 {/* 公告管理分頁 */}
