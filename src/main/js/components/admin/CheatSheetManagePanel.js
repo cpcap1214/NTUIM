@@ -131,25 +131,9 @@ const CheatSheetManagePanel = ({ onNotify }) => {
             throw new Error(error.error || t('exam.form.fileUpdateFailed'));
         }
     };
-    // 檢查是否為管理員
 
     return (
         <>
-            {/* Header */}
-            <Box sx={{ mb: 4 }}>
-                <Typography
-                    variant="h3"
-                    component="h1"
-                    gutterBottom
-                    sx={{ fontWeight: 700, fontSize: { xs: '1.75rem', md: '3rem' } }}
-                >
-                    {t('nav.adminCheatSheetManage')}
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                    {t('manage.cheatSheetDescription')}
-                </Typography>
-            </Box>
-
             {/* Search Bar */}
             <Paper sx={{ p: 2, mb: 3 }}>
                 <TextField

@@ -260,6 +260,16 @@ describe.each(CASES)('$name', (c) => {
         expect(global.fetch).toHaveBeenCalledTimes(before);
     });
 
+    // 守另一個方向：標題從面板搬到外殼時不能搬丟了。
+    // 面板本身不再有標題（後台要的是區塊標題 + 卡片），所以頁面外殼
+    // 必須自己提供——少了它，這一頁就沒有任何頁面標題。
+    test('有唯一的頁面標題（h1）', async () => {
+        render(<c.Page />);
+        await screen.findByText(c.firstRowText);
+
+        expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    });
+
     test('點編輯會開啟編輯對話框', async () => {
         render(<c.Page />);
         await screen.findByText(c.firstRowText);

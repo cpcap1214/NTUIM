@@ -404,15 +404,37 @@ const AdminPage = () => {
                 {/* 上傳大抄分頁。整段已搬到 components/admin/CheatSheetUploadPanel.js */}
                 {activeTab === 2 && <CheatSheetUploadPanel onNotify={notifyFromPanel} />}
 
-                {/* 考古題管理分頁 */}
                 {/* 考古題管理分頁。與獨立頁面 /admin/exam-manage 共用同一個元件，
-                    功能只有一份（原本後台這裡是隔天複製過來的第二份實作）。 */}
-                {activeTab === 3 && <ExamManagePanel onNotify={notifyFromPanel} />}
+                    功能只有一份（原本後台這裡是隔天複製過來的第二份實作）。
 
-                {/* 大抄管理分頁 */}
+                    標題與卡片由這裡提供而不是由元件自己長：獨立頁面要的是
+                    頁面標題（h1）+ 內容放在底色上，後台要的是區塊標題 + 卡片，
+                    跟其他十個分頁一致。 */}
+                {activeTab === 3 && (
+                    <Paper sx={{ p: 2 }}>
+                        <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
+                            {t('nav.adminExamManage')}
+                        </Typography>
+                        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                            {t('manage.examDescription')}
+                        </Typography>
+                        <ExamManagePanel onNotify={notifyFromPanel} />
+                    </Paper>
+                )}
+
                 {/* 大抄管理分頁。與獨立頁面 /admin/cheatsheet-manage 共用同一個元件，
-                    功能只有一份（原本後台這裡是隔天複製過來的第二份實作）。 */}
-                {activeTab === 4 && <CheatSheetManagePanel onNotify={notifyFromPanel} />}
+                    外框的理由同上。 */}
+                {activeTab === 4 && (
+                    <Paper sx={{ p: 2 }}>
+                        <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
+                            {t('nav.adminCheatSheetManage')}
+                        </Typography>
+                        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                            {t('manage.cheatSheetDescription')}
+                        </Typography>
+                        <CheatSheetManagePanel onNotify={notifyFromPanel} />
+                    </Paper>
+                )}
 
                 {/* 課程評價管理分頁 */}
                 {/* 課程評價審核分頁。整段已搬到 components/admin/CourseReviewAdminPanel.js */}

@@ -31,6 +31,22 @@ const ExamManagePage = () => {
     return (
         <Container maxWidth="lg" sx={{ px: { xs: 1.5, sm: 3 } }}>
             <Box sx={{ py: { xs: 2, md: 4 } }}>
+                {/* 頁面標題。放在外殼而不是面板裡：同一個面板也給後台控制台用，
+                    那裡要的是區塊標題 + 卡片，不是一整頁的標題。 */}
+                <Box sx={{ mb: 4 }}>
+                    <Typography
+                        variant="h3"
+                        component="h1"
+                        gutterBottom
+                        sx={{ fontWeight: 700, fontSize: { xs: '1.75rem', md: '3rem' } }}
+                    >
+                        {t('nav.adminExamManage')}
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary">
+                        {t('manage.examDescription')}
+                    </Typography>
+                </Box>
+
                 <ExamManagePanel />
             </Box>
         </Container>

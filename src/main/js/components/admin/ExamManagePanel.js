@@ -43,6 +43,12 @@ import EditExamDialog from '../EditExamDialog';
 // 欄位標題仍是寫死的中文、表格在手機會把整頁撐開。
 // 現在兩邊都渲染這個元件，功能只有一份。
 //
+// ⚠️ 標題與外框不在這裡，由呼叫端提供。兩個情境的外框本來就不同：
+// 獨立頁面要的是頁面標題（h1）+ 內容直接放在底色上；後台分頁要的是
+// 區塊標題（h5）+ 包在 <Paper> 卡片裡，跟其他十個分頁一致。
+// 把外框放進這個元件的話，等於讓其中一邊穿另一邊的衣服——
+// 先前後台就因此少了卡片、多了一個 3rem 的頁面標題。
+//
 // onNotify 選填：後台控制台有共用的 Snackbar，傳進來就把提示交給它；
 // 獨立頁面沒有，所以不傳，由這裡自己顯示。
 const ExamManagePanel = ({ onNotify }) => {
@@ -115,25 +121,9 @@ const ExamManagePanel = ({ onNotify }) => {
             throw new Error(error.error || t('exam.form.fileUpdateFailed'));
         }
     };
-    // 檢查是否為管理員
 
     return (
         <>
-            {/* Header */}
-            <Box sx={{ mb: 4 }}>
-                <Typography
-                    variant="h3"
-                    component="h1"
-                    gutterBottom
-                    sx={{ fontWeight: 700, fontSize: { xs: '1.75rem', md: '3rem' } }}
-                >
-                    {t('nav.adminExamManage')}
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                    {t('manage.examDescription')}
-                </Typography>
-            </Box>
-
             {/* Search Bar */}
             <Paper sx={{ p: 2, mb: 3 }}>
                 <TextField

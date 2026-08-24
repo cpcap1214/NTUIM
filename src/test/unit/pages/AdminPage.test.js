@@ -328,3 +328,23 @@ describe('每個分頁都渲染得出來', () => {
         expect(screen.getByText('admin.consoleTitle')).toBeInTheDocument();
     });
 });
+
+// ── 分頁不該帶入頁面層級的標題 ──────────────────────────────────
+//
+// 控制台自己的標題是 h4。任何分頁跑出一個 <h1>，就代表有人把一個「頁面」
+// 整包塞進控制台——那正是考古題／大抄管理曾經壞掉的方式：它們渲染的是
+// 從獨立頁面抽出來的元件，連頁面外框一起帶了進來，於是後台少了卡片、
+// 多了一個 3rem 的大標題，而且 h1 被包在 h4 裡面（無障礙上也是錯的）。
+//
+// 用 test.each 而不是在一條測試裡跑迴圈，失敗時才看得出是哪一個分頁。
+describe('後台分頁不該帶入頁面層級的標題', () => {
+    test.each(TABS)('切到「$name」之後控制台裡沒有 <h1>', async (tab) => {
+        grantedPermissions = ALL_PERMISSIONS;
+        render(<AdminPage />);
+        await screen.findByText('admin.consoleTitle');
+
+        fireEvent.click(screen.getAllByText(tab.cardKey)[0]);
+
+        expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
+    });
+});
