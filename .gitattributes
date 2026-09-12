@@ -1,0 +1,23 @@
+# 工作區一律用 LF。
+#
+# Windows 上 git 預設 core.autocrlf=true，簽出時會把檔案轉成 CRLF。
+# 那會讓兩件事壞掉：
+#
+#   1. .prettierrc 設了 endOfLine: lf，於是 npm run format:check 會把
+#      每一支檔案都判成不合格——而差異其實只有行尾，內容一模一樣。
+#      （切換分支之後就會發生，因為那時 git 才真的重寫工作區。）
+#
+#   2. deploy.sh 這類要在 Linux 上執行的腳本，CRLF 的 shebang 會讓它
+#      直接 bad interpreter 起不來。
+#
+# 明確指定 eol=lf 之後，本機、CI、伺服器三邊的行尾就一致了。
+* text=auto eol=lf
+
+# 二進位檔不要做任何轉換
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.db binary
