@@ -54,6 +54,16 @@ describe('登入頁冒煙測試', () => {
         expect(screen.getByRole('button', { name: /log in|登入/i })).toBeInTheDocument();
     });
 
+    // 忘記密碼的聯絡方式是使用者目前唯一的救援路徑：後端沒有自助重設的端點，
+    // 只有管理員的 PUT /admin/users/:id/password。這一行被默默拿掉的話，
+    // 忘記密碼的人在登入頁上會完全沒有出路，而畫面看起來一切正常。
+    test('登入頁有提供忘記密碼的聯絡方式', async () => {
+        renderLogin();
+
+        const contact = await screen.findByRole('link', { name: 'imsa@ntu.im' });
+        expect(contact).toHaveAttribute('href', 'mailto:imsa@ntu.im');
+    });
+
     test('送出表單會真的呼叫 /auth/login', async () => {
         instance.post.mockResolvedValue({ data: { token: 'tok', user: { id: 1, username: 'a' } } });
         renderLogin();

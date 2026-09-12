@@ -264,6 +264,7 @@ const zhTW = {
         registerNow: '立即註冊',
         haveAccount: '已經有帳號？',
         loginNow: '立即登入',
+        forgotPassword: '忘記密碼？請聯絡',
     },
 
     time: {

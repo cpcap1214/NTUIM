@@ -109,6 +109,24 @@ const LoginPage = () => {
                     </Stack>
                 </Box>
 
+                {/* 目前沒有自助重設密碼的流程：/auth 只有 register、login 與
+                    change-password，而 change-password 要先登入才用得到。
+                    真正的救援路徑是管理員的 PUT /admin/users/:id/password，
+                    所以這裡直接給聯絡信箱，請人工處理。
+                    之後若補上自助重設流程，這一行要換成連到該流程的連結。
+
+                    位置刻意放在表單正下方：使用者在密碼欄卡住時第一個往下看的地方。 */}
+                <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ textAlign: 'center', mt: 2 }}
+                >
+                    {t('auth.forgotPassword')}
+                    <Link href="mailto:imsa@ntu.im" sx={{ ml: 0.5, fontWeight: 500 }}>
+                        imsa@ntu.im
+                    </Link>
+                </Typography>
+
                 <Typography
                     variant="body2"
                     color="text.secondary"

@@ -276,6 +276,7 @@ const en = {
         registerNow: 'Sign up now',
         haveAccount: 'Already have an account?',
         loginNow: 'Log in',
+        forgotPassword: 'Forgot your password? Contact',
     },
 
     time: {
