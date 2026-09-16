@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
 const { User } = require('../models');
 const { generateToken, authenticateToken } = require('../middleware/auth');
-const { checkStudentPaidFee } = require('../services/feeStatusService');
+const { checkStudentPaidFee, syncStudentFeeStatus } = require('../services/feeStatusService');
 
 // 註冊
 router.post(
@@ -136,6 +136,8 @@ router.post(
                     .status(401)
                     .json({ error: '帳號或密碼錯誤', errorCode: 'CREDENTIALS_INVALID' });
             }
+
+            await syncStudentFeeStatus(user);
 
             // 產生 Token
             const token = generateToken(user);

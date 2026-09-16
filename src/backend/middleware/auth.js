@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 const permissionService = require('../services/permissionService');
+const { syncStudentFeeStatus } = require('../services/feeStatusService');
 
 // 全站唯一的管理員判斷。原本這一行（含 `|| user?.username === 'cpcap'` 的後門）
 // 在後端被複製了 5 份、前端 6 份；後門已於 migration 005 實體化成 role='admin' 後移除，
@@ -118,13 +119,22 @@ const authenticateToken = async (req, res, next) => {
 
         // 從資料庫獲取使用者資訊
         const user = await User.findByPk(decoded.userId, {
-            attributes: ['id', 'username', 'email', 'role', 'hasPaidFee', 'canManagePayouts'],
+            attributes: [
+                'id',
+                'studentId',
+                'username',
+                'email',
+                'role',
+                'hasPaidFee',
+                'canManagePayouts',
+            ],
         });
 
         if (!user) {
             return res.status(404).json({ error: '使用者不存在', errorCode: 'USER_NOT_FOUND' });
         }
 
+        await syncStudentFeeStatus(user);
         req.user = user.toJSON();
 
         // 解析身分組與權限掛到 req.user 上（Phase 2：只是備好，還沒有任何地方強制執行）
@@ -187,9 +197,18 @@ const optionalAuth = async (req, res, next) => {
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const user = await User.findByPk(decoded.userId, {
-            attributes: ['id', 'username', 'email', 'role', 'hasPaidFee', 'canManagePayouts'],
+            attributes: [
+                'id',
+                'studentId',
+                'username',
+                'email',
+                'role',
+                'hasPaidFee',
+                'canManagePayouts',
+            ],
         });
         if (user) {
+            await syncStudentFeeStatus(user);
             req.user = user.toJSON();
             const resolved = await permissionService.resolve(req.user);
             req.user.roles = resolved.roles;

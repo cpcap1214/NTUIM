@@ -101,6 +101,7 @@ router.get('/profile', async (req, res) => {
 
         res.json({
             ...user.toJSON(),
+            hasPaidFee: req.user.hasPaidFee,
             roles: req.user.roles || [],
             permissions: req.user.permissions || [],
             // 管理員判斷的權威來源。前端不可再自己從 role 欄位推導——
