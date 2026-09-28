@@ -32,7 +32,9 @@ import {
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import BadgeIcon from '@mui/icons-material/Badge';
 import CancelIcon from '@mui/icons-material/Cancel';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import EditIcon from '@mui/icons-material/Edit';
+import LinkIcon from '@mui/icons-material/Link';
 import LockResetIcon from '@mui/icons-material/LockReset';
 import PaidIcon from '@mui/icons-material/Paid';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
@@ -41,7 +43,9 @@ import SearchIcon from '@mui/icons-material/Search';
 import ViewIcon from '@mui/icons-material/Visibility';
 import { API_BASE_URL } from '../../services/api';
 import roleService from '../../services/roleService';
+import userService from '../../services/userService';
 import { translateApiError } from '../../utils';
+import RoleChip from '../common/RoleChip';
 
 // 後台的「使用者管理」分頁。原本是 AdminPage.js 裡的一段 activeTab === 0，
 // 是整支檔案裡最大的一塊（778 行 JSX）。
@@ -49,8 +53,9 @@ import { translateApiError } from '../../utils';
 // roles 由 AdminPage 傳進來（身分組清單三個分頁共用）；
 // currentUser 用來認出「這一列就是你自己」，避免把自己的權限改掉之後
 // 畫面上的身分還是舊的。
-// onUpdateSelf：改到自己那一列時要同步 AuthContext 的身分，
+// onUpdateSelf：改到自己那一列時請 AuthContext 重新向後端取一次身分，
 // 否則畫面上的權限還是舊的（例如把自己的管理員身分拿掉後，選單沒跟著變）。
+// 刻意不在前端自己拼湊新的使用者物件：身分組與權限只有後端解析得出來。
 const UserAdminPanel = ({
     roles,
     currentUser,
@@ -65,6 +70,10 @@ const UserAdminPanel = ({
     const [editData, setEditData] = useState({});
     const [newPasswordDialog, setNewPasswordDialog] = useState(false);
     const [newPassword, setNewPassword] = useState('');
+    // 管理員產生的重設連結：{ url, expiresAt }。關閉對話框就丟掉，不留在畫面上
+    const [resetLink, setResetLink] = useState(null);
+    const [resetLinkLoading, setResetLinkLoading] = useState(false);
+    const [resetLinkCopied, setResetLinkCopied] = useState(false);
     const [selectedUserId, setSelectedUserId] = useState(null);
     const [deleteUserDialog, setDeleteUserDialog] = useState(false);
     const [userToDelete, setUserToDelete] = useState(null);
@@ -97,7 +106,9 @@ const UserAdminPanel = ({
     }, [fetchUsers]);
 
     const handleEdit = (user) => {
-        setEditingId(currentUser.id);
+        // 原本這裡寫成 currentUser.id：點任何人的「編輯」，進入編輯的都是你自己那一列，
+        // 而表單裝的是對方的資料——按下儲存就把對方的帳號、Email、身分組寫到你身上。
+        setEditingId(user.id);
         setEditData({
             username: user.username,
             email: user.email,
@@ -145,20 +156,45 @@ const UserAdminPanel = ({
             onSuccess(t('admin.users.updated'));
             setEditingId(null);
 
-            // 如果更新的是當前登入用戶，同步更新 AuthContext
-            if (currentUser && parseInt(userId) === currentUser.id) {
-                onUpdateSelf({
-                    username: editData.username,
-                    email: editData.email,
-                    fullName: editData.fullName,
-                    hasPaidFee: editData.hasPaidFee,
-                    role: editData.role,
-                });
-            }
-
             fetchUsers();
+
+            // 改的是自己：重新取得身分（放在最後，因為它可能讓整個控制台重新載入）
+            if (currentUser && parseInt(userId) === currentUser.id) {
+                onUpdateSelf();
+            }
         } catch (err) {
             onError(translateApiError(err, err.message || t('exam.form.updateFailed')));
+        }
+    };
+
+    const closePasswordDialog = () => {
+        setNewPasswordDialog(false);
+        setNewPassword('');
+        setResetLink(null);
+        setResetLinkCopied(false);
+    };
+
+    // 產生重設連結，由管理員轉交給本人、本人自己設新密碼。
+    // 比「直接設定新密碼」好：管理員不必知道、也不必透過任何管道傳送別人的密碼。
+    const handleCreateResetLink = async () => {
+        try {
+            setResetLinkLoading(true);
+            setResetLink(await userService.createPasswordResetLink(selectedUserId));
+            setResetLinkCopied(false);
+        } catch (err) {
+            onError(translateApiError(err, t('admin.users.resetLink.failed')));
+        } finally {
+            setResetLinkLoading(false);
+        }
+    };
+
+    const handleCopyResetLink = async () => {
+        try {
+            await navigator.clipboard.writeText(resetLink.url);
+            setResetLinkCopied(true);
+        } catch {
+            // 沒有剪貼簿權限（非 https、或瀏覽器拒絕）時，網址仍在欄位裡可以手動選取複製
+            onError(t('admin.users.resetLink.copyFailed'));
         }
     };
 
@@ -177,18 +213,21 @@ const UserAdminPanel = ({
                 },
                 body: JSON.stringify({ password: newPassword }),
             });
+            const data = await response.json().catch(() => ({}));
 
-            if (!response.ok) {
-                throw new Error(t('admin.users.passwordUpdateFailed'));
-            }
+            // 把後端的錯誤碼帶出來（例如「新密碼至少 6 個字元」），不要一律顯示「更新失敗」
+            if (!response.ok) throw data;
+
+            // 設定新密碼會讓對方所有既有登入失效。改的若是自己，後端會附新 token，
+            // 換上之後才不會在下一個請求被登出
+            if (data.token) localStorage.setItem('token', data.token);
 
             onSuccess(t('admin.users.passwordUpdated'));
-            setNewPasswordDialog(false);
-            setNewPassword('');
+            closePasswordDialog();
             setSelectedUserId(null);
             fetchUsers();
         } catch (err) {
-            onError(err.message);
+            onError(translateApiError(err, t('admin.users.passwordUpdateFailed')));
         }
     };
 
@@ -251,86 +290,54 @@ const UserAdminPanel = ({
     const selectedUser =
         filteredUsers.find((managedUser) => managedUser.id === selectedUserId) || null;
     const activeUser = selectedUser || filteredUsers[0] || null;
-    const userStats = {
-        total: users.length,
-        admins: users.filter((u) => (u.roles || []).some((r) => r.key === 'admin')).length,
-        members: users.filter((u) => (u.roles || []).some((r) => r.key === 'member')).length,
-        paid: users.filter((managedUser) => managedUser.hasPaidFee).length,
-    };
+    // 原本還有一張「會員」：會員身分組就是依繳費狀態自動授予的，數字永遠等於「已繳費」。
+    // 換成「持有身分組」——有任何手動指派身分組的人，交接時最需要核對的就是這群。
+    const statCards = [
+        { key: 'total', icon: BadgeIcon, color: 'primary.main', value: users.length },
+        {
+            key: 'admins',
+            icon: AdminPanelSettingsIcon,
+            color: 'warning.main',
+            value: users.filter((u) => (u.roles || []).some((r) => r.key === 'admin')).length,
+        },
+        {
+            key: 'withRoles',
+            icon: BadgeIcon,
+            color: 'info.main',
+            value: users.filter((u) => (u.roles || []).some((r) => !r.isAuto)).length,
+        },
+        {
+            key: 'paid',
+            icon: PaidIcon,
+            color: 'success.main',
+            value: users.filter((u) => u.hasPaidFee).length,
+        },
+    ];
 
     return (
         <>
             <Grid container spacing={3}>
                 <Grid item xs={12}>
                     <Grid container spacing={2}>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <Paper sx={{ p: 2.5, borderRadius: 3 }}>
-                                <Stack direction="row" spacing={1.5} alignItems="center">
-                                    <Avatar sx={{ bgcolor: 'primary.main' }}>
-                                        <BadgeIcon />
-                                    </Avatar>
-                                    <Box>
-                                        <Typography variant="body2" color="text.secondary">
-                                            總用戶數
-                                        </Typography>
-                                        <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                                            {userStats.total}
-                                        </Typography>
-                                    </Box>
-                                </Stack>
-                            </Paper>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <Paper sx={{ p: 2.5, borderRadius: 3 }}>
-                                <Stack direction="row" spacing={1.5} alignItems="center">
-                                    <Avatar sx={{ bgcolor: 'warning.main' }}>
-                                        <AdminPanelSettingsIcon />
-                                    </Avatar>
-                                    <Box>
-                                        <Typography variant="body2" color="text.secondary">
-                                            管理員
-                                        </Typography>
-                                        <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                                            {userStats.admins}
-                                        </Typography>
-                                    </Box>
-                                </Stack>
-                            </Paper>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <Paper sx={{ p: 2.5, borderRadius: 3 }}>
-                                <Stack direction="row" spacing={1.5} alignItems="center">
-                                    <Avatar sx={{ bgcolor: 'info.main' }}>
-                                        <BadgeIcon />
-                                    </Avatar>
-                                    <Box>
-                                        <Typography variant="body2" color="text.secondary">
-                                            會員
-                                        </Typography>
-                                        <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                                            {userStats.members}
-                                        </Typography>
-                                    </Box>
-                                </Stack>
-                            </Paper>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <Paper sx={{ p: 2.5, borderRadius: 3 }}>
-                                <Stack direction="row" spacing={1.5} alignItems="center">
-                                    <Avatar sx={{ bgcolor: 'success.main' }}>
-                                        <PaidIcon />
-                                    </Avatar>
-                                    <Box>
-                                        <Typography variant="body2" color="text.secondary">
-                                            已繳費
-                                        </Typography>
-                                        <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                                            {userStats.paid}
-                                        </Typography>
-                                    </Box>
-                                </Stack>
-                            </Paper>
-                        </Grid>
+                        {statCards.map(({ key, icon: Icon, color, value }) => (
+                            <Grid item xs={12} sm={6} md={3} key={key}>
+                                <Paper sx={{ p: 2.5, borderRadius: 3 }}>
+                                    <Stack direction="row" spacing={1.5} alignItems="center">
+                                        <Avatar sx={{ bgcolor: color }}>
+                                            <Icon />
+                                        </Avatar>
+                                        <Box>
+                                            <Typography variant="body2" color="text.secondary">
+                                                {t(`admin.users.stats.${key}`)}
+                                            </Typography>
+                                            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                                                {value}
+                                            </Typography>
+                                        </Box>
+                                    </Stack>
+                                </Paper>
+                            </Grid>
+                        ))}
                     </Grid>
                 </Grid>
 
@@ -616,10 +623,9 @@ const UserAdminPanel = ({
                                                                                 (x) => x.id === id,
                                                                             );
                                                                             return r ? (
-                                                                                <Chip
+                                                                                <RoleChip
                                                                                     key={id}
-                                                                                    label={r.name}
-                                                                                    size="small"
+                                                                                    role={r}
                                                                                 />
                                                                             ) : null;
                                                                         })}
@@ -688,19 +694,7 @@ const UserAdminPanel = ({
                                                             }
                                                         />
                                                         {(managedUser.roles || []).map((r) => (
-                                                            <Chip
-                                                                key={r.id}
-                                                                size="small"
-                                                                label={r.name}
-                                                                sx={
-                                                                    r.color
-                                                                        ? {
-                                                                              bgcolor: r.color,
-                                                                              color: '#fff',
-                                                                          }
-                                                                        : undefined
-                                                                }
-                                                            />
+                                                            <RoleChip key={r.id} role={r} />
                                                         ))}
                                                         {(managedUser.roles || []).length === 0 && (
                                                             <Chip
@@ -767,7 +761,9 @@ const UserAdminPanel = ({
                                                                 onStartPreview(
                                                                     'user',
                                                                     managedUser.id,
-                                                                    `使用者「${managedUser.username}」`,
+                                                                    t('admin.preview.userLabel', {
+                                                                        name: managedUser.username,
+                                                                    }),
                                                                 )
                                                             }
                                                         >
@@ -820,7 +816,7 @@ const UserAdminPanel = ({
                         {filteredUsers.length === 0 && (
                             <Box sx={{ py: 6, textAlign: 'center' }}>
                                 <Typography variant="h6" gutterBottom>
-                                    沒有符合條件的用戶
+                                    {t('admin.users.noMatch')}
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">
                                     {t('admin.users.adjustFilters')}
@@ -866,15 +862,7 @@ const UserAdminPanel = ({
                                         variant={activeUser.hasPaidFee ? 'filled' : 'outlined'}
                                     />
                                     {(activeUser.roles || []).map((r) => (
-                                        <Chip
-                                            key={r.id}
-                                            label={r.name}
-                                            sx={
-                                                r.color
-                                                    ? { bgcolor: r.color, color: '#fff' }
-                                                    : undefined
-                                            }
-                                        />
+                                        <RoleChip key={r.id} role={r} size="medium" />
                                     ))}
                                     {(activeUser.roles || []).length === 0 && (
                                         <Chip label={t('admin.roles.none')} variant="outlined" />
@@ -885,7 +873,7 @@ const UserAdminPanel = ({
 
                                 <Box>
                                     <Typography variant="body2" color="text.secondary">
-                                        學號
+                                        {t('admin.users.studentIdLabel')}
                                     </Typography>
                                     <Typography>
                                         {activeUser.studentId || t('admin.users.notProvided')}
@@ -893,7 +881,7 @@ const UserAdminPanel = ({
                                 </Box>
                                 <Box>
                                     <Typography variant="body2" color="text.secondary">
-                                        Email
+                                        {t('admin.users.emailLabel')}
                                     </Typography>
                                     <Typography sx={{ wordBreak: 'break-word' }}>
                                         {activeUser.email || t('admin.users.notProvided')}
@@ -901,7 +889,7 @@ const UserAdminPanel = ({
                                 </Box>
                                 <Box>
                                     <Typography variant="body2" color="text.secondary">
-                                        註冊時間
+                                        {t('admin.users.registeredAtLabel')}
                                     </Typography>
                                     <Typography>
                                         {activeUser.created_at
@@ -959,12 +947,66 @@ const UserAdminPanel = ({
                 </Grid>
             </Grid>
 
-            {/* 更改密碼對話框 */}
-            <Dialog open={newPasswordDialog} onClose={() => setNewPasswordDialog(false)}>
+            {/* 重設密碼對話框：上面產生重設連結（建議），下面才是直接設定新密碼 */}
+            <Dialog open={newPasswordDialog} onClose={closePasswordDialog} maxWidth="sm" fullWidth>
                 <DialogTitle>{t('admin.users.changePasswordTitle')}</DialogTitle>
                 <DialogContent>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                        {t('admin.users.resetLink.title')}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                        {t('admin.users.resetLink.description')}
+                    </Typography>
+                    {resetLink ? (
+                        <Stack spacing={0.5}>
+                            <TextField
+                                fullWidth
+                                size="small"
+                                value={resetLink.url}
+                                inputProps={{ readOnly: true, 'aria-label': 'reset-link' }}
+                                onFocus={(e) => e.target.select()}
+                                InputProps={{
+                                    endAdornment: (
+                                        <InputAdornment position="end">
+                                            <IconButton
+                                                size="small"
+                                                onClick={handleCopyResetLink}
+                                                title={t('admin.users.resetLink.copy')}
+                                            >
+                                                <ContentCopyIcon fontSize="small" />
+                                            </IconButton>
+                                        </InputAdornment>
+                                    ),
+                                }}
+                            />
+                            <Typography variant="caption" color="text.secondary">
+                                {resetLinkCopied
+                                    ? t('admin.users.resetLink.copied')
+                                    : t('admin.users.resetLink.expiresAt', {
+                                          time: new Date(resetLink.expiresAt).toLocaleString(
+                                              i18n.language,
+                                          ),
+                                      })}
+                            </Typography>
+                        </Stack>
+                    ) : (
+                        <Button
+                            variant="outlined"
+                            startIcon={<LinkIcon />}
+                            onClick={handleCreateResetLink}
+                            disabled={resetLinkLoading}
+                        >
+                            {t('admin.users.resetLink.generate')}
+                        </Button>
+                    )}
+
+                    <Divider sx={{ my: 3 }}>
+                        <Typography variant="caption" color="text.secondary">
+                            {t('admin.users.resetLink.or')}
+                        </Typography>
+                    </Divider>
+
                     <TextField
-                        autoFocus
                         margin="dense"
                         label={t('admin.users.newPassword')}
                         type="password"
@@ -972,18 +1014,16 @@ const UserAdminPanel = ({
                         variant="outlined"
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
+                        helperText={t('admin.users.resetLink.directHint')}
                     />
                 </DialogContent>
                 <DialogActions>
+                    <Button onClick={closePasswordDialog}>{t('common.close')}</Button>
                     <Button
-                        onClick={() => {
-                            setNewPasswordDialog(false);
-                            setNewPassword('');
-                        }}
+                        onClick={handlePasswordChange}
+                        variant="contained"
+                        disabled={!newPassword}
                     >
-                        {t('common.cancel')}
-                    </Button>
-                    <Button onClick={handlePasswordChange} variant="contained">
                         {t('admin.users.confirmChange')}
                     </Button>
                 </DialogActions>

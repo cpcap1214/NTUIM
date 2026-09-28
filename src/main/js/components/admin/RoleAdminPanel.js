@@ -26,6 +26,13 @@ import EditIcon from '@mui/icons-material/Edit';
 import ViewIcon from '@mui/icons-material/Visibility';
 import roleService from '../../services/roleService';
 import { translateApiError } from '../../utils';
+import {
+    permissionDescription,
+    permissionGroupLabel,
+    permissionLabel,
+    permissionLabelByKey,
+} from '../../utils/permissions';
+import RoleChip from '../common/RoleChip';
 
 const EMPTY_ROLE = {
     id: null,
@@ -121,7 +128,7 @@ const RoleAdminPanel = ({
                 {loading && (
                     <Box sx={{ textAlign: 'center', py: 8 }}>
                         <Typography variant="h6" color="text.secondary">
-                            載入中...
+                            {t('common.loading')}
                         </Typography>
                     </Box>
                 )}
@@ -144,19 +151,7 @@ const RoleAdminPanel = ({
                                             flexWrap="wrap"
                                             useFlexGap
                                         >
-                                            <Chip
-                                                label={role.name}
-                                                size="small"
-                                                sx={
-                                                    role.color
-                                                        ? {
-                                                              bgcolor: role.color,
-                                                              color: '#fff',
-                                                              fontWeight: 600,
-                                                          }
-                                                        : { fontWeight: 600 }
-                                                }
-                                            />
+                                            <RoleChip role={role} />
                                             <Typography variant="caption" color="text.secondary">
                                                 {role.key}
                                             </Typography>
@@ -180,12 +175,16 @@ const RoleAdminPanel = ({
                                             <IconButton
                                                 size="small"
                                                 color="warning"
-                                                title={`以「${role.name}」的身分檢視全站（唯讀）`}
+                                                title={t('admin.preview.asRole', {
+                                                    name: role.name,
+                                                })}
                                                 onClick={() =>
                                                     onStartPreview(
                                                         'role',
                                                         role.id,
-                                                        `身分組「${role.name}」`,
+                                                        t('admin.preview.roleLabel', {
+                                                            name: role.name,
+                                                        }),
                                                     )
                                                 }
                                             >
@@ -250,10 +249,11 @@ const RoleAdminPanel = ({
                                             role.permissions.map((p) => (
                                                 <Chip
                                                     key={p}
-                                                    label={
-                                                        permissionCatalog.find((c) => c.key === p)
-                                                            ?.label || p
-                                                    }
+                                                    label={permissionLabelByKey(
+                                                        t,
+                                                        p,
+                                                        permissionCatalog,
+                                                    )}
                                                     size="small"
                                                     variant="outlined"
                                                 />
@@ -261,7 +261,7 @@ const RoleAdminPanel = ({
                                         )}
                                         {role.permissions.length === 0 && (
                                             <Typography variant="caption" color="text.disabled">
-                                                未設定任何權限
+                                                {t('admin.roles.noPermissions')}
                                             </Typography>
                                         )}
                                     </Stack>
@@ -346,7 +346,7 @@ const RoleAdminPanel = ({
                                         color="text.secondary"
                                         sx={{ fontWeight: 600 }}
                                     >
-                                        {group}
+                                        {permissionGroupLabel(t, group)}
                                     </Typography>
                                     <Stack>
                                         {items.map((p) => (
@@ -375,14 +375,14 @@ const RoleAdminPanel = ({
                                                 }
                                                 label={
                                                     <Typography variant="body2">
-                                                        {p.label}
+                                                        {permissionLabel(t, p)}
                                                         <Typography
                                                             component="span"
                                                             variant="caption"
                                                             color="text.secondary"
                                                         >
                                                             {' '}
-                                                            — {p.description}
+                                                            — {permissionDescription(t, p)}
                                                         </Typography>
                                                     </Typography>
                                                 }
@@ -397,7 +397,7 @@ const RoleAdminPanel = ({
                 <DialogActions>
                     <Button onClick={() => setRoleDialog(false)}>{t('common.cancel')}</Button>
                     <Button variant="contained" onClick={handleSaveRole}>
-                        儲存
+                        {t('common.save')}
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -416,7 +416,7 @@ const RoleAdminPanel = ({
                 <DialogActions>
                     <Button onClick={() => setRoleDeleteDialog(false)}>{t('common.cancel')}</Button>
                     <Button color="error" variant="contained" onClick={handleDeleteRole}>
-                        確認刪除
+                        {t('admin.roles.confirmDelete')}
                     </Button>
                 </DialogActions>
             </Dialog>

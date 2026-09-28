@@ -11,6 +11,8 @@ import CheatSheetPage from './pages/CheatSheetPage';
 import AboutUsPage from './pages/AboutUsPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import AdminPage from './pages/AdminPage';
 import ExamManagePage from './pages/ExamManagePage';
 import CheatSheetManagePage from './pages/CheatSheetManagePage';
@@ -32,6 +34,8 @@ function App() {
                             <Route path="/" element={<HomePage />} />
                             <Route path="/login" element={<LoginPage />} />
                             <Route path="/register" element={<RegisterPage />} />
+                            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                            <Route path="/reset-password" element={<ResetPasswordPage />} />
                             {/* 模組守衛：未開放時直接顯示「即將推出」，不必等頁面自己去打 API 才發現。
                   requireAuth={false} 是因為這三個模組本身允許未登入瀏覽，
                   真正的登入/繳費限制仍由各頁面與後端各自把關。 */}

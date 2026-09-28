@@ -201,7 +201,7 @@ router.get('/bindings', ...manageUsers, async (req, res) => {
     try {
         const bound = await User.findAll({
             where: { lineUserId: { [Op.ne]: null } },
-            attributes: ['id', 'username', 'fullName', 'role', 'lineBoundAt'],
+            attributes: ['id', 'username', 'fullName', 'hasPaidFee', 'lineBoundAt'],
             order: [
                 ['line_bound_at', 'DESC'],
                 ['id', 'ASC'],

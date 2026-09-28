@@ -4,7 +4,12 @@
 // 管理員應該能自由組合權限成身分組，但不該能憑空發明一個沒有任何程式碼在檢查的權限。
 // 這份 manifest 同時供後台的身分組編輯器渲染（透過 GET /api/permissions）。
 //
+// 介面上顯示的文字以前端語系檔為準（permissions.<key>.label / description、
+// permissionGroups.<group>），這裡的中文 label / description 只是 API 的 fallback。
+// 新增權限時兩個語系檔都要補，src/test/unit/permissionLabels.test.js 會檢查。
+//
 // 命名規則：<模組或領域>.<動作>，例如 courseReviews.payout。
+// group 是穩定的分組 key，不是顯示文字。
 // 萬用字元支援兩種：
 //   '*'           所有權限（管理員身分組持有）
 //   'exams.*'     該命名空間下的所有權限
@@ -13,31 +18,31 @@ const PERMISSIONS = [
     // 系統管理
     {
         key: 'users.manage',
-        group: '系統管理',
+        group: 'system',
         label: '用戶管理',
         description: '查詢、編輯、刪除使用者與重設密碼',
     },
     {
         key: 'roles.manage',
-        group: '系統管理',
+        group: 'system',
         label: '身分組管理',
         description: '建立身分組、調整權限、指派成員',
     },
     {
         key: 'modules.manage',
-        group: '系統管理',
+        group: 'system',
         label: '模組管理',
         description: '設定各功能模組開放給哪些身分組或使用者',
     },
     {
         key: 'announcements.manage',
-        group: '系統管理',
+        group: 'system',
         label: '公告管理',
         description: '發佈、編輯與下架站上公告',
     },
     {
         key: 'feedback.manage',
-        group: '系統管理',
+        group: 'system',
         label: '回饋管理',
         description: '檢視與處理使用者送出的匿名意見回饋',
     },
@@ -45,19 +50,19 @@ const PERMISSIONS = [
     // 考古題
     {
         key: 'exams.upload',
-        group: '考古題',
+        group: 'exams',
         label: '上傳考古題',
         description: '新增考古題與答案檔案',
     },
     {
         key: 'exams.manage',
-        group: '考古題',
+        group: 'exams',
         label: '管理考古題',
         description: '編輯與刪除任何人上傳的考古題',
     },
     {
         key: 'exams.download',
-        group: '考古題',
+        group: 'exams',
         label: '下載考古題',
         description: '預覽與下載考古題檔案（目前等同已繳費會員）',
     },
@@ -65,13 +70,13 @@ const PERMISSIONS = [
     // 大抄
     {
         key: 'cheatSheets.upload',
-        group: '大抄',
+        group: 'cheatSheets',
         label: '上傳大抄',
         description: '新增課程重點整理',
     },
     {
         key: 'cheatSheets.manage',
-        group: '大抄',
+        group: 'cheatSheets',
         label: '管理大抄',
         description: '編輯與刪除任何人上傳的大抄',
     },
@@ -79,13 +84,13 @@ const PERMISSIONS = [
     // 課程評價
     {
         key: 'courseReviews.moderate',
-        group: '課程評價',
+        group: 'courseReviews',
         label: '審核課程評價',
         description: '核准或拒絕使用者送出的課程評價',
     },
     {
         key: 'courseReviews.payout',
-        group: '課程評價',
+        group: 'courseReviews',
         label: '發放回饋金',
         description: '管理課程評價回饋金的發放狀態',
     },

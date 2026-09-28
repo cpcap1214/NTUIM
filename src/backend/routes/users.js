@@ -1,7 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const { body, validationResult, query } = require('express-validator');
-const { User, Exam, CheatSheet, CourseReview, Role, UserRole } = require('../models');
+const {
+    User,
+    Exam,
+    CheatSheet,
+    CourseReview,
+    Role,
+    UserRole,
+    RolePermission,
+    SENSITIVE_USER_FIELDS,
+    toSafeUser,
+} = require('../models');
+const { WILDCARD } = require('../config/permissions');
 const { requirePermission, requireOwnerOrAdmin } = require('../middleware/auth');
 const permissionService = require('../services/permissionService');
 
@@ -10,7 +21,6 @@ router.get(
     '/',
     requirePermission('users.manage'),
     [
-        query('role').optional().isIn(['admin', 'member', 'user']),
         query('hasPaidFee').optional().isBoolean(),
         query('page').optional().isInt({ min: 1 }),
         query('limit').optional().isInt({ min: 1, max: 100 }),
@@ -22,17 +32,17 @@ router.get(
         }
 
         try {
-            const { role, hasPaidFee, page = 1, limit = 20 } = req.query;
+            const { hasPaidFee, page = 1, limit = 20 } = req.query;
 
-            // 建立查詢條件
+            // 建立查詢條件。原本還能依舊的 role 欄位篩選，但那個欄位已不隨身分組更新，
+            // 篩出來的結果和實際權限對不起來，已移除。
             const where = {};
-            if (role) where.role = role;
             if (hasPaidFee !== undefined) where.hasPaidFee = hasPaidFee === 'true';
 
             // 查詢使用者
             const { count, rows } = await User.findAndCountAll({
                 where,
-                attributes: { exclude: ['passwordHash'] },
+                attributes: { exclude: SENSITIVE_USER_FIELDS },
                 order: [['created_at', 'DESC']],
                 limit: parseInt(limit),
                 offset: (parseInt(page) - 1) * parseInt(limit),
@@ -70,7 +80,6 @@ router.get('/profile', async (req, res) => {
                 email: null,
                 fullName: req.user.username,
                 studentId: null,
-                role: req.user.role,
                 hasPaidFee: req.user.hasPaidFee,
                 roles: req.user.roles || [],
                 permissions: req.user.permissions || [],
@@ -81,7 +90,7 @@ router.get('/profile', async (req, res) => {
         }
 
         const user = await User.findByPk(req.user.id, {
-            attributes: { exclude: ['passwordHash'] },
+            attributes: { exclude: SENSITIVE_USER_FIELDS },
         });
 
         if (!user) {
@@ -125,7 +134,7 @@ router.get('/profile', async (req, res) => {
 router.get('/:id', requireOwnerOrAdmin('id'), async (req, res) => {
     try {
         const user = await User.findByPk(req.params.id, {
-            attributes: { exclude: ['passwordHash'] },
+            attributes: { exclude: SENSITIVE_USER_FIELDS },
         });
 
         if (!user) {
@@ -183,10 +192,7 @@ router.put(
 
             res.json({
                 message: '個人資料更新成功',
-                data: {
-                    ...user.toJSON(),
-                    passwordHash: undefined,
-                },
+                data: toSafeUser(user),
             });
         } catch (error) {
             console.error('更新個人資料錯誤:', error);
@@ -238,56 +244,8 @@ router.patch(
     },
 );
 
-// 更新使用者角色（管理員）
-router.patch(
-    '/:id/role',
-    requirePermission('users.manage'),
-    [
-        body('role')
-            .isIn(['admin', 'member', 'user'])
-            .withMessage({ code: 'ROLE_VALUE_INVALID', message: '請提供有效的角色' }),
-    ],
-    async (req, res) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
-        }
-
-        try {
-            const user = await User.findByPk(req.params.id);
-
-            if (!user) {
-                return res.status(404).json({ error: '使用者不存在', errorCode: 'USER_NOT_FOUND' });
-            }
-
-            // 防止移除最後一個管理員
-            if (user.role === 'admin' && req.body.role !== 'admin') {
-                const adminCount = await User.count({ where: { role: 'admin' } });
-                if (adminCount <= 1) {
-                    return res.status(400).json({
-                        error: '無法移除最後一個管理員',
-                        errorCode: 'CANNOT_REMOVE_LAST_ADMIN',
-                    });
-                }
-            }
-
-            user.role = req.body.role;
-            await user.save();
-
-            res.json({
-                message: '角色更新成功',
-                data: {
-                    id: user.id,
-                    username: user.username,
-                    role: user.role,
-                },
-            });
-        } catch (error) {
-            console.error('更新角色錯誤:', error);
-            res.status(500).json({ error: '更新角色失敗', errorCode: 'UPDATE_ROLE_FAILED' });
-        }
-    },
-);
+// 原本這裡有 PATCH /:id/role，寫的是舊的 users.role 欄位。那個欄位已沒有任何授權作用，
+// 前端也沒有呼叫端；留著只會讓人以為「改這裡就能給管理員」。身分組請用 PUT /:id/roles。
 
 // 設定使用者的身分組（管理員）。一次帶入完整清單，前端用多選框操作。
 router.put(
@@ -322,22 +280,21 @@ router.put(
                 });
             }
 
-            // 不可移除最後一位管理員
-            const adminRole = await Role.findOne({ where: { key: 'admin' } });
-            if (adminRole) {
-                const hadAdmin = await UserRole.findOne({
-                    where: { userId: user.id, roleId: adminRole.id },
+            // 不可移除最後一位管理員（持有任一帶 '*' 的身分組者，不只 key='admin'）
+            const willBeSuperuser = requested.length
+                ? (await RolePermission.count({
+                      where: { roleId: requested.map((r) => r.id), permission: WILDCARD },
+                  })) > 0
+                : false;
+            if (
+                !willBeSuperuser &&
+                (await permissionService.isSuperuser(user.id)) &&
+                (await permissionService.countSuperusers({ exceptUserId: user.id })) === 0
+            ) {
+                return res.status(400).json({
+                    error: '無法移除最後一個管理員',
+                    errorCode: 'CANNOT_REMOVE_LAST_ADMIN',
                 });
-                const willHaveAdmin = req.body.roleIds.map(Number).includes(adminRole.id);
-                if (hadAdmin && !willHaveAdmin) {
-                    const adminCount = await UserRole.count({ where: { roleId: adminRole.id } });
-                    if (adminCount <= 1) {
-                        return res.status(400).json({
-                            error: '無法移除最後一個管理員',
-                            errorCode: 'CANNOT_REMOVE_LAST_ADMIN',
-                        });
-                    }
-                }
             }
 
             await UserRole.destroy({ where: { userId: user.id } });
@@ -363,14 +320,14 @@ router.delete('/:id', requirePermission('users.manage'), async (req, res) => {
         }
 
         // 防止刪除最後一個管理員
-        if (user.role === 'admin') {
-            const adminCount = await User.count({ where: { role: 'admin' } });
-            if (adminCount <= 1) {
-                return res.status(400).json({
-                    error: '無法刪除最後一個管理員',
-                    errorCode: 'CANNOT_DELETE_LAST_ADMIN',
-                });
-            }
+        if (
+            (await permissionService.isSuperuser(user.id)) &&
+            (await permissionService.countSuperusers({ exceptUserId: user.id })) === 0
+        ) {
+            return res.status(400).json({
+                error: '無法刪除最後一個管理員',
+                errorCode: 'CANNOT_DELETE_LAST_ADMIN',
+            });
         }
 
         // 防止刪除自己

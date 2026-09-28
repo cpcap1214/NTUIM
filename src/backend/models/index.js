@@ -60,18 +60,10 @@ const User = sequelize.define(
             allowNull: false,
             field: 'full_name',
         },
-        role: {
-            type: DataTypes.ENUM('admin', 'member', 'user'),
-            defaultValue: 'user',
-        },
-        // 總務權限：可管理課程評價回饋金的發放狀態。刻意獨立於 role 之外（role 有 CHECK 約束，
-        // SQLite 改不動；而且一個人可以同時是管理員與總務，用布林旗標比較合適）
-        canManagePayouts: {
-            type: DataTypes.BOOLEAN,
-            allowNull: false,
-            defaultValue: false,
-            field: 'can_manage_payouts',
-        },
+        // ⚠️ 資料表裡還有 role 與 can_manage_payouts 兩個舊欄位，這裡刻意不定義。
+        // 權限一律由身分組（user_roles）解析；那兩個欄位只為了程式碼回滾而保留，
+        // 值停在 migration 015 當下，之後不會再更新。不要把它們加回來拿去判斷權限。
+        // 新註冊的使用者由資料庫預設值填入（'user' / 0）。
         hasPaidFee: {
             type: DataTypes.BOOLEAN,
             defaultValue: false,
@@ -97,6 +89,21 @@ const User = sequelize.define(
         lineBoundAt: {
             type: DataTypes.DATE,
             field: 'line_bound_at',
+        },
+        // 忘記密碼的重設碼：只存 SHA-256，原文只出現在寄出的連結裡（見 config/passwordReset.js）。
+        // 重新申請會覆蓋，重設成功或登入成功後清空。
+        passwordResetTokenHash: {
+            type: DataTypes.STRING(64),
+            field: 'password_reset_token_hash',
+        },
+        passwordResetExpiresAt: {
+            type: DataTypes.DATE,
+            field: 'password_reset_expires_at',
+        },
+        // 最後一次變更密碼的時間。簽發時間早於它的 JWT 一律失效（見 middleware/auth.js）。
+        passwordChangedAt: {
+            type: DataTypes.DATE,
+            field: 'password_changed_at',
         },
     },
     {
@@ -722,6 +729,24 @@ CourseReview.belongsTo(User, { foreignKey: 'user_id', as: 'reviewer' });
 CourseReview.belongsTo(User, { foreignKey: 'reviewed_by', as: 'reviewedByUser' });
 CourseReview.belongsTo(User, { foreignKey: 'paid_by', as: 'paidByUser' });
 
+// 絕不能出現在任何 API 回應裡的欄位：密碼 hash，以及一次性的重設碼／綁定碼。
+// 原本各路由只排除 passwordHash；新增這類欄位時，漏掉任何一處就會把別人的
+// 重設碼（等同改密碼的權力）或綁定碼（等同接收別人通知的權力）送給持有 users.manage 的人。
+const SENSITIVE_USER_FIELDS = [
+    'passwordHash',
+    'passwordResetTokenHash',
+    'passwordResetExpiresAt',
+    'lineBindingCode',
+    'lineBindingExpiresAt',
+];
+
+// 把 User 轉成可以回傳給前端的純物件
+const toSafeUser = (user) => {
+    const plain = typeof user.toJSON === 'function' ? user.toJSON() : { ...user };
+    SENSITIVE_USER_FIELDS.forEach((field) => delete plain[field]);
+    return plain;
+};
+
 // 測試連接
 async function testConnection() {
     try {
@@ -748,5 +773,7 @@ module.exports = {
     Announcement,
     AnnouncementDismissal,
     Feedback,
+    SENSITIVE_USER_FIELDS,
+    toSafeUser,
     testConnection,
 };

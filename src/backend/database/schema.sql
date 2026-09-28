@@ -9,9 +9,11 @@ CREATE TABLE users (
     email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(100) NOT NULL,
+    -- ⚠️ role 與 can_manage_payouts 已停用，只為程式碼回滾而保留（見 migration 015）。
+    -- 授權一律看身分組（user_roles，見 migration 006）。全新資料庫仍需要它們：
+    -- init.js 的種子管理員靠 role='admin' 讓 migration 007 回填成管理員身分組。
     role VARCHAR(20) DEFAULT 'user' CHECK(role IN ('admin', 'member', 'user')),
-    has_paid_fee BOOLEAN DEFAULT FALSE,  -- 是否繳交系學會費
-    -- 總務權限：可管理課程評價回饋金的發放狀態（與 role 獨立，可同時是管理員與總務）
+    has_paid_fee BOOLEAN DEFAULT FALSE,  -- 是否繳交系學會費（決定自動身分組「會員」）
     can_manage_payouts BOOLEAN NOT NULL DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP

@@ -1,14 +1,18 @@
 // 救援用 CLI：授予某個帳號管理員權限。
 //
-// 用途：權限重構過程中若回填失敗、或未來不小心把最後一位管理員降權/刪除，
-// 需要一條不必記得 sqlite3 語法、可直接 SSH 執行的復原路徑。
+// 用途：所有管理員都被鎖在外面（例如不小心把最後一位管理員降權/刪除、或新環境還沒有人
+// 持有管理員身分組）時，一條不必記得 sqlite3 語法、可直接 SSH 執行的復原路徑。
 //
 // 用法（在 src/backend 目錄下）：
 //   node database/grant-admin.js --list             列出目前擁有管理員權限的帳號
-//   node database/grant-admin.js <username>         授予該帳號管理員權限
+//   node database/grant-admin.js <username>         授予該帳號管理員身分組
 //
-// 目前（Phase 1 之前）管理員身分還是由 users.role 決定，所以這支腳本操作 role 欄位。
-// 等 Phase 2 的身分組系統上線後，這裡會改成同時授予 admin 身分組。
+// 「管理員」＝持有任一帶 '*' 權限的身分組，和 services/permissionService.js 的判斷一致。
+// 授予時一律加入內建的 admin 身分組。
+//
+// ⚠️ 這支腳本以前寫的是 users.role = 'admin'。身分組系統上線後授權只看 user_roles，
+// 那個寫法執行成功卻完全沒有效果——救援工具在最需要它的時候靜靜失效。
+// users.role 現在只為程式碼回滾而保留（見 migration 015），這裡不再碰它。
 
 const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
@@ -33,11 +37,25 @@ const get = (db, sql, params = []) =>
         db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
     });
 
-async function listAdmins(db) {
-    const rows = await all(
+const SUPERUSERS_SQL = `
+    SELECT DISTINCT u.id, u.username, u.full_name
+    FROM users u
+    JOIN user_roles ur ON ur.user_id = u.id
+    JOIN role_permissions rp ON rp.role_id = ur.role_id AND rp.permission = '*'
+    ORDER BY u.id`;
+
+async function assertRbacTables(db) {
+    const row = await get(
         db,
-        "SELECT id, username, full_name, role FROM users WHERE role = 'admin' ORDER BY id",
+        "SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name IN ('roles','user_roles','role_permissions')",
     );
+    if (row.c < 3) {
+        throw new Error('身分組資料表不存在，請先執行 npm run migrate。');
+    }
+}
+
+async function listAdmins(db) {
+    const rows = await all(db, SUPERUSERS_SQL);
     if (rows.length === 0) {
         console.log('⚠️ 目前沒有任何帳號擁有管理員權限。');
         console.log('   請執行：node database/grant-admin.js <username>');
@@ -48,11 +66,9 @@ async function listAdmins(db) {
 }
 
 async function grant(db, username) {
-    const user = await get(
-        db,
-        'SELECT id, username, full_name, role FROM users WHERE username = ?',
-        [username],
-    );
+    const user = await get(db, 'SELECT id, username, full_name FROM users WHERE username = ?', [
+        username,
+    ]);
 
     if (!user) {
         console.error(`找不到使用者「${username}」。`);
@@ -62,15 +78,22 @@ async function grant(db, username) {
         return;
     }
 
-    if (user.role === 'admin') {
+    const alreadyAdmin = (await all(db, SUPERUSERS_SQL)).some((u) => u.id === user.id);
+    if (alreadyAdmin) {
         console.log(`「${user.username}」（${user.full_name}）已經是管理員，未做任何變更。`);
         return;
     }
 
-    await run(db, "UPDATE users SET role = 'admin' WHERE id = ?", [user.id]);
-    console.log(
-        `✅ 已授予「${user.username}」（${user.full_name}）管理員權限（原本是 ${user.role}）。`,
-    );
+    const adminRole = await get(db, "SELECT id FROM roles WHERE key = 'admin'");
+    if (!adminRole) {
+        throw new Error('找不到內建的 admin 身分組，請先執行 npm run migrate。');
+    }
+
+    await run(db, 'INSERT OR IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)', [
+        user.id,
+        adminRole.id,
+    ]);
+    console.log(`✅ 已將「${user.username}」（${user.full_name}）加入管理員身分組。`);
     await listAdmins(db);
 }
 
@@ -84,7 +107,11 @@ async function main() {
             console.error('  node database/grant-admin.js --list');
             console.error('  node database/grant-admin.js <username>');
             process.exitCode = 1;
-        } else if (args[0] === '--list') {
+            return;
+        }
+        await run(db, 'PRAGMA foreign_keys = ON');
+        await assertRbacTables(db);
+        if (args[0] === '--list') {
             await listAdmins(db);
         } else {
             await grant(db, args[0]);

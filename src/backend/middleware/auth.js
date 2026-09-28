@@ -1,11 +1,26 @@
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 const permissionService = require('../services/permissionService');
+const { isTokenRevoked } = require('../config/passwordReset');
 
-// 全站唯一的管理員判斷。原本這一行（含 `|| user?.username === 'cpcap'` 的後門）
-// 在後端被複製了 5 份、前端 6 份；後門已於 migration 005 實體化成 role='admin' 後移除，
-// 因為只要那個使用者名稱在某個環境尚未被註冊，搶註冊的人就能直接取得最高權限。
-const hasAdminAccess = (user) => user?.role === 'admin';
+// 認證時從 users 表載入的欄位。
+//
+// 刻意不含 role 與 can_manage_payouts：那兩個舊欄位已經沒有任何授權作用
+// （權限一律由身分組解析，見 services/permissionService.js），資料庫欄位只為了
+// 程式碼回滾而保留（見 migration 015）。載入它們只會讓人以為還有地方在看。
+//
+// passwordChangedAt：簽發時間早於它的 token 一律失效（改密碼／重設密碼後，舊的登入全部作廢）。
+const USER_AUTH_ATTRIBUTES = ['id', 'username', 'email', 'hasPaidFee', 'passwordChangedAt'];
+
+// 把解析好的身分組與權限掛到 req 上。authenticateToken 與 optionalAuth 共用，
+// 兩邊原本各寫一份，optionalAuth 那份還漏了 rawPermissions。
+const attachIdentity = (req, user, resolved) => {
+    req.user = user;
+    req.user.roles = resolved.roles;
+    req.user.permissions = resolved.permissions;
+    req.user.rawPermissions = resolved.rawPermissions;
+    req.permissions = resolved;
+};
 
 // ---------------------------------------------------------------------------
 // 身分預覽（管理台的「以身分組檢視」/「以成員檢視」）
@@ -67,17 +82,13 @@ const applyPreview = async (req, res) => {
             id: null,
             username: `(${found.role.name})`,
             email: null,
-            role: found.role.key === 'admin' ? 'admin' : 'user',
             // 「會員」是依繳費狀態推導的，單獨預覽該身分組時要讓它成立
             hasPaidFee: found.role.key === 'member',
-            canManagePayouts: false,
         };
         previewResolved = found.resolved;
         label = `身分組「${found.role.name}」`;
     } else {
-        const target = await User.findByPk(id, {
-            attributes: ['id', 'username', 'email', 'role', 'hasPaidFee', 'canManagePayouts'],
-        });
+        const target = await User.findByPk(id, { attributes: USER_AUTH_ATTRIBUTES });
         if (!target) {
             res.status(404).json({ error: '使用者不存在', errorCode: 'PREVIEW_TARGET_MISSING' });
             return true;
@@ -91,11 +102,7 @@ const applyPreview = async (req, res) => {
     const effective = permissionService.intersectResolved(previewResolved, caller);
 
     req.realUser = req.user;
-    req.user = previewUser;
-    req.user.roles = effective.roles;
-    req.user.permissions = effective.permissions;
-    req.user.rawPermissions = effective.rawPermissions;
-    req.permissions = effective;
+    attachIdentity(req, previewUser, effective);
     req.preview = { kind, id, label };
 
     console.log(
@@ -117,32 +124,23 @@ const authenticateToken = async (req, res, next) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
         // 從資料庫獲取使用者資訊
-        const user = await User.findByPk(decoded.userId, {
-            attributes: ['id', 'username', 'email', 'role', 'hasPaidFee', 'canManagePayouts'],
-        });
+        const user = await User.findByPk(decoded.userId, { attributes: USER_AUTH_ATTRIBUTES });
 
         if (!user) {
             return res.status(404).json({ error: '使用者不存在', errorCode: 'USER_NOT_FOUND' });
         }
 
-        req.user = user.toJSON();
-
-        // 解析身分組與權限掛到 req.user 上（Phase 2：只是備好，還沒有任何地方強制執行）
-        const resolved = await permissionService.resolve(req.user);
-        req.user.roles = resolved.roles;
-        req.user.permissions = resolved.permissions;
-        req.user.rawPermissions = resolved.rawPermissions;
-        req.permissions = resolved;
-
-        // 影子模式：在切換強制執行之前，先確認新舊兩套判斷結果一致。
-        // 這是在任何東西依賴身分組之前、證明回填正確性最便宜的方法。
-        // Phase 3 完成、觀察數日無警告後即可移除。
-        if (resolved.isAdmin !== hasAdminAccess(req.user)) {
-            console.warn(
-                `[權限影子模式] 判斷不一致 user=${req.user.username}(id=${req.user.id}) ` +
-                    `舊(role='admin')=${hasAdminAccess(req.user)} 新(身分組)=${resolved.isAdmin}`,
-            );
+        // 密碼在這個 token 簽發之後改過 → 作廢。回 401，前端 api.js 會照規則清掉登入並導回登入頁，
+        // 正是要的效果：偷到 token 的人在受害者重設密碼後立刻失去存取。
+        if (isTokenRevoked(decoded.iat, user.passwordChangedAt)) {
+            return res.status(401).json({
+                error: '密碼已變更，請重新登入',
+                errorCode: 'AUTH_TOKEN_REVOKED',
+            });
         }
+
+        const plain = user.toJSON();
+        attachIdentity(req, plain, await permissionService.resolve(plain));
     } catch (error) {
         if (error.name === 'TokenExpiredError') {
             return res
@@ -186,15 +184,11 @@ const optionalAuth = async (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await User.findByPk(decoded.userId, {
-            attributes: ['id', 'username', 'email', 'role', 'hasPaidFee', 'canManagePayouts'],
-        });
-        if (user) {
-            req.user = user.toJSON();
-            const resolved = await permissionService.resolve(req.user);
-            req.user.roles = resolved.roles;
-            req.user.permissions = resolved.permissions;
-            req.permissions = resolved;
+        const user = await User.findByPk(decoded.userId, { attributes: USER_AUTH_ATTRIBUTES });
+        // 已作廢的 token 在公開端點上視同未登入，和過期的 token 一樣
+        if (user && !isTokenRevoked(decoded.iat, user.passwordChangedAt)) {
+            const plain = user.toJSON();
+            attachIdentity(req, plain, await permissionService.resolve(plain));
         }
     } catch (error) {
         // 過期或無效的 token 一律視同未登入，不在這裡回錯——
@@ -280,10 +274,11 @@ const requireOwnerOrAdmin = (paramName = 'id') => {
 
 // 產生 JWT Token
 const generateToken = (user) => {
+    // 不放任何權限資訊：權限每個請求都重新從身分組解析，放進 token 只會是一份
+    // 最長 7 天不會更新的舊副本，遲早有人拿它來判斷。
     const payload = {
         userId: user.id,
         username: user.username,
-        role: user.role,
     };
 
     return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
@@ -325,7 +320,7 @@ module.exports = {
     requirePermission,
     isOwnerOrHasPermission,
     requireOwnerOrAdmin,
-    hasAdminAccess,
+    USER_AUTH_ATTRIBUTES,
     generateToken,
     refreshToken,
 };

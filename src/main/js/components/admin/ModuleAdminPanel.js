@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     Box,
-    Chip,
     FormControl,
     Grid,
     InputLabel,
@@ -15,6 +14,7 @@ import {
 } from '@mui/material';
 import moduleService from '../../services/moduleService';
 import { translateApiError } from '../../utils';
+import RoleChip from '../common/RoleChip';
 
 // 後台的「模組管理」分頁。原本是 AdminPage.js 裡的一段 activeTab === 8。
 //
@@ -70,7 +70,7 @@ const ModuleAdminPanel = ({ roles, onEnsureRoles, onError, onSuccess }) => {
             {moduleLoading && (
                 <Box sx={{ textAlign: 'center', py: 8 }}>
                     <Typography variant="h6" color="text.secondary">
-                        載入中...
+                        {t('common.loading')}
                     </Typography>
                 </Box>
             )}
@@ -137,11 +137,7 @@ const ModuleAdminPanel = ({ roles, onEnsureRoles, onError, onSuccess }) => {
                                                     {selected.map((id) => {
                                                         const r = roles.find((x) => x.id === id);
                                                         return r ? (
-                                                            <Chip
-                                                                key={id}
-                                                                label={r.name}
-                                                                size="small"
-                                                            />
+                                                            <RoleChip key={id} role={r} />
                                                         ) : null;
                                                     })}
                                                 </Stack>

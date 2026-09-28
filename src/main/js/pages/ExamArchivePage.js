@@ -47,7 +47,10 @@ import { API_BASE_URL } from '../services/api';
 
 const ExamArchivePage = () => {
     const { t, i18n } = useTranslation();
-    const { hasPaidFee } = useAuth();
+    // 和後端一致：預覽/下載要求 exams.download（會員身分組與管理員都持有），
+    // 不是直接看繳費狀態——被另外給了這個權限的人也要能用
+    const { hasPermission } = useAuth();
+    const canDownload = hasPermission('exams.download');
     const [searchTerm, setSearchTerm] = useState('');
     const [examTypeFilter, setExamTypeFilter] = useState('all');
     const [yearFilter, setYearFilter] = useState('all');
@@ -106,7 +109,7 @@ const ExamArchivePage = () => {
     const examTypes = [...new Set(exams.map((exam) => exam.examType))];
 
     const handleDownload = async (examId, filename, fileType = 'question') => {
-        if (!hasPaidFee) {
+        if (!canDownload) {
             alert(t('exam.payToDownload'));
             return;
         }
@@ -131,7 +134,7 @@ const ExamArchivePage = () => {
     };
 
     const handlePreview = (examId, fileType = 'question') => {
-        if (!hasPaidFee) {
+        if (!canDownload) {
             alert(t('exam.payToPreview'));
             return;
         }
@@ -139,7 +142,7 @@ const ExamArchivePage = () => {
         window.open(`${API_BASE_URL}/exams/${examId}/preview/${fileType}?token=${token}`, '_blank');
     };
 
-    if (!hasPaidFee) {
+    if (!canDownload) {
         return <PaymentWall feature={t('home.quickLinks.examArchiveTitle')} />;
     }
 

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import i18n from '../i18n';
+import { CONSOLE_PERMISSIONS } from '../config/adminConsole';
 import authService from '../services/authService';
 import userService from '../services/userService';
 import moduleService from '../services/moduleService';
@@ -202,38 +202,23 @@ export const AuthProvider = ({ children }) => {
         authService.updateLocalUser(updatedUser);
     };
 
-    // 全前端唯一的管理員判斷來源。原本這個判斷（含寫死的 cpcap 使用者名稱後門）
-    // 在前端被複製了 6 份、後端 5 份；後門已移除，理由見後端 middleware/auth.js。
+    // 全前端的權限判斷都以後端解析結果為準（GET /users/profile 與登入/註冊回應都會帶）。
+    // 前端只做顯示層的判斷，真正的授權一律由後端強制執行——這裡放行不代表 API 會放行。
     //
-    // 以後端解析出的 isAdmin 為準。舊的 user.role 欄位「不會」隨身分組更新
-    // （唯一的寫入點是註冊時的 'user'），所以新指派的管理員用它判斷會是 false。
-    // 保留 role 當退路，是為了涵蓋 isAdmin 還沒到手的兩個時間點：
-    // localStorage 的舊快取、以及登入 API 的回應（它只回基本欄位，權限要另外抓）。
-    const isAdminUser = user?.isAdmin ?? user?.role === 'admin';
-
-    // 後端解析好的權限清單（GET /users/profile 回傳）。前端只做顯示層的判斷，
-    // 真正的授權一律由後端強制執行——這裡放行不代表 API 會放行。
+    // 不再退回舊的 user.role 欄位：它不隨身分組更新，後端也已停止回傳。
+    // localStorage 裡若還是舊版快取（沒有 isAdmin / permissions），初始化時會立刻
+    // 用 /users/profile 蓋掉，那一瞬間當成沒有權限是安全的方向。
+    const isAdminUser = !!user?.isAdmin;
     const permissions = user?.permissions || [];
 
-    // 檢查是否持有某個權限 key（例如 'users.manage'）。
-    // 也相容舊的語意化字串（'admin'/'paid'…），避免既有呼叫端一次全壞。
-    const hasPermission = (permission) => {
-        if (!user) return false;
+    // 是否持有某個權限 key（例如 'users.manage'）。
+    // 原本還接受 'admin' / 'member' / 'paid' / 'upload' / 'download' 這些語意字串，
+    // 各自對應一條和後端不一樣的判斷（例如 'download' 看的是繳費狀態，
+    // 後端看的卻是 exams.download 權限）。現在只有權限 key 一種寫法。
+    const hasPermission = (permission) => !!user && permissions.includes(permission);
 
-        switch (permission) {
-            case 'admin':
-                return isAdminUser;
-            case 'member':
-                return user.role === 'member' || isAdminUser;
-            case 'paid':
-            case 'upload':
-            case 'download':
-                return user.hasPaidFee || isAdminUser;
-            default:
-                // 新式權限 key：直接查後端給的清單
-                return permissions.includes(permission);
-        }
-    };
+    // 是否能進入管理控制台：持有任一後台權限（AdminPage 與導覽列共用同一個條件）
+    const canAccessConsole = CONSOLE_PERMISSIONS.some((p) => permissions.includes(p));
 
     // 模組開放狀態。未登入時也要能取得，否則登出訪客的導覽列會全空或先閃出完整選單。
     const isModuleVisible = (moduleKey) => {
@@ -255,14 +240,6 @@ export const AuthProvider = ({ children }) => {
         return !!modules[moduleKey]?.comingSoon;
     };
 
-    // 取得會費狀態訊息
-    const getFeeStatusMessage = () => {
-        if (!user) return i18n.t('feeStatus.pleaseLogin');
-        if (isAdminUser) return i18n.t('feeStatus.admin');
-        if (user.hasPaidFee) return i18n.t('feeStatus.paid');
-        return i18n.t('feeStatus.unpaid');
-    };
-
     const value = {
         user,
         loading,
@@ -272,7 +249,7 @@ export const AuthProvider = ({ children }) => {
         refreshUser,
         updateUser,
         hasPermission,
-        getFeeStatusMessage,
+        canAccessConsole,
         // 權限與模組
         permissions,
         roles: user?.roles || [],
@@ -289,8 +266,8 @@ export const AuthProvider = ({ children }) => {
         // 便利方法
         isAuthenticated: !!user,
         isAdmin: isAdminUser,
-        isMember: user?.role === 'member' || isAdminUser,
-        hasPaidFee: user?.hasPaidFee || isAdminUser,
+        // 純粹的繳費狀態，只供顯示。要判斷「能不能下載考古題」請用 hasPermission('exams.download')
+        hasPaidFee: !!user?.hasPaidFee,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

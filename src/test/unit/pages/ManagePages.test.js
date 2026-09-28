@@ -17,8 +17,14 @@ jest.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key) => key, i18n: { language: 'zh-TW' } }),
 }));
 
-// 兩支頁面都靠 useAuth 決定要不要擋下非管理員
-const mockAuth = { user: { id: 1, username: 'admin' }, isAdmin: true };
+// 兩支頁面都靠 useAuth().hasPermission 決定要不要擋下沒有管理權限的人。
+// 各頁要的權限不同（exams.manage / cheatSheets.manage），不是看 isAdmin。
+const ALL_MANAGE = ['exams.manage', 'cheatSheets.manage'];
+let mockGranted = ALL_MANAGE;
+const mockAuth = {
+    user: { id: 1, username: 'admin' },
+    hasPermission: (p) => mockGranted.includes(p),
+};
 jest.mock('../../../main/js/contexts/AuthContext', () => ({
     useAuth: () => mockAuth,
 }));
@@ -119,6 +125,8 @@ const CASES = [
     {
         name: '考古題管理頁',
         Page: ExamManagePage,
+        permission: 'exams.manage',
+        otherPermission: 'cheatSheets.manage',
         rows: EXAMS,
         listPath: '/api/exams',
         deletePath: '/api/exams/1',
@@ -132,6 +140,8 @@ const CASES = [
     {
         name: '大抄管理頁',
         Page: CheatSheetManagePage,
+        permission: 'cheatSheets.manage',
+        otherPermission: 'exams.manage',
         rows: SHEETS,
         listPath: '/api/cheat-sheets',
         deletePath: '/api/cheat-sheets/1',
@@ -151,7 +161,7 @@ const okJson = (data) => ({ ok: true, json: async () => ({ data }) });
 describe.each(CASES)('$name', (c) => {
     beforeEach(() => {
         mockAuth.user = { id: 1, username: 'admin' };
-        mockAuth.isAdmin = true;
+        mockGranted = ALL_MANAGE;
         global.fetch = jest.fn().mockResolvedValue(okJson(c.rows));
         window.URL.createObjectURL = jest.fn(() => 'blob:x');
         window.URL.revokeObjectURL = jest.fn();
@@ -161,11 +171,27 @@ describe.each(CASES)('$name', (c) => {
         delete global.fetch;
     });
 
-    test('非管理員看到權限不足的畫面', () => {
-        mockAuth.isAdmin = false;
+    test('沒有管理權限的人看到權限不足的畫面', () => {
+        mockGranted = [];
         render(<c.Page />);
 
         expect(screen.getByText('guard.noPermissionTitle')).toBeInTheDocument();
+    });
+
+    // 兩頁的權限是分開的：原本兩頁都看 isAdmin，被給了其中一種管理權限的幹部
+    // 兩頁都進不去；改成各看各的之後，也不能變成「有一種就兩頁都進得去」
+    test('只有另一頁的管理權限也進不去', () => {
+        mockGranted = [c.otherPermission];
+        render(<c.Page />);
+
+        expect(screen.getByText('guard.noPermissionTitle')).toBeInTheDocument();
+    });
+
+    test('只有這一頁的管理權限就進得去', async () => {
+        mockGranted = [c.permission];
+        render(<c.Page />);
+
+        expect(await screen.findByText(c.firstRowText)).toBeInTheDocument();
     });
 
     // 這條原本釘的是一個壞掉的現況：權限判斷在 render 裡提前 return，
@@ -174,8 +200,8 @@ describe.each(CASES)('$name', (c) => {
     // 把功能抽成 ExamManagePanel / CheatSheetManagePanel 之後，抓資料的程式碼
     // 隨面板一起走了，而面板要通過權限判斷才會掛載——問題自己消失了。
     // 這不是刻意去修的，是結構變對之後的結果，所以改成釘住正確行為。
-    test('非管理員不會送出任何請求', () => {
-        mockAuth.isAdmin = false;
+    test('沒有管理權限的人不會送出任何請求', () => {
+        mockGranted = [];
         render(<c.Page />);
 
         expect(global.fetch).not.toHaveBeenCalled();
@@ -287,7 +313,7 @@ describe.each(CASES)('$name', (c) => {
 // 而不是讓它默默改變。
 
 test('考古題管理頁的搜尋比對課號', async () => {
-    mockAuth.isAdmin = true;
+    mockGranted = ALL_MANAGE;
     global.fetch = jest.fn().mockResolvedValue(okJson(EXAMS));
     render(<ExamManagePage />);
     await screen.findByText('資料結構');
@@ -301,7 +327,7 @@ test('考古題管理頁的搜尋比對課號', async () => {
 });
 
 test('（分歧）大抄管理頁的搜尋不比對課號，儘管表格裡看得到課號', async () => {
-    mockAuth.isAdmin = true;
+    mockGranted = ALL_MANAGE;
     global.fetch = jest.fn().mockResolvedValue(okJson(SHEETS));
     render(<CheatSheetManagePage />);
     await screen.findByText('期中重點');
@@ -317,7 +343,7 @@ test('（分歧）大抄管理頁的搜尋不比對課號，儘管表格裡看�
 
 // 只有考古題有教授欄位，單獨測
 test('考古題管理頁可以用教授名稱搜尋', async () => {
-    mockAuth.isAdmin = true;
+    mockGranted = ALL_MANAGE;
     global.fetch = jest.fn().mockResolvedValue(okJson(EXAMS));
     render(<ExamManagePage />);
     await screen.findByText('資料結構');
@@ -338,7 +364,7 @@ test('考古題管理頁可以用教授名稱搜尋', async () => {
 // 就等於「這一格有走 i18n」。有人改回寫死中文，這裡會轉紅。
 describe.each(CASES)('$name 的表格標題', (c) => {
     beforeEach(() => {
-        mockAuth.isAdmin = true;
+        mockGranted = ALL_MANAGE;
         global.fetch = jest.fn().mockResolvedValue(okJson(c.rows));
     });
 

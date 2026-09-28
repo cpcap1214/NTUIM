@@ -23,7 +23,9 @@ const iconMap = {
 const HomePage = () => {
     const { t } = useTranslation();
     const navigate = useNavigate();
-    const { user, isAuthenticated, hasPaidFee } = useAuth();
+    const { user, isAuthenticated, hasPermission } = useAuth();
+    // 解鎖提示看的是「能不能用考古題」，和後端的 exams.download 同一個判斷
+    const canDownloadExams = hasPermission('exams.download');
     const [stats, setStats] = useState({ courseReviews: 0, exams: 0, cheatSheets: 0 });
     const [loading, setLoading] = useState(true);
 
@@ -179,7 +181,7 @@ const HomePage = () => {
             );
         }
 
-        if (!hasPaidFee) {
+        if (!canDownloadExams) {
             return (
                 <Card
                     sx={{

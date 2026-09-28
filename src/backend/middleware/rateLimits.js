@@ -75,4 +75,53 @@ const feedbackLimiter = perUser({
     message: '回饋送出過於頻繁，請於 {{minutes}} 分鐘後再試',
 });
 
-module.exports = { perUser, reviewWriteLimiter, feedbackLimiter };
+// 忘記密碼。這個端點不需要登入，所以不能用 perUser（那會退化成 IP 模式）。
+//
+// 兩道一起掛：
+//   - 依「申請的帳號」計數：擋的是對同一個人的信箱轟炸。1 小時 3 封已經夠一個真人
+//     「沒收到 → 再按一次 → 還是沒收到」，第四次該做的是聯絡系學會而不是一直按。
+//   - 依 IP 計數：擋的是一個來源對大量帳號掃描。校園網路共用對外 IP，所以放寬到 20。
+//
+// 兩者對存在與不存在的帳號一律照樣計數：429 本身不能透露帳號是否存在。
+// 刻意不設 skipFailedRequests——這裡要防的是「請求次數」本身。
+const passwordResetHandler = (req, res) => {
+    const resetTime = req.rateLimit?.resetTime;
+    const minutes = resetTime
+        ? Math.max(1, Math.ceil((new Date(resetTime).getTime() - Date.now()) / 60000))
+        : 60;
+    res.status(429).json({
+        error: '重設密碼的申請過於頻繁，請於 {{minutes}} 分鐘後再試',
+        errorCode: 'PASSWORD_RESET_RATE_LIMITED',
+        params: { minutes },
+    });
+};
+
+const normalizeIdentifier = (value) =>
+    String(value || '')
+        .trim()
+        .toLowerCase();
+
+const passwordResetLimiter = rateLimit({
+    windowMs: HOUR,
+    max: 3,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => `reset:${normalizeIdentifier(req.body?.identifier)}`,
+    handler: passwordResetHandler,
+});
+
+const passwordResetIpLimiter = rateLimit({
+    windowMs: HOUR,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: passwordResetHandler,
+});
+
+module.exports = {
+    perUser,
+    reviewWriteLimiter,
+    feedbackLimiter,
+    passwordResetLimiter,
+    passwordResetIpLimiter,
+};

@@ -54,14 +54,28 @@ describe('登入頁冒煙測試', () => {
         expect(screen.getByRole('button', { name: /log in|登入/i })).toBeInTheDocument();
     });
 
-    // 忘記密碼的聯絡方式是使用者目前唯一的救援路徑：後端沒有自助重設的端點，
-    // 只有管理員的 PUT /admin/users/:id/password。這一行被默默拿掉的話，
+    // 忘記密碼的入口是使用者的救援路徑。這一行被默默拿掉的話，
     // 忘記密碼的人在登入頁上會完全沒有出路，而畫面看起來一切正常。
-    test('登入頁有提供忘記密碼的聯絡方式', async () => {
+    // （收不到信時的人工聯絡方式在 /forgot-password 那一頁，見 ForgotPasswordPage.test.js）
+    test('登入頁有連到忘記密碼流程的入口', async () => {
         renderLogin();
 
-        const contact = await screen.findByRole('link', { name: 'imsa@ntu.im' });
-        expect(contact).toHaveAttribute('href', 'mailto:imsa@ntu.im');
+        const link = await screen.findByRole('link', { name: /忘記密碼|forgot your password/i });
+        expect(link).toHaveAttribute('href', '/forgot-password');
+    });
+
+    test('從重設密碼頁回來時提示用新密碼登入', async () => {
+        render(
+            <MemoryRouter initialEntries={[{ pathname: '/login', state: { passwordReset: true } }]}>
+                <AuthProvider>
+                    <LoginPage />
+                </AuthProvider>
+            </MemoryRouter>,
+        );
+
+        expect(
+            await screen.findByText(/密碼已更新|password has been updated/i),
+        ).toBeInTheDocument();
     });
 
     test('送出表單會真的呼叫 /auth/login', async () => {

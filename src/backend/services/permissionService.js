@@ -16,12 +16,24 @@ const { permissionSatisfies, expandPermissions, WILDCARD } = require('../config/
 
 const AUTO_MEMBER_ROLE_KEY = 'member';
 
+// 身分組對外的唯一形狀。原本 resolve() 不帶 isAuto、admin.js 只有自動身分組才補上，
+// 前端要判斷「這個 chip 能不能手動拿掉」時得自己猜。
+const toRoleDTO = (role) => ({
+    id: role.id,
+    key: role.key,
+    name: role.name,
+    color: role.color,
+    isAuto: !!role.isAuto,
+});
+
+const ROLE_COLUMNS = 'r.id, r.key, r.name, r.color, r.priority, r.is_auto AS isAuto';
+
 // 取得使用者持有的身分組（含自動身分組）
 const getUserRoles = async (user) => {
     if (!user || !user.id) return [];
 
     const assigned = await sequelize.query(
-        `SELECT r.id, r.key, r.name, r.color, r.priority, r.is_auto AS isAuto
+        `SELECT ${ROLE_COLUMNS}
          FROM user_roles ur
          JOIN roles r ON r.id = ur.role_id
          WHERE ur.user_id = ?
@@ -34,7 +46,7 @@ const getUserRoles = async (user) => {
         const alreadyHas = assigned.some((r) => r.key === AUTO_MEMBER_ROLE_KEY);
         if (!alreadyHas) {
             const [autoRole] = await sequelize.query(
-                `SELECT id, key, name, color, priority, is_auto AS isAuto FROM roles WHERE key = ?`,
+                `SELECT ${ROLE_COLUMNS} FROM roles r WHERE r.key = ?`,
                 { replacements: [AUTO_MEMBER_ROLE_KEY], type: sequelize.QueryTypes.SELECT },
             );
             if (autoRole) assigned.push(autoRole);
@@ -62,7 +74,7 @@ const resolve = async (user) => {
     const rawPermissions = await getRawPermissions(roles);
 
     return {
-        roles: roles.map((r) => ({ id: r.id, key: r.key, name: r.name, color: r.color })),
+        roles: roles.map(toRoleDTO),
         // rawPermissions 保留萬用字元供判斷用；permissions 是展開後的實際清單，供前端顯示
         rawPermissions,
         permissions: expandPermissions(rawPermissions),
@@ -76,17 +88,17 @@ const hasPermission = (resolved, required) =>
 // 解析「只持有某一個身分組」的假想使用者，供管理台的「以身分組檢視」使用。
 // 刻意不套用自動身分組的推導——預覽的語意就是「單獨持有這個身分組會怎樣」。
 const resolveForRole = async (roleId) => {
-    const [role] = await sequelize.query(
-        `SELECT id, key, name, color, priority, is_auto AS isAuto FROM roles WHERE id = ?`,
-        { replacements: [roleId], type: sequelize.QueryTypes.SELECT },
-    );
+    const [role] = await sequelize.query(`SELECT ${ROLE_COLUMNS} FROM roles r WHERE r.id = ?`, {
+        replacements: [roleId],
+        type: sequelize.QueryTypes.SELECT,
+    });
     if (!role) return null;
 
     const rawPermissions = await getRawPermissions([role]);
     return {
         role,
         resolved: {
-            roles: [{ id: role.id, key: role.key, name: role.name, color: role.color }],
+            roles: [toRoleDTO(role)],
             rawPermissions,
             permissions: expandPermissions(rawPermissions),
             isAdmin: rawPermissions.has(WILDCARD),
@@ -112,6 +124,69 @@ const intersectResolved = (target, caller) => {
         permissions: expandPermissions(rawPermissions),
         isAdmin: rawPermissions.has(WILDCARD),
     };
+};
+
+// 一次取得多位使用者的身分組（含依繳費狀態推導的「會員」），給用戶管理清單用。
+// 逐一 resolve() 在幾百人的清單上會變成幾百次查詢，這裡固定兩次。
+// 回傳 { [userId]: RoleDTO[] }，依 priority 由高到低。
+const getRolesForUsers = async (users) => {
+    const assignments = await sequelize.query(
+        `SELECT ur.user_id AS userId, ${ROLE_COLUMNS}
+         FROM user_roles ur JOIN roles r ON r.id = ur.role_id
+         ORDER BY r.priority DESC`,
+        { type: sequelize.QueryTypes.SELECT },
+    );
+    const [memberRole] = await sequelize.query(
+        `SELECT ${ROLE_COLUMNS} FROM roles r WHERE r.key = ?`,
+        { replacements: [AUTO_MEMBER_ROLE_KEY], type: sequelize.QueryTypes.SELECT },
+    );
+
+    const byUser = {};
+    assignments.forEach((row) => {
+        (byUser[row.userId] = byUser[row.userId] || []).push(row);
+    });
+
+    const result = {};
+    users.forEach((user) => {
+        const roles = [...(byUser[user.id] || [])];
+        if (user.hasPaidFee && memberRole && !roles.some((r) => r.key === AUTO_MEMBER_ROLE_KEY)) {
+            roles.push(memberRole);
+        }
+        result[user.id] = roles.sort((a, b) => b.priority - a.priority).map(toRoleDTO);
+    });
+    return result;
+};
+
+// 「管理員」＝持有任一帶 '*' 的身分組的人，不綁定 key='admin'——
+// 自訂身分組也可能被給了 '*'，那個人同樣是管理員。
+//
+// 「不可移除最後一位管理員」原本有三套各自的判斷（兩套還在數舊的 users.role 欄位，
+// 那個欄位早已不隨身分組更新），刪使用者的其中一條路徑甚至完全沒有保護。
+// 一律改用這裡：傳入「假設這個人／這個身分組不算」，看還剩幾位。
+const countSuperusers = async ({ exceptUserId = null, exceptRoleId = null } = {}) => {
+    const [row] = await sequelize.query(
+        `SELECT COUNT(DISTINCT ur.user_id) AS count
+         FROM user_roles ur
+         JOIN role_permissions rp ON rp.role_id = ur.role_id AND rp.permission = :wildcard
+         WHERE (:exceptUserId IS NULL OR ur.user_id != :exceptUserId)
+           AND (:exceptRoleId IS NULL OR ur.role_id != :exceptRoleId)`,
+        {
+            replacements: { wildcard: WILDCARD, exceptUserId, exceptRoleId },
+            type: sequelize.QueryTypes.SELECT,
+        },
+    );
+    return row.count;
+};
+
+// 某位使用者目前是否為管理員（持有帶 '*' 的身分組）
+const isSuperuser = async (userId) => {
+    const [row] = await sequelize.query(
+        `SELECT 1 AS yes FROM user_roles ur
+         JOIN role_permissions rp ON rp.role_id = ur.role_id AND rp.permission = ?
+         WHERE ur.user_id = ? LIMIT 1`,
+        { replacements: [WILDCARD, userId], type: sequelize.QueryTypes.SELECT },
+    );
+    return !!row;
 };
 
 // ---------------------------------------------------------------------------
@@ -176,6 +251,10 @@ const listModulesFor = async (user, resolved) => {
 };
 
 module.exports = {
+    toRoleDTO,
+    getRolesForUsers,
+    countSuperusers,
+    isSuperuser,
     resolve,
     resolveForRole,
     intersectResolved,

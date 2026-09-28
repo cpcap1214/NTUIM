@@ -58,17 +58,7 @@ const en = {
         comingSoonBody: 'This feature is in the works — stay tuned',
         noPermissionTitle: 'Insufficient permissions',
         noPermissionBody: 'Your account does not have access to this feature',
-        adminRequiredTitle: 'Administrator access required',
-        adminRequiredBody: 'This page is restricted to administrators',
-        paymentRequiredTitle: 'Association dues required',
-        paymentRequiredBody:
-            'This feature is only available to members who have paid their association dues',
-        paymentRequiredHint:
-            'Please contact an association officer or pay at the department office',
         backHome: 'Back to home',
-        contactUs: 'Contact us',
-        notLoggedIn: 'Not logged in',
-        welcome: 'Welcome, {{name}}',
     },
 
     payment: {
@@ -276,7 +266,29 @@ const en = {
         registerNow: 'Sign up now',
         haveAccount: 'Already have an account?',
         loginNow: 'Log in',
-        forgotPassword: 'Forgot your password? Contact',
+        forgotPassword: 'Forgot your password?',
+        forgot: {
+            title: 'Forgot password',
+            subtitle:
+                'Enter your username or student ID and we will email a password reset link to the address you registered with.',
+            submit: 'Send reset link',
+            sent: 'If this account exists and has an email on file, a reset link is on its way. It is valid for {{minutes}} minutes — check your inbox (and your spam folder).',
+            noEmailHelp: 'No email, or your registered address no longer works? Contact',
+            backToLogin: 'Back to login',
+            failed: 'Could not send the request, please try again later',
+        },
+        reset: {
+            title: 'Choose a new password',
+            subtitle: 'Once it is set, you will be signed out on every device.',
+            newPassword: 'New password',
+            confirmPassword: 'Confirm new password',
+            hint: 'At least {{min}} characters',
+            submit: 'Update password',
+            mismatch: 'The two passwords do not match',
+            requestNew: 'Request a new reset link',
+            failed: 'Could not reset the password, please try again later',
+            success: 'Your password has been updated. Please log in with the new one.',
+        },
     },
 
     time: {
@@ -556,8 +568,6 @@ const en = {
     admin: {
         consoleTitle: 'Admin console',
         consoleSubtitle: 'Jump straight to the workspace you need — no swipe tabs.',
-        noAccess: 'You do not have permission to view this page',
-        debugInfo: 'Debug info: username={{username}}, role={{role}}',
         previewSwitchFailed: 'Could not switch preview identity',
         uploadCheatSheet: 'Upload cheat sheet',
         sections: {
@@ -572,6 +582,9 @@ const en = {
         preview: {
             selfHint: 'This is your own account',
             asUser: 'View the whole site as "{{name}}" (read-only)',
+            asRole: 'View the whole site as "{{name}}" (read-only)',
+            userLabel: 'user "{{name}}"',
+            roleLabel: 'role "{{name}}"',
         },
         users: {
             fetchFailed: 'Could not load user data',
@@ -611,6 +624,29 @@ const en = {
             noRole: 'No role',
             changePasswordTitle: 'Change password',
             confirmDeleteTitle: 'Delete this user?',
+            resetLink: {
+                title: 'Generate a reset link (recommended)',
+                description:
+                    'Pass the link to the user so they can choose their own new password — you never need to know it. The link is valid for 24 hours and can be used once.',
+                generate: 'Generate reset link',
+                copy: 'Copy link',
+                copied: 'Copied to clipboard',
+                copyFailed: 'Could not copy automatically — select the URL and copy it manually',
+                expiresAt: 'Valid until {{time}}',
+                or: 'or set a new password directly',
+                directHint: 'The user will be signed out on every device',
+                failed: 'Could not generate a reset link',
+            },
+            noMatch: 'No users match these filters',
+            studentIdLabel: 'Student ID',
+            emailLabel: 'Email',
+            registeredAtLabel: 'Registered',
+            stats: {
+                total: 'Total users',
+                admins: 'Administrators',
+                withRoles: 'With roles',
+                paid: 'Dues paid',
+            },
         },
         upload: {
             pdfOnly: 'Only PDF files can be uploaded',
@@ -693,6 +729,8 @@ const en = {
             allPermissionsLocked:
                 'This role holds every permission and cannot be adjusted item by item',
             deleteTitle: 'Delete this role?',
+            noPermissions: 'No permissions set',
+            confirmDelete: 'Delete',
         },
         modules: {
             title: 'Module management',
@@ -708,6 +746,75 @@ const en = {
             visibilityPublic: 'Public (everyone)',
             visibilityRestricted: 'Restricted (allowlist)',
         },
+    },
+
+    permissions: {
+        users: {
+            manage: {
+                label: 'Manage users',
+                description: 'Search, edit and delete users, and reset passwords',
+            },
+        },
+        roles: {
+            manage: {
+                label: 'Manage roles',
+                description: 'Create roles, adjust their permissions and assign members',
+            },
+        },
+        modules: {
+            manage: {
+                label: 'Manage modules',
+                description: 'Choose which roles or users each feature module is open to',
+            },
+        },
+        announcements: {
+            manage: {
+                label: 'Manage announcements',
+                description: 'Publish, edit and take down site announcements',
+            },
+        },
+        feedback: {
+            manage: {
+                label: 'Manage feedback',
+                description: 'Review and handle anonymous feedback from users',
+            },
+        },
+        exams: {
+            upload: { label: 'Upload past exams', description: 'Add past exam and answer files' },
+            manage: {
+                label: 'Manage past exams',
+                description: 'Edit and delete past exams uploaded by anyone',
+            },
+            download: {
+                label: 'Download past exams',
+                description:
+                    'Preview and download past exam files (held by the Member role by default)',
+            },
+        },
+        cheatSheets: {
+            upload: { label: 'Upload cheat sheets', description: 'Add course summaries' },
+            manage: {
+                label: 'Manage cheat sheets',
+                description: 'Edit and delete cheat sheets uploaded by anyone',
+            },
+        },
+        courseReviews: {
+            moderate: {
+                label: 'Moderate course reviews',
+                description: 'Approve or reject submitted course reviews',
+            },
+            payout: {
+                label: 'Manage reward payouts',
+                description: 'Manage the payout status of course review rewards',
+            },
+        },
+    },
+
+    permissionGroups: {
+        system: 'System',
+        exams: 'Past exams',
+        cheatSheets: 'Cheat sheets',
+        courseReviews: 'Course reviews',
     },
 
     changelog: {
@@ -736,13 +843,6 @@ const en = {
         legendTermEvent: 'Term event',
         upcoming: 'Upcoming',
         noUpcoming: 'Nothing coming up',
-    },
-
-    feeStatus: {
-        pleaseLogin: 'Please log in',
-        admin: 'Administrator',
-        paid: 'Association dues paid',
-        unpaid: 'Association dues unpaid',
     },
 
     common: {
@@ -1106,6 +1206,14 @@ const en = {
         NAME_REQUIRED: 'Name is required',
         NEW_PASSWORD_REQUIRED: 'Please provide a new password',
         NEW_PASSWORD_TOO_SHORT: 'The new password must be at least 6 characters',
+        RESET_TOKEN_INVALID:
+            'This reset link is invalid or has already been used — please request a new one',
+        RESET_TOKEN_EXPIRED: 'This reset link has expired — please request a new one',
+        PASSWORD_RESET_RATE_LIMITED:
+            'Too many reset requests — please try again in {{minutes}} minutes',
+        RESET_PASSWORD_FAILED: 'Could not reset the password, please try again later',
+        RESET_LINK_CREATE_FAILED: 'Could not generate a reset link',
+        AUTH_TOKEN_REVOKED: 'Your password was changed — please log in again',
         NO_PERMISSION_DELETE_CHEATSHEET: 'You do not have permission to delete this cheat sheet',
         NO_PERMISSION_DELETE_EXAM: 'You do not have permission to delete this past exam',
         NO_PERMISSION_EDIT_CHEATSHEET: 'You do not have permission to edit this cheat sheet',

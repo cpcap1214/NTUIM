@@ -17,44 +17,21 @@ import UserAdminPanel from '../components/admin/UserAdminPanel';
 import { useNavigate } from 'react-router-dom';
 import roleService from '../services/roleService';
 import { translateApiError } from '../utils';
+import PermissionDenied from '../components/common/PermissionDenied';
+import { CONSOLE_PERMISSIONS, PERMISSION_TO_TAB } from '../config/adminConsole';
 
-// 後台各功能對應的權限與分頁編號。持有其中任何一項就能進入管理控制台，
-// 實際看得到哪些功能由每張 tile 各自的權限決定。順序即「第一個有權限的功能」判定順序。
-// 後台權限 → 該權限對應的分頁編號。
-//
-// 這張表有兩個用途，漏一筆就會有人被鎖在門外：
-//   1. CONSOLE_PERMISSIONS（下一行）＝ 控制台的門禁清單。不在表裡的權限，
-//      就算 adminSectionRows 為它列了功能卡片，持有者一進來仍會被
-//      alert + navigate('/') 踢出去。
-//   2. 沒有 users.manage 的人預設要落在哪個分頁（見「純總務身分」那個 effect）。
-//
-// announcements.manage 與 feedback.manage 原本就漏在這裡：公告管理與回饋管理
-// 兩張卡片都寫好了，但只有這兩種權限的幹部根本進不了控制台。
-// 新增分頁時務必回來補這一筆。
-const PERMISSION_TO_TAB = {
-    'users.manage': 0,
-    'roles.manage': 7,
-    'modules.manage': 8,
-    'exams.manage': 3,
-    'cheatSheets.manage': 4,
-    'courseReviews.moderate': 5,
-    'exams.upload': 1,
-    'cheatSheets.upload': 2,
-    'courseReviews.payout': 6,
-    'announcements.manage': 9,
-    'feedback.manage': 10,
-};
-const CONSOLE_PERMISSIONS = Object.keys(PERMISSION_TO_TAB);
+// 門禁清單與「權限 → 分頁」對照表在 config/adminConsole.js，導覽列與 AuthContext 共用。
+// 新增分頁時記得回去補那張表。
 
 const AdminPage = () => {
     const { t } = useTranslation();
-    // isAdmin 一律取自 AuthContext（全前端唯一來源），這個檔案原本自己重複推導了 4 次
+    // 權限一律取自 AuthContext（全前端唯一來源），這個檔案原本自己重複推導了 4 次
     const {
         user,
         loading: authLoading,
-        updateUser,
-        isAdmin: hasAdminRole,
+        refreshUser,
         hasPermission,
+        canAccessConsole,
         startPreview,
     } = useAuth();
     const navigate = useNavigate();
@@ -99,28 +76,17 @@ const AdminPage = () => {
 
     useEffect(() => {
         // 等待認證載入完成
-        if (authLoading) {
-            console.log('Auth is still loading...');
-            return;
-        }
-
-        // 檢查權限
-        console.log('Admin Page - Current user:', user);
-        console.log('Admin Page - Username:', user?.username);
+        if (authLoading) return;
 
         if (!user) {
-            console.log('No user logged in, redirecting to login');
             navigate('/login');
             return;
         }
 
-        // 只要持有任何一項後台權限就能進來，實際看得到哪些功能由 adminSections 各自的權限決定
-        if (!CONSOLE_PERMISSIONS.some((p) => hasPermission(p))) {
-            console.log('User does not have console access, redirecting to home');
-            alert(t('admin.noAccess'));
-            navigate('/');
-            return;
-        }
+        // 沒有任何後台權限的人由下方 render 顯示 PermissionDenied。
+        // 原本這裡是 alert() 再導回首頁：一個原生對話框加上一次跳轉，
+        // 看起來比較像頁面壞了而不是權限問題，而且和其他頁面的拒絕畫面長得不一樣。
+        if (!canAccessConsole) return;
 
         // 如果是管理分頁，載入對應資料
         if (activeTab === 7) {
@@ -151,7 +117,7 @@ const AdminPage = () => {
             if (firstAllowed) setActiveTab(PERMISSION_TO_TAB[firstAllowed]);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user, hasAdminRole]);
+    }, [user]);
 
     const fetchRoles = async () => {
         try {
@@ -298,19 +264,7 @@ const AdminPage = () => {
         );
 
     // 持有任何一項後台權限即可進入
-    const canAccessConsole = CONSOLE_PERMISSIONS.some((p) => hasPermission(p));
-
-    if (!authLoading && !canAccessConsole) {
-        return (
-            <Container sx={{ mt: 4 }}>
-                <Alert severity="error">
-                    {t('admin.noAccess')}
-                    <br />
-                    {t('admin.debugInfo', { username: user?.username, role: user?.role })}
-                </Alert>
-            </Container>
-        );
-    }
+    if (!canAccessConsole) return <PermissionDenied />;
 
     return (
         <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
@@ -389,7 +343,7 @@ const AdminPage = () => {
                     <UserAdminPanel
                         roles={allRoles}
                         currentUser={user}
-                        onUpdateSelf={updateUser}
+                        onUpdateSelf={refreshUser}
                         onStartPreview={handleStartPreview}
                         onError={setError}
                         onSuccess={setSuccess}

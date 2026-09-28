@@ -155,14 +155,17 @@ cd ~/NTUIM/src/backend && npm run grant-admin -- --list
 | 後端起不來 | `.env` 的 `JWT_SECRET` 是佔位字串或太短 | `pm2 logs ntuim-backend` 會明確指出。編輯 `src/backend/.env` 填入真正的密鑰（≥32 字元）後 `pm2 restart ntuim-backend` |
 | 登入後管理台一片空白／看不到任何功能 | 前端已更新但後端還是舊版（版本不一致） | `pm2 restart ntuim-backend`；若仍如此，看 `pm2 logs` 找後端啟動失敗的原因 |
 | 所有人都進不了管理台 | 沒有人持有管理員身分組 | `cd src/backend && npm run grant-admin -- --list` 查看；必要時 `npm run grant-admin -- <帳號>` |
+| `015_finalize_rbac.js` 顯示「沒有任何使用者持有帶『所有權限』的身分組」 | 沒有人持有管理員身分組 | 遷移已回滾、網站照舊。`npm run grant-admin -- <帳號>` 後重跑 `./deploy.sh` |
 | PDF 預覽壞掉（401/403） | nginx 或後端設定問題 | 確認步驟 5 只擋了 `/uploads/`，**沒有**動到 `/api/` 的 proxy |
 | 課程評價/考古題頁面顯示「即將推出」 | 該模塊被設成「限定」 | 管理台 → 模塊管理 → 改成「公開」 |
 
 ### 完整回滾
 
-**好消息：程式碼可以直接回滾，資料不會壞。** 這次刻意保留了 `users.role` 與
-`can_manage_payouts` 欄位並持續寫入，新的身分組資料表是「純新增」，
-所以舊版程式碼在新的資料庫上仍可正常運作。
+**好消息：程式碼可以直接回滾，資料不會壞。** `users.role` 與 `can_manage_payouts`
+兩個舊欄位刻意保留在資料庫裡，身分組資料表是「純新增」，所以舊版程式碼在新的資料庫上仍可正常運作。
+
+⚠️ 從 migration 015 起，程式碼**不再寫入**這兩個欄位（授權只看身分組），
+它們的值停在 015 套用當下。回滾到 015 之前的版本時，舊程式碼會重新以它們為準。
 
 ```bash
 cd ~/NTUIM
@@ -172,7 +175,7 @@ git checkout <步驟 1 記下的 commit hash>
 
 回滾後請注意兩件事：
 1. **透過新介面指派的身分組不會反映到舊的 `role` 欄位**。若回滾前曾用新介面把某人設為管理員，
-   回滾後他會失去權限——用 `npm run grant-admin -- <帳號>` 補回。
+   回滾後他會失去權限——用 `npm run grant-admin -- <帳號>` 補回（回滾後的舊版腳本寫的正是 `role` 欄位）。
 2. nginx 的 `/uploads/` 若已改成 deny，回滾程式碼後舊版前端仍然不需要它（舊版也是走 API 取檔），
    可以維持 deny 不動；付費牆漏洞保持關閉狀態。
 
@@ -254,9 +257,67 @@ cd ~/NTUIM/src/backend && npm run migrate -- --baseline
 
 ```bash
 cd src/backend
-npm run grant-admin -- --list          # 查看目前的管理員
-npm run grant-admin -- <username>      # 授予管理員權限
+npm run grant-admin -- --list          # 查看目前的管理員（持有帶「所有權限」的身分組者）
+npm run grant-admin -- <username>      # 把該帳號加入內建的「管理員」身分組
 ```
+
+後台本身也會擋下「移除最後一位管理員」的操作（改身分組、刪使用者、刪除或修改帶「所有權限」的身分組都算），
+所以正常操作不會走到這一步。
+
+> 舊版的這支腳本寫的是 `users.role = 'admin'`，在身分組系統上線後執行成功卻完全沒有效果。
+> 若你在 015 之前曾用它救援過某個帳號而那個人其實進不去，這就是原因——現在重跑一次即可。
+
+### migration 015：權限系統收尾
+
+015 不改任何資料結構，只做三件事：補種內建身分組、確認至少有一位管理員、列出新舊欄位不一致的帳號。
+部署時會看到類似：
+
+```
+套用 015_finalize_rbac.js ...
+    管理員（持有帶「所有權限」的身分組）：2 位（admin, cpcap）
+    舊欄位與身分組一致，沒有需要核對的帳號。
+  成功
+```
+
+若出現「⚠️ 以下帳號的舊欄位與身分組不一致」，**遷移仍然成功**，那只是一份核對清單：
+
+| 訊息 | 意思 | 要做什麼 |
+|---|---|---|
+| 舊 role='admin' 但沒有管理員身分組 | 在後台被降權過，或當初是用舊版 grant-admin 救援的 | 前者不用管；後者若該是管理員，`npm run grant-admin -- <帳號>` |
+| 有管理員身分組但舊 role 不是 'admin' | 在後台指派的管理員 | 不用管，只影響回滾到舊版後的權限 |
+| 舊 can_manage_payouts=1 但沒有發放回饋金權限 | 舊的總務旗標沒有對應的身分組 | 若該是總務，到後台「用戶管理」指派「總務」身分組 |
+
+遷移刻意**不**依舊欄位自動補權限：在後台被拿掉管理員的人，舊欄位仍然是 `admin`，自動補等於把權限還給他。
+
+### 寄信設定（忘記密碼）
+
+登入頁的「忘記密碼？」會寄一次性重設連結到使用者註冊時的 Email，需要一個能寄信的帳號。
+用系學會的 Google Workspace 帳號（例如 `imsa@ntu.im`）：
+
+1. 用該帳號登入 Google，開啟**兩步驟驗證**（沒開的話下一步不會出現）
+2. 到 <https://myaccount.google.com/apppasswords> 產生一組**應用程式密碼**（16 碼）
+3. 在伺服器上編輯 `~/NTUIM/src/backend/.env`（不進 git），加上：
+
+   ```
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=465
+   SMTP_SECURE=true
+   SMTP_USER=imsa@ntu.im
+   SMTP_PASS=（貼上應用程式密碼）
+   MAIL_FROM="台大資管系學會 <imsa@ntu.im>"
+   ```
+
+4. `pm2 restart ntuim-backend`
+5. 驗證：到 `https://ntu.im/forgot-password` 用自己的帳號申請一次，確認收到信、連結能設定新密碼
+
+⚠️ **沒設定時不會報錯**：忘記密碼照樣顯示「已寄出」（這個畫面本來就不能透露任何事），只是信不會寄出。
+`pm2 logs ntuim-backend` 會出現一次 `[寄信] 未設定 SMTP`。寄信失敗（密碼錯、被 Google 擋）則會出現
+`寄送重設密碼信失敗:` 加上原因。
+
+收不到信的人（Email 打錯、學校信箱停用）由管理員在 **後台 → 用戶管理 → 重設密碼 → 產生重設連結**
+產生一條 24 小時有效的連結，轉交給本人自己設定新密碼。
+
+重設或變更密碼後，該帳號**所有裝置上的登入都會失效**（migration 016 的 `password_changed_at`）。
 
 ## 📦 資料庫備份與還原
 

@@ -22,6 +22,7 @@
 - [ ] LINE Official Account Manager（`manage.line.biz`）：這是**另一套**權限，要單獨加
 - [ ] 重新簽發 LINE channel secret 與 access token，更新伺服器 `.env` 並重啟
 - [ ] 清掉離任幹部的 `users.line_user_id`（否則畢業後仍會收到通知）
+- [ ] 重新產生寄信用的 Google 應用程式密碼，更新伺服器 `.env` 的 `SMTP_PASS` 並重啟（見 DEPLOYMENT.md「寄信設定」）；舊的那組到 Google 帳號設定裡撤銷
 - [ ] 伺服器 SSH 存取（新人的公鑰加入、確認能登入並重啟服務）
 - [ ] GitHub 儲存庫權限
 - [ ] 網域 `ntu.im` 的管理權
@@ -266,8 +267,11 @@ curl -s -X POST https://ntu.im/api/auth/login \
 ```bash
 cd ~/NTUIM/src/backend
 node database/grant-admin.js --list        # 列出目前的管理員
-node database/grant-admin.js <username>    # 授予管理員權限
+node database/grant-admin.js <username>    # 把該帳號加入「管理員」身分組
 ```
+
+權限一律看身分組。`users` 表裡的 `role`、`can_manage_payouts` 兩欄是舊系統留下的，
+只為程式碼回滾保留、不再更新，**不要拿它們判斷任何人有沒有權限**（見 migration 015）。
 
 ---
 
@@ -285,7 +289,8 @@ node database/grant-admin.js <username>    # 授予管理員權限
 | 幹部名單、學年 | `src/main/resources/data/mockData.js` |
 | 後台某個分頁 | `src/main/js/components/admin/` ——一個分頁一支檔案 |
 | 評價字數門檻、回饋金 | `src/backend/config/reviewContent.js`、`reviewQuota.js` |
-| 權限定義 | `src/backend/config/permissions.js` |
+| 權限定義 | `src/backend/config/permissions.js`，名稱譯文在語系檔的 `permissions`（有測試檢查兩邊一致） |
+| 後台門禁與導覽列的管理選單 | `src/main/js/config/adminConsole.js` |
 
 ### 後台是拆開的
 
@@ -293,9 +298,9 @@ node database/grant-admin.js <username>    # 授予管理員權限
 十二個分頁各自是 `components/admin/` 下的獨立元件。要改「意見回饋」就只開
 `FeedbackAdminPanel.js`，不必在一支幾千行的檔案裡找。
 
-新增分頁時有一個**容易漏掉**的地方：`AdminPage.js` 的 `PERMISSION_TO_TAB`
-必須補上對應的權限。那張表同時是控制台的門禁清單——沒補的話，
-就算功能卡片寫好了，只有該權限的幹部一進來仍會被踢回首頁。
+新增分頁時有一個**容易漏掉**的地方：`config/adminConsole.js` 的 `PERMISSION_TO_TAB`
+必須補上對應的權限。那張表同時是控制台的門禁清單（導覽列也看它）——沒補的話，
+就算功能卡片寫好了，只有該權限的幹部一進來仍會看到「權限不足」。
 （公告與回饋兩個分頁就曾經這樣壞了一段時間。）
 
 ### 考古題／大抄管理只有一份實作

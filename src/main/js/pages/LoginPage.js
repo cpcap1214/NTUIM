@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import React, { useState } from 'react';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useLocation, useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
     Paper,
     TextField,
@@ -18,7 +18,10 @@ import { translateApiError } from '../utils/apiError';
 const LoginPage = () => {
     const { t } = useTranslation();
     const navigate = useNavigate();
+    const location = useLocation();
     const { login } = useAuth();
+    // 從重設密碼頁回來時帶著這個旗標，提示他用新密碼登入
+    const passwordReset = !!location.state?.passwordReset;
     const [formData, setFormData] = useState({ username: '', password: '' });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -63,6 +66,12 @@ const LoginPage = () => {
                         {t('auth.loginSubtitle')}
                     </Typography>
                 </Box>
+
+                {passwordReset && !error && (
+                    <Alert severity="success" sx={{ mb: 2 }}>
+                        {t('auth.reset.success')}
+                    </Alert>
+                )}
 
                 {error && (
                     <Alert severity="error" sx={{ mb: 2 }}>
@@ -109,11 +118,8 @@ const LoginPage = () => {
                     </Stack>
                 </Box>
 
-                {/* 目前沒有自助重設密碼的流程：/auth 只有 register、login 與
-                    change-password，而 change-password 要先登入才用得到。
-                    真正的救援路徑是管理員的 PUT /admin/users/:id/password，
-                    所以這裡直接給聯絡信箱，請人工處理。
-                    之後若補上自助重設流程，這一行要換成連到該流程的連結。
+                {/* 忘記密碼 → 自助重設流程（寄重設連結到註冊 Email）。
+                    收不到信時的人工聯絡方式在那一頁上，這裡不重複放。
 
                     位置刻意放在表單正下方：使用者在密碼欄卡住時第一個往下看的地方。 */}
                 <Typography
@@ -121,9 +127,8 @@ const LoginPage = () => {
                     color="text.secondary"
                     sx={{ textAlign: 'center', mt: 2 }}
                 >
-                    {t('auth.forgotPassword')}
-                    <Link href="mailto:imsa@ntu.im" sx={{ ml: 0.5, fontWeight: 500 }}>
-                        imsa@ntu.im
+                    <Link component={RouterLink} to="/forgot-password" sx={{ fontWeight: 500 }}>
+                        {t('auth.forgotPassword')}
                     </Link>
                 </Typography>
 

@@ -3,6 +3,7 @@ const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const { sequelize, Role, RolePermission, UserRole, User } = require('../models');
 const { requirePermission } = require('../middleware/auth');
+const permissionService = require('../services/permissionService');
 const { PERMISSIONS, PERMISSION_KEYS, WILDCARD } = require('../config/permissions');
 
 // 權限目錄（供身分組編輯器渲染勾選清單）
@@ -98,6 +99,24 @@ router.put('/:id', requirePermission('roles.manage'), async (req, res) => {
 
         const { name, description, color, priority, permissions } = req.body;
 
+        // 檢查一律放在寫入之前，否則被擋下的請求會留下改了一半的名稱與顏色
+        if (Array.isArray(permissions) && !permissions.includes(WILDCARD)) {
+            // 管理員身分組的萬用權限不可拿掉，否則會把自己鎖在門外
+            if (role.key === 'admin') {
+                return res.status(400).json({
+                    error: '管理員身分組必須保留所有權限',
+                    errorCode: 'ADMIN_ROLE_KEEPS_ALL',
+                });
+            }
+            // 自訂身分組也可能持有 '*'；拿掉它若會讓全站沒有管理員，同樣擋下
+            if (await wouldLeaveNoSuperuser(role.id)) {
+                return res.status(400).json({
+                    error: '無法移除最後一個管理員',
+                    errorCode: 'CANNOT_REMOVE_LAST_ADMIN',
+                });
+            }
+        }
+
         const updates = {};
         if (name !== undefined) updates.name = name;
         if (description !== undefined) updates.description = description;
@@ -108,13 +127,6 @@ router.put('/:id', requirePermission('roles.manage'), async (req, res) => {
         await role.update(updates);
 
         if (Array.isArray(permissions)) {
-            // 管理員身分組的萬用權限不可拿掉，否則會把自己鎖在門外
-            if (role.key === 'admin' && !permissions.includes(WILDCARD)) {
-                return res.status(400).json({
-                    error: '管理員身分組必須保留所有權限',
-                    errorCode: 'ADMIN_ROLE_KEEPS_ALL',
-                });
-            }
             await setPermissions(role.id, permissions);
         }
 
@@ -136,6 +148,13 @@ router.delete('/:id', requirePermission('roles.manage'), async (req, res) => {
             return res
                 .status(400)
                 .json({ error: '內建身分組不可刪除', errorCode: 'BUILTIN_ROLE_NOT_DELETABLE' });
+        }
+
+        if (await wouldLeaveNoSuperuser(role.id)) {
+            return res.status(400).json({
+                error: '無法移除最後一個管理員',
+                errorCode: 'CANNOT_REMOVE_LAST_ADMIN',
+            });
         }
 
         await role.destroy(); // role_permissions / user_roles 會被 ON DELETE CASCADE 一併清掉
@@ -173,6 +192,17 @@ router.get('/:id/members', requirePermission('roles.manage'), async (req, res) =
         res.status(500).json({ error: '取得成員失敗', errorCode: 'FETCH_MEMBERS_FAILED' });
     }
 });
+
+// 這個身分組目前持有 '*'，而且拿掉它之後全站就沒有任何管理員
+const wouldLeaveNoSuperuser = async (roleId) => {
+    const holdsWildcard = await RolePermission.count({
+        where: { roleId, permission: WILDCARD },
+    });
+    if (!holdsWildcard) return false;
+    const members = await UserRole.count({ where: { roleId } });
+    if (!members) return false;
+    return (await permissionService.countSuperusers({ exceptRoleId: roleId })) === 0;
+};
 
 const setPermissions = async (roleId, permissions) => {
     await RolePermission.destroy({ where: { roleId } });

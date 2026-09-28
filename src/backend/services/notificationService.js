@@ -21,7 +21,8 @@ const notifyPermission = async (permission, text) => {
 
     const bound = await User.findAll({
         where: { lineUserId: { [Op.ne]: null } },
-        attributes: ['id', 'username', 'role', 'lineUserId'],
+        // hasPaidFee 要帶：resolve 靠它推導自動身分組「會員」
+        attributes: ['id', 'username', 'hasPaidFee', 'lineUserId'],
     });
     if (bound.length === 0) return { skipped: true, reason: 'no-bound-users' };
 

@@ -78,6 +78,45 @@ const authService = {
                 oldPassword,
                 newPassword,
             });
+            // 改密碼會讓所有既有登入失效，包含現在這個。後端回傳一個新 token，
+            // 換上之後本人維持登入；沒換的話下一個請求就會被登出。
+            if (response.data.token) {
+                try {
+                    localStorage.setItem('token', response.data.token);
+                } catch (storageError) {
+                    console.warn('儲存 token 失敗，可能是私人瀏覽模式:', storageError);
+                }
+            }
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error;
+        }
+    },
+
+    // 忘記密碼：申請寄送重設連結。不論帳號存不存在，後端回應都一樣
+    async forgotPassword(identifier) {
+        try {
+            const response = await api.post('/auth/forgot-password', { identifier });
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error;
+        }
+    },
+
+    // 檢查重設連結是否仍有效（頁面一打開就呼叫，不必等填完新密碼才發現過期）
+    async verifyResetToken(token) {
+        try {
+            const response = await api.post('/auth/reset-password/verify', { token });
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error;
+        }
+    },
+
+    // 用重設連結設定新密碼
+    async resetPassword(token, newPassword) {
+        try {
+            const response = await api.post('/auth/reset-password', { token, newPassword });
             return response.data;
         } catch (error) {
             throw error.response?.data || error;
@@ -110,13 +149,7 @@ const authService = {
         return !!this.getToken();
     },
 
-    // 檢查是否為管理員。
-    // 與 AuthContext 同一套判斷：以後端解析的 isAdmin 為準，舊的 role 欄位只當退路，
-    // 因為它不會隨身分組更新（理由見 AuthContext 的說明）。
-    isAdmin() {
-        const user = this.getCurrentUser();
-        return user?.isAdmin ?? user?.role === 'admin';
-    },
+    // 管理員／權限判斷一律用 AuthContext 的 isAdmin 與 hasPermission，這裡不再另寫一份。
 
     // 檢查是否已繳費
     hasPaidFee() {

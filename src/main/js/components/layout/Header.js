@@ -41,6 +41,7 @@ import NavigationTabs from './NavigationTabs';
 import LanguageSwitcher from './LanguageSwitcher';
 import { NAVIGATION_ITEMS } from '../../../resources/config/constants';
 import { useAuth } from '../../contexts/AuthContext';
+import { ADMIN_NAV_ITEMS } from '../../config/adminConsole';
 
 // Google 四色「G」logo（inline SVG，避免額外圖檔依賴）
 const GoogleIcon = ({ size = 16 }) => (
@@ -80,6 +81,13 @@ const iconMap = {
 
 const GOOGLE_SPACE_URL = 'https://forms.gle/5ckpNSH74FhXBugM8';
 
+// 圖示屬於呈現層，不放進共用設定檔
+const ADMIN_NAV_ICONS = {
+    'admin-panel': AdminIcon,
+    'admin-exam-manage': SchoolIcon,
+    'admin-cheatsheet-manage': DescriptionIcon,
+};
+
 const Header = () => {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [anchorEl, setAnchorEl] = useState(null);
@@ -88,26 +96,21 @@ const Header = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { t } = useTranslation();
-    const { user, logout, isAuthenticated, isAdmin, isModuleVisible, isModuleComingSoon } =
-        useAuth();
+    const {
+        user,
+        logout,
+        isAuthenticated,
+        canAccessConsole,
+        hasPermission,
+        isModuleVisible,
+        isModuleComingSoon,
+    } = useAuth();
 
-    // 移除了 { id: 'admin-upload', path: '/admin/upload' }：App.js 沒有那條路由，
-    // 點下去只會進到空白頁。該功能已由管理員控制台的「上傳考古題／上傳大抄」分頁取代。
-    const adminNavItems = [
-        { id: 'admin-panel', labelKey: 'nav.adminPanel', path: '/admin', icon: AdminIcon },
-        {
-            id: 'admin-exam-manage',
-            labelKey: 'nav.adminExamManage',
-            path: '/admin/exam-manage',
-            icon: SchoolIcon,
-        },
-        {
-            id: 'admin-cheatsheet-manage',
-            labelKey: 'nav.adminCheatSheetManage',
-            path: '/admin/cheatsheet-manage',
-            icon: DescriptionIcon,
-        },
-    ];
+    // 管理區塊的項目與各自的權限定義在 config/adminConsole.js，和頁面自己的門禁共用。
+    // 原本這裡用 isAdmin 決定整個區塊顯示與否，純總務進得了控制台卻找不到入口。
+    const adminNavItems = ADMIN_NAV_ITEMS.filter((item) =>
+        item.permission ? hasPermission(item.permission) : canAccessConsole,
+    ).map((item) => ({ ...item, icon: ADMIN_NAV_ICONS[item.id] }));
 
     const handleDrawerToggle = () => setMobileOpen((v) => !v);
     const handleMobileNavigation = (path) => {
@@ -179,7 +182,7 @@ const Header = () => {
                     );
                 })}
 
-                {isAdmin && (
+                {adminNavItems.length > 0 && (
                     <>
                         <Typography
                             variant="caption"

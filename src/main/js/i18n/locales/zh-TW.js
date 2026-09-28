@@ -55,15 +55,7 @@ const zhTW = {
         comingSoonBody: '這項功能正在準備中，敬請期待',
         noPermissionTitle: '權限不足',
         noPermissionBody: '你的帳號沒有使用這項功能的權限',
-        adminRequiredTitle: '需要管理員權限',
-        adminRequiredBody: '此頁面僅限管理員存取',
-        paymentRequiredTitle: '需要繳交系學會費',
-        paymentRequiredBody: '此功能僅開放給已繳交系學會費的會員使用',
-        paymentRequiredHint: '請聯繫系學會幹部或至系辦繳交會費',
         backHome: '返回首頁',
-        contactUs: '聯絡我們',
-        notLoggedIn: '未登入',
-        welcome: '歡迎，{{name}}',
     },
 
     payment: {
@@ -264,7 +256,28 @@ const zhTW = {
         registerNow: '立即註冊',
         haveAccount: '已經有帳號？',
         loginNow: '立即登入',
-        forgotPassword: '忘記密碼？請聯絡',
+        forgotPassword: '忘記密碼？',
+        forgot: {
+            title: '忘記密碼',
+            subtitle: '輸入帳號或學號，我們會寄一封重設密碼的信到你註冊時的 Email。',
+            submit: '寄送重設連結',
+            sent: '如果這個帳號存在且有登記 Email，重設連結已經寄出，{{minutes}} 分鐘內有效。請到信箱查看（也看一下垃圾郵件匣）。',
+            noEmailHelp: '收不到信，或註冊的 Email 已經不能用？請聯絡',
+            backToLogin: '回到登入',
+            failed: '送出失敗，請稍後再試',
+        },
+        reset: {
+            title: '設定新密碼',
+            subtitle: '設定完成後，所有裝置上原本的登入都會被登出。',
+            newPassword: '新密碼',
+            confirmPassword: '確認新密碼',
+            hint: '至少 {{min}} 個字元',
+            submit: '更新密碼',
+            mismatch: '兩次輸入的密碼不一致',
+            requestNew: '重新申請重設連結',
+            failed: '重設密碼失敗，請稍後再試',
+            success: '密碼已更新，請用新密碼登入。',
+        },
     },
 
     time: {
@@ -522,8 +535,6 @@ const zhTW = {
     admin: {
         consoleTitle: '管理員控制台',
         consoleSubtitle: '直接切到要處理的工作區，不使用滑動式分頁。',
-        noAccess: '您沒有權限訪問此頁面',
-        debugInfo: '調試資訊：用戶名={{username}}，角色={{role}}',
         previewSwitchFailed: '無法切換檢視身分',
         uploadCheatSheet: '上傳大抄',
         sections: {
@@ -538,6 +549,9 @@ const zhTW = {
         preview: {
             selfHint: '這就是你自己的身分',
             asUser: '以「{{name}}」的身分檢視全站（唯讀）',
+            asRole: '以「{{name}}」的身分檢視全站（唯讀）',
+            userLabel: '使用者「{{name}}」',
+            roleLabel: '身分組「{{name}}」',
         },
         users: {
             fetchFailed: '無法獲取用戶資料',
@@ -576,6 +590,29 @@ const zhTW = {
             noRole: '無身分組',
             changePasswordTitle: '更改密碼',
             confirmDeleteTitle: '確認刪除用戶',
+            resetLink: {
+                title: '產生重設連結（建議）',
+                description:
+                    '把連結轉交給本人，由他自己設定新密碼——你不需要知道他的密碼。連結 24 小時內有效、只能使用一次。',
+                generate: '產生重設連結',
+                copy: '複製連結',
+                copied: '已複製到剪貼簿',
+                copyFailed: '無法自動複製，請直接選取網址複製',
+                expiresAt: '有效至 {{time}}',
+                or: '或直接設定新密碼',
+                directHint: '對方所有裝置上的登入都會被登出',
+                failed: '產生重設連結失敗',
+            },
+            noMatch: '沒有符合條件的用戶',
+            studentIdLabel: '學號',
+            emailLabel: 'Email',
+            registeredAtLabel: '註冊時間',
+            stats: {
+                total: '總用戶數',
+                admins: '管理員',
+                withRoles: '持有身分組',
+                paid: '已繳費',
+            },
         },
         upload: {
             pdfOnly: '只能上傳 PDF 檔案',
@@ -655,6 +692,8 @@ const zhTW = {
             permissionsLabel: '權限',
             allPermissionsLocked: '此身分組擁有所有權限，無法逐項調整',
             deleteTitle: '刪除身分組？',
+            noPermissions: '未設定任何權限',
+            confirmDelete: '確認刪除',
         },
         modules: {
             title: '模組管理',
@@ -670,6 +709,49 @@ const zhTW = {
             visibilityPublic: '公開（所有人）',
             visibilityRestricted: '限定（白名單）',
         },
+    },
+
+    // 權限名稱。key 對應 src/backend/config/permissions.js；新增權限時兩個語系都要補，
+    // src/test/unit/permissionLabels.test.js 會檢查。
+    permissions: {
+        users: {
+            manage: { label: '用戶管理', description: '查詢、編輯、刪除使用者與重設密碼' },
+        },
+        roles: {
+            manage: { label: '身分組管理', description: '建立身分組、調整權限、指派成員' },
+        },
+        modules: {
+            manage: { label: '模組管理', description: '設定各功能模組開放給哪些身分組或使用者' },
+        },
+        announcements: {
+            manage: { label: '公告管理', description: '發佈、編輯與下架站上公告' },
+        },
+        feedback: {
+            manage: { label: '回饋管理', description: '檢視與處理使用者送出的匿名意見回饋' },
+        },
+        exams: {
+            upload: { label: '上傳考古題', description: '新增考古題與答案檔案' },
+            manage: { label: '管理考古題', description: '編輯與刪除任何人上傳的考古題' },
+            download: {
+                label: '下載考古題',
+                description: '預覽與下載考古題檔案（會員身分組預設持有）',
+            },
+        },
+        cheatSheets: {
+            upload: { label: '上傳大抄', description: '新增課程重點整理' },
+            manage: { label: '管理大抄', description: '編輯與刪除任何人上傳的大抄' },
+        },
+        courseReviews: {
+            moderate: { label: '審核課程評價', description: '核准或拒絕使用者送出的課程評價' },
+            payout: { label: '發放回饋金', description: '管理課程評價回饋金的發放狀態' },
+        },
+    },
+
+    permissionGroups: {
+        system: '系統管理',
+        exams: '考古題',
+        cheatSheets: '大抄',
+        courseReviews: '課程評價',
     },
 
     changelog: {
@@ -697,13 +779,6 @@ const zhTW = {
         legendTermEvent: '學期事件',
         upcoming: '近期行程',
         noUpcoming: '近期沒有重要事項',
-    },
-
-    feeStatus: {
-        pleaseLogin: '請先登入',
-        admin: '管理員身份',
-        paid: '已繳交系學會費',
-        unpaid: '尚未繳交系學會費',
     },
 
     common: {
@@ -1062,6 +1137,12 @@ const zhTW = {
         NAME_REQUIRED: '名稱為必填',
         NEW_PASSWORD_REQUIRED: '請提供新密碼',
         NEW_PASSWORD_TOO_SHORT: '新密碼至少6個字元',
+        RESET_TOKEN_INVALID: '重設連結無效或已使用過，請重新申請',
+        RESET_TOKEN_EXPIRED: '重設連結已過期，請重新申請',
+        PASSWORD_RESET_RATE_LIMITED: '重設密碼的申請過於頻繁，請於 {{minutes}} 分鐘後再試',
+        RESET_PASSWORD_FAILED: '重設密碼失敗，請稍後再試',
+        RESET_LINK_CREATE_FAILED: '產生重設連結失敗',
+        AUTH_TOKEN_REVOKED: '密碼已變更，請重新登入',
         NO_PERMISSION_DELETE_CHEATSHEET: '無權刪除此大抄',
         NO_PERMISSION_DELETE_EXAM: '無權刪除此考古題',
         NO_PERMISSION_EDIT_CHEATSHEET: '無權修改此大抄',

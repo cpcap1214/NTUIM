@@ -98,7 +98,12 @@ function insertTestData(db) {
             },
         ];
 
-        // 插入使用者
+        // 插入使用者。
+        //
+        // 這裡是全站唯一還會寫 users.role 的地方，而且是刻意的：全新資料庫在這一步
+        // 還沒有身分組資料表（它們由之後的 npm run migrate 建立），migration 007
+        // 要靠 role='admin' 才找得到種子管理員並回填成管理員身分組。
+        // 其餘程式碼一律不讀寫 role（見 migration 015）。
         const stmt = db.prepare(`
             INSERT OR IGNORE INTO users 
             (student_id, username, email, password_hash, full_name, role, has_paid_fee)

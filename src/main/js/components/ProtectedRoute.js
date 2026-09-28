@@ -2,14 +2,21 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Box, Typography, Button, Paper } from '@mui/material';
-import { Lock, Payment, AdminPanelSettings } from '@mui/icons-material';
+import { Box, Typography } from '@mui/material';
+import { Lock } from '@mui/icons-material';
+import PermissionDenied from './common/PermissionDenied';
 
+// 路由守衛。只有三種條件，全部對應後端真的在檢查的東西：
+//   requireModule      模組是否對此使用者開放（後端 requireModuleAccess）
+//   requireAuth        是否登入
+//   requirePermission  是否持有某個權限 key（後端 requirePermission）
+//
+// 原本還有 requireAdmin 與 requirePaid：前者看的是 isAdmin 而不是實際需要的權限，
+// 後者看的是繳費狀態而後端看的是 exams.download。兩個都沒有呼叫端，已移除，
+// 以免之後有人用了一個跟後端判斷不一致的守衛。
 const ProtectedRoute = ({
     children,
     requireAuth = true,
-    requirePaid = false,
-    requireAdmin = false,
     requirePermission = null,
     requireModule = null,
     fallback = null,
@@ -30,30 +37,14 @@ const ProtectedRoute = ({
     // 模組是否開放。這一關要放在登入檢查「之前」——未開放的功能，
     // 對未登入者也該直接說「尚未開放」，而不是先叫他去登入、登入完才發現不能用。
     if (requireModule && !isModuleAccessible(requireModule)) {
+        const comingSoon = isModuleComingSoon(requireModule);
         return (
             fallback || (
-                <Box maxWidth="md" mx="auto" p={3}>
-                    <Paper sx={{ p: 4, textAlign: 'center' }}>
-                        <Lock sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
-                        <Typography variant="h5" gutterBottom>
-                            {t(
-                                isModuleComingSoon(requireModule)
-                                    ? 'nav.comingSoon'
-                                    : 'guard.moduleUnavailableTitle',
-                            )}
-                        </Typography>
-                        <Typography color="textSecondary" paragraph>
-                            {t(
-                                isModuleComingSoon(requireModule)
-                                    ? 'guard.comingSoonBody'
-                                    : 'guard.moduleUnavailableBody',
-                            )}
-                        </Typography>
-                        <Button variant="contained" href="/" sx={{ mt: 2 }}>
-                            {t('guard.backHome')}
-                        </Button>
-                    </Paper>
-                </Box>
+                <PermissionDenied
+                    icon={<Lock sx={{ fontSize: 60, color: 'text.disabled' }} />}
+                    title={t(comingSoon ? 'nav.comingSoon' : 'guard.moduleUnavailableTitle')}
+                    body={t(comingSoon ? 'guard.comingSoonBody' : 'guard.moduleUnavailableBody')}
+                />
             )
         );
     }
@@ -63,123 +54,12 @@ const ProtectedRoute = ({
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
-    // 檢查特定權限（新式權限 key，例如 'users.manage'）
+    // 檢查特定權限（權限 key，例如 'users.manage'）
     if (requirePermission && !hasPermission(requirePermission)) {
-        return (
-            fallback || (
-                <Box maxWidth="md" mx="auto" p={3}>
-                    <Paper sx={{ p: 4, textAlign: 'center' }}>
-                        <AdminPanelSettings sx={{ fontSize: 60, color: 'error.main', mb: 2 }} />
-                        <Typography variant="h5" gutterBottom>
-                            {t('guard.noPermissionTitle')}
-                        </Typography>
-                        <Typography color="textSecondary" paragraph>
-                            {t('guard.noPermissionBody')}
-                        </Typography>
-                        <Button variant="contained" href="/" sx={{ mt: 2 }}>
-                            {t('guard.backHome')}
-                        </Button>
-                    </Paper>
-                </Box>
-            )
-        );
-    }
-
-    // 檢查管理員權限
-    if (requireAdmin && !hasPermission('admin')) {
-        return (
-            fallback || (
-                <Box maxWidth="md" mx="auto" p={3}>
-                    <Paper sx={{ p: 4, textAlign: 'center' }}>
-                        <AdminPanelSettings sx={{ fontSize: 60, color: 'error.main', mb: 2 }} />
-                        <Typography variant="h5" gutterBottom>
-                            {t('guard.adminRequiredTitle')}
-                        </Typography>
-                        <Typography color="textSecondary" paragraph>
-                            {t('guard.adminRequiredBody')}
-                        </Typography>
-                        <Button variant="contained" href="/" sx={{ mt: 2 }}>
-                            {t('guard.backHome')}
-                        </Button>
-                    </Paper>
-                </Box>
-            )
-        );
-    }
-
-    // 檢查繳費要求
-    if (requirePaid && !hasPermission('paid')) {
-        return (
-            fallback || (
-                <Box maxWidth="md" mx="auto" p={3}>
-                    <Paper sx={{ p: 4, textAlign: 'center' }}>
-                        <Payment sx={{ fontSize: 60, color: 'warning.main', mb: 2 }} />
-                        <Typography variant="h5" gutterBottom>
-                            {t('guard.paymentRequiredTitle')}
-                        </Typography>
-                        <Typography color="textSecondary" paragraph>
-                            {t('guard.paymentRequiredBody')}
-                        </Typography>
-                        <Typography variant="body2" color="textSecondary" paragraph>
-                            {t('guard.paymentRequiredHint')}
-                        </Typography>
-                        <Button variant="contained" href="/about" sx={{ mt: 2 }}>
-                            {t('guard.contactUs')}
-                        </Button>
-                    </Paper>
-                </Box>
-            )
-        );
+        return fallback || <PermissionDenied />;
     }
 
     return children;
-};
-
-// 便利組件 - 需要登入
-export const RequireAuth = ({ children, fallback }) => (
-    <ProtectedRoute requireAuth={true} fallback={fallback}>
-        {children}
-    </ProtectedRoute>
-);
-
-// 便利組件 - 需要繳費
-export const RequirePaid = ({ children, fallback }) => (
-    <ProtectedRoute requireAuth={true} requirePaid={true} fallback={fallback}>
-        {children}
-    </ProtectedRoute>
-);
-
-// 便利組件 - 需要管理員權限
-export const RequireAdmin = ({ children, fallback }) => (
-    <ProtectedRoute requireAuth={true} requireAdmin={true} fallback={fallback}>
-        {children}
-    </ProtectedRoute>
-);
-
-// 登入狀態顯示組件
-export const AuthStatus = () => {
-    const { t } = useTranslation();
-    const { user, isAuthenticated, getFeeStatusMessage } = useAuth();
-
-    if (!isAuthenticated) {
-        return (
-            <Box display="flex" alignItems="center" gap={1}>
-                <Lock fontSize="small" />
-                <Typography variant="body2">{t('guard.notLoggedIn')}</Typography>
-            </Box>
-        );
-    }
-
-    return (
-        <Box>
-            <Typography variant="body2">
-                {t('guard.welcome', { name: user.fullName || user.username })}
-            </Typography>
-            <Typography variant="caption" color="textSecondary">
-                {getFeeStatusMessage()}
-            </Typography>
-        </Box>
-    );
 };
 
 export default ProtectedRoute;

@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import React from 'react';
 import { Box, Typography, Container } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
+import PermissionDenied from '../components/common/PermissionDenied';
 import CheatSheetManagePanel from '../components/admin/CheatSheetManagePanel';
 
 // /admin/cheatsheet-manage 的路由外殼。
@@ -11,21 +12,12 @@ import CheatSheetManagePanel from '../components/admin/CheatSheetManagePanel';
 // 以及套上頁面的外框（Container）。
 const CheatSheetManagePage = () => {
     const { t } = useTranslation();
-    const { user, isAdmin } = useAuth();
+    const { user, hasPermission } = useAuth();
 
-    if (!user || !isAdmin) {
-        return (
-            <Container maxWidth="lg">
-                <Box sx={{ py: 4, textAlign: 'center' }}>
-                    <Typography variant="h5" color="error">
-                        {t('guard.noPermissionTitle')}
-                    </Typography>
-                    <Typography variant="body1" color="text.secondary">
-                        {t('guard.adminRequiredBody')}
-                    </Typography>
-                </Box>
-            </Container>
-        );
+    // 以實際需要的權限判斷，和後端一致。原本看的是 isAdmin，
+    // 被給了 cheatSheets.manage 的幹部 API 打得過、頁面卻進不去。
+    if (!user || !hasPermission('cheatSheets.manage')) {
+        return <PermissionDenied />;
     }
 
     return (

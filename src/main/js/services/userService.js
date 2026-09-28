@@ -54,15 +54,18 @@ const userService = {
         }
     },
 
-    // 更新使用者角色（管理員）
-    async updateRole(id, role) {
+    // 產生重設密碼連結（管理員）。回傳 { url, expiresAt }，由管理員轉交給本人
+    async createPasswordResetLink(id) {
         try {
-            const response = await api.patch(`/users/${id}/role`, { role });
+            const response = await api.post(`/admin/users/${id}/password-reset-link`);
             return response.data;
         } catch (error) {
             throw error.response?.data || error;
         }
     },
+
+    // 原本這裡有 updateRole（PATCH /users/:id/role，寫舊的 role 欄位），後端已移除。
+    // 身分組請用 roleService.setUserRoles。
 
     // 刪除使用者（管理員）
     async deleteUser(id) {

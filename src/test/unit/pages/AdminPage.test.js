@@ -15,6 +15,8 @@
 import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
+// 放在最上面：下面 mockAuth 的 getter 會用到它（它沒有任何相依，不需要被 mock）
+import { CONSOLE_PERMISSIONS } from '../../../main/js/config/adminConsole';
 
 jest.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key) => key, i18n: { language: 'zh-TW' } }),
@@ -29,12 +31,16 @@ jest.mock('react-router-dom', () => ({
 // 未列出的權限一律 false
 let grantedPermissions = [];
 const mockAuth = {
-    user: { id: 1, username: 'admin', role: 'admin' },
+    user: { id: 1, username: 'admin' },
     // AdminPage 取的是 useAuth().loading，在那裡改名叫 authLoading
     loading: false,
-    updateUser: jest.fn(),
+    refreshUser: jest.fn(),
     isAdmin: true,
     hasPermission: (p) => grantedPermissions.includes(p),
+    // 和 AuthContext 一樣由共用的門禁清單推導，不在測試裡另寫一份條件
+    get canAccessConsole() {
+        return CONSOLE_PERMISSIONS.some((p) => grantedPermissions.includes(p));
+    },
     startPreview: jest.fn(),
 };
 jest.mock('../../../main/js/contexts/AuthContext', () => ({
@@ -223,11 +229,15 @@ afterEach(() => {
 });
 
 describe('後台控制台的進入條件', () => {
-    test('完全沒有後台權限的人會被導回首頁', async () => {
+    // 原本是 alert() 再導回首頁；現在和其他頁面一樣顯示權限不足的畫面
+    test('完全沒有後台權限的人看到權限不足的畫面，不跳 alert 也不被導走', async () => {
         grantedPermissions = [];
         render(<AdminPage />);
 
-        await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/'));
+        expect(await screen.findByText('guard.noPermissionTitle')).toBeInTheDocument();
+        expect(screen.queryByText('admin.consoleTitle')).not.toBeInTheDocument();
+        expect(global.alert).not.toHaveBeenCalled();
+        expect(mockNavigate).not.toHaveBeenCalled();
     });
 
     test('持有任一後台權限就進得來', async () => {
