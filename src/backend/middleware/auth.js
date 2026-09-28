@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 const permissionService = require('../services/permissionService');
 const { isTokenRevoked } = require('../config/passwordReset');
+const { syncStudentFeeStatus } = require('../services/feeStatusService');
 
 // 認證時從 users 表載入的欄位。
 //
@@ -10,7 +11,16 @@ const { isTokenRevoked } = require('../config/passwordReset');
 // 程式碼回滾而保留（見 migration 015）。載入它們只會讓人以為還有地方在看。
 //
 // passwordChangedAt：簽發時間早於它的 token 一律失效（改密碼／重設密碼後，舊的登入全部作廢）。
-const USER_AUTH_ATTRIBUTES = ['id', 'username', 'email', 'hasPaidFee', 'passwordChangedAt'];
+//
+// studentId：每次認證都要依學號向系學會費表同步繳費狀態（syncStudentFeeStatus）。
+const USER_AUTH_ATTRIBUTES = [
+    'id',
+    'studentId',
+    'username',
+    'email',
+    'hasPaidFee',
+    'passwordChangedAt',
+];
 
 // 把解析好的身分組與權限掛到 req 上。authenticateToken 與 optionalAuth 共用，
 // 兩邊原本各寫一份，optionalAuth 那份還漏了 rawPermissions。
@@ -132,12 +142,17 @@ const authenticateToken = async (req, res, next) => {
 
         // 密碼在這個 token 簽發之後改過 → 作廢。回 401，前端 api.js 會照規則清掉登入並導回登入頁，
         // 正是要的效果：偷到 token 的人在受害者重設密碼後立刻失去存取。
+        // 放在繳費同步之前：已作廢的 token 不值得為它去讀繳費表。
         if (isTokenRevoked(decoded.iat, user.passwordChangedAt)) {
             return res.status(401).json({
                 error: '密碼已變更，請重新登入',
                 errorCode: 'AUTH_TOKEN_REVOKED',
             });
         }
+
+        // 繳費狀態以系學會費表為準，每次認證都同步（表有 5 分鐘快取）。
+        // 必須在 toJSON 之前：它直接改這個 Sequelize 物件的 hasPaidFee
+        await syncStudentFeeStatus(user);
 
         const plain = user.toJSON();
         attachIdentity(req, plain, await permissionService.resolve(plain));
@@ -187,6 +202,7 @@ const optionalAuth = async (req, res, next) => {
         const user = await User.findByPk(decoded.userId, { attributes: USER_AUTH_ATTRIBUTES });
         // 已作廢的 token 在公開端點上視同未登入，和過期的 token 一樣
         if (user && !isTokenRevoked(decoded.iat, user.passwordChangedAt)) {
+            await syncStudentFeeStatus(user);
             const plain = user.toJSON();
             attachIdentity(req, plain, await permissionService.resolve(plain));
         }

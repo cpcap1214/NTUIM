@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
 const { User } = require('../models');
 const { generateToken, authenticateToken } = require('../middleware/auth');
-const { checkStudentPaidFee } = require('../services/feeStatusService');
+const { checkStudentPaidFee, syncStudentFeeStatus } = require('../services/feeStatusService');
 const permissionService = require('../services/permissionService');
 const passwordService = require('../services/passwordService');
 const mailService = require('../services/mailService');
@@ -149,6 +149,9 @@ router.post(
                     .status(401)
                     .json({ error: '帳號或密碼錯誤', errorCode: 'CREDENTIALS_INVALID' });
             }
+
+            // 繳費狀態以系學會費表為準，登入時同步，回應裡的會員資格才會是最新的
+            await syncStudentFeeStatus(user);
 
             // 想起密碼了：還沒用掉的重設連結作廢，免得它在信箱裡多活半小時
             await passwordService.clearResetToken(user);

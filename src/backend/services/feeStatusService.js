@@ -1,7 +1,7 @@
 const https = require('https');
 
-const DEFAULT_SPREADSHEET_ID = '1UAgzYPzRKhhBa7hHdX_temfLfMmIdNLX';
-const DEFAULT_SHEET_GID = '350665428';
+const DEFAULT_SPREADSHEET_ID = '1xHGJUZsynRpxp6gGAKCZhwXGMkubDSDx5zxvpNJdYP8';
+const DEFAULT_SHEET_GID = '0';
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 let feeStatusCache = {
@@ -17,7 +17,7 @@ function getFeeSheetCsvUrl() {
 
 function fetchText(url, redirectCount = 0) {
     return new Promise((resolve, reject) => {
-        https
+        const request = https
             .get(url, (response) => {
                 if (
                     response.statusCode >= 300 &&
@@ -50,6 +50,7 @@ function fetchText(url, redirectCount = 0) {
                 response.on('end', () => resolve(data));
             })
             .on('error', reject);
+        request.setTimeout(10000, () => request.destroy(new Error('讀取繳費表逾時')));
     });
 }
 
@@ -114,7 +115,7 @@ function isPaidMarker(value) {
 
 function buildPaidStudentSet(rows) {
     if (rows.length < 3) {
-        return new Set();
+        throw new Error('繳費表內容不完整');
     }
 
     const labelRow = rows[1] || [];
@@ -125,6 +126,13 @@ function buildPaidStudentSet(rows) {
             studentColumns.push(index);
         }
     });
+
+    if (
+        studentColumns.length === 0 ||
+        studentColumns.some((index) => String(labelRow[index + 2] || '').trim() !== '系學會費')
+    ) {
+        throw new Error('繳費表欄位格式不符');
+    }
 
     const paidStudentIds = new Set();
 
@@ -175,8 +183,27 @@ async function checkStudentPaidFee(studentId) {
     }
 }
 
+// 新表是繳費依據；既有帳號也在登入及認證請求時同步。
+// 讀表失敗時不覆寫資料庫，該次請求則不授予會員資格。
+async function syncStudentFeeStatus(user) {
+    let hasPaidFee;
+    try {
+        const paidStudentIds = await getPaidStudentIds();
+        hasPaidFee = paidStudentIds.has(normalizeStudentId(user.studentId));
+    } catch (error) {
+        console.error('同步繳費狀態失敗:', error.message);
+        user.hasPaidFee = false;
+        return;
+    }
+
+    if (Boolean(user.hasPaidFee) !== hasPaidFee) {
+        await user.update({ hasPaidFee });
+    }
+}
+
 module.exports = {
     checkStudentPaidFee,
+    syncStudentFeeStatus,
     buildPaidStudentSet,
     parseCsv,
     normalizeStudentId,
