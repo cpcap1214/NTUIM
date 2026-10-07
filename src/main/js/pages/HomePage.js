@@ -12,6 +12,7 @@ import {
 } from '@mui/icons-material';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import SponsorCarousel from '../components/SponsorCarousel';
 import NTUCalendar from '../components/NTUCalendar';
 
 const iconMap = {
@@ -256,25 +257,7 @@ const HomePage = () => {
             {/* Contextual Banner */}
             {renderContextBanner()}
 
-            {/* IMSA 橫幅 */}
-            <Box
-                component="img"
-                src="/images/branding/imsa-banner.png"
-                alt={t('app.name')}
-                onError={(e) => {
-                    // 缺檔時整塊藏起來，不要留下破圖的框（同 AboutUsPage 的 logo 作法）
-                    e.currentTarget.style.display = 'none';
-                }}
-                sx={{
-                    display: 'block',
-                    width: '100%',
-                    height: 'auto',
-                    // 先用原圖比例（2460×936）把版位撐開，圖載入時才不會把下面的內容往下推
-                    aspectRatio: '2460 / 936',
-                    borderRadius: 2,
-                    mb: { xs: 3, md: 4 },
-                }}
-            />
+            <SponsorCarousel />
 
             {/* Quick Links */}
             <Box sx={{ mb: { xs: 4, md: 5 } }}>

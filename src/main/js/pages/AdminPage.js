@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Container, Grid, Paper, Snackbar, Stack, Typography } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
+import SponsorStatsPanel from '../components/admin/SponsorStatsPanel';
 import FeedbackAdminPanel from '../components/admin/FeedbackAdminPanel';
 import AnnouncementAdminPanel from '../components/admin/AnnouncementAdminPanel';
 import ModuleAdminPanel from '../components/admin/ModuleAdminPanel';
@@ -168,6 +169,14 @@ const AdminPage = () => {
     const adminSectionRows = [
         [
             {
+                labelKey: '贊助廣告統計',
+                descKey: '查看曝光、訪客與點開次數',
+                value: 12,
+                permission: 'announcements.manage',
+            },
+        ],
+        [
+            {
                 labelKey: 'nav.adminPanel',
                 descKey: 'admin.sections.users',
                 value: 0,
@@ -326,6 +335,8 @@ const AdminPage = () => {
                         ))}
                     </Stack>
                 </Paper>
+
+                {activeTab === 12 && hasPermission('announcements.manage') && <SponsorStatsPanel />}
 
                 {/* LINE 通知分頁 */}
                 {/* LINE 通知綁定分頁。整段已搬到 components/admin/LineAdminPanel.js */}

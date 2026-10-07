@@ -161,6 +161,7 @@ app.use(
 // 模組清單本身是公開端點（內部用 optionalAuth）：登出的訪客也需要知道
 // 導覽列該顯示哪些項目，不能要求認證
 app.use('/api/modules', moduleRoutes);
+app.use('/api/sponsors', require('./routes/sponsors'));
 app.use('/api/roles', authenticateToken, roleRoutes);
 // 公告同樣不能在這裡要求認證：訪客也看得到公告。
 // 路由檔內部前台端點用 optionalAuth、管理端點各自掛 authenticateToken + requirePermission。
